@@ -1,26 +1,511 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ─────────────────────────────────────────────────────────────
+   Design tokens — sourced from Figma
+   ───────────────────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: #ffffff;
+  --color-surface: #f6f6f6;
+  --color-surface-alt: #fdfdfd;
+  --color-surface-mid: #e9e9e9;
+
+  --color-foreground: #03020b;
+  --color-foreground-mid: #404040;
+  --color-muted: #767676;
+  --color-tertiary: #a8a8a8;
+
+  --color-border: #e1e2e6;
+  --color-border-mid: #d0d5dd;
+
+  --color-primary: #4b28ff;
+  --color-primary-dark: #3d31cb;
+  --color-primary-soft: #f4e1fc;
+  --color-primary-tint: #c5baff;
+
+  --color-accent-violet: #bd70f6;
+  --color-accent-warm: #fc5038;
+  --color-accent-green: #00a656;
+
+  --font-sans: var(--font-albert-sans);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Reset / base ─── */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+}
+
+::selection {
+  background: rgba(75, 40, 255, 0.18);
+  color: var(--color-foreground);
+}
+
+/* ─── Layout helpers ─── */
+.site-shell {
+  width: min(1440px, calc(100% - 48px));
+  margin-inline: auto;
+}
+
+.section-pad {
+  padding-block: clamp(4rem, 9vw, 9rem);
+}
+
+/* ─── Typography utilities ─── */
+/* Figma spec: Albert Sans, 500, 120px/144px, -0.06em */
+.display-xl {
+  font-size: clamp(48px, 8.4vw, 120px);
+  line-height: 1.2;
+  letter-spacing: -0.06em;
+  font-weight: 500;
+  color: var(--color-foreground);
+}
+
+.display-lg {
+  font-size: clamp(38px, 5.6vw, 80px);
+  line-height: 1.1;
+  letter-spacing: -0.05em;
+  font-weight: 500;
+  color: var(--color-foreground);
+}
+
+.display-md {
+  font-size: clamp(28px, 3.2vw, 44px);
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+  font-weight: 500;
+  color: var(--color-foreground);
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.body-lg {
+  font-size: clamp(16px, 1.4vw, 20px);
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+.body-md {
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+.body-sm {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+/* ─── Decorative backgrounds ─── */
+.dot-grid-bg {
+  background-image: radial-gradient(rgba(193, 184, 254, 0.55) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.lavender-wash {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 40%, rgba(189, 112, 246, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(75, 40, 255, 0.10) 0%, transparent 60%),
+    linear-gradient(180deg, #ffffff 0%, #faf7ff 100%);
+}
+
+/* Signature hero backdrop: vertical gradient stripes + soft radial glow */
+.hero-stripes {
+  background:
+    radial-gradient(ellipse 55% 65% at 62% 38%, rgba(189, 112, 246, 0.28) 0%, transparent 62%),
+    radial-gradient(ellipse 40% 50% at 20% 80%, rgba(117, 95, 255, 0.14) 0%, transparent 60%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0px,
+      rgba(255, 255, 255, 0) 96px,
+      rgba(197, 186, 254, 0.22) 96px,
+      rgba(197, 186, 254, 0.22) 176px
+    ),
+    linear-gradient(180deg, #ffffff 0%, #f5effd 58%, #e9ddff 100%);
+}
+
+.hero-dot-edge {
+  background-image: radial-gradient(circle at 0% 50%, rgba(75, 40, 255, 0.18) 0 2px, transparent 3px);
+  background-repeat: repeat-y;
+  background-size: 100% 84px;
+}
+
+.purple-card {
+  background: linear-gradient(135deg, #4b28ff 0%, #7358fd 60%, #a48dff 100%);
+  color: #ffffff;
+}
+
+/* ─── Marquee ─── */
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 36s linear infinite;
+}
+
+.marquee-track.reverse {
+  animation-direction: reverse;
+}
+
+.marquee-track.fast {
+  animation-duration: 22s;
+}
+
+.marquee-track.slow {
+  animation-duration: 50s;
+}
+
+.horizontal-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.horizontal-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* ─── Keyframes ─── */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes word-rise {
+  from {
+    transform: translateY(108%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes header-slide {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes chevron-slide {
+  0% {
+    transform: translateX(-12px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes wordmark-breathe {
+  0%, 100% {
+    opacity: 0.42;
+  }
+  50% {
+    opacity: 0.62;
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 0.88;
+  }
+}
+
+@keyframes progress-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: var(--progress, 60%);
+  }
+}
+
+/* ─── Utility animations ─── */
+.animate-fade-up {
+  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease both;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2.6s ease-in-out infinite;
+}
+
+.animate-wordmark {
+  animation: wordmark-breathe 14s ease-in-out infinite;
+}
+
+/* ─── Card primitives ─── */
+.card-base {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 24px;
+  transition:
+    transform 0.36s cubic-bezier(0.22, 0.61, 0.36, 1),
+    border-color 0.36s ease,
+    box-shadow 0.36s ease;
+}
+
+.card-base:hover {
+  transform: translateY(-4px);
+  border-color: var(--color-border-mid);
+  box-shadow: 0 24px 60px -28px rgba(75, 40, 255, 0.18);
+}
+
+/* ─── Pills / CTAs ─── */
+/* Figma spec: Albert Sans Regular 20px, letter-spacing -6%,
+   height 44px, radius 32px, horizontal padding 20px */
+@layer components {
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 44px;
+    padding-inline: 20px;
+    border-radius: 32px;
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: -0.06em;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      box-shadow 0.25s ease;
+    white-space: nowrap;
+  }
+
+  .pill-magnetic {
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.25s ease;
+    will-change: transform;
+  }
+
+  .pill-primary {
+    background: var(--color-primary);
+    color: #ffffff;
+    box-shadow: 0 10px 30px -12px rgba(75, 40, 255, 0.55);
+  }
+
+  .pill-primary:hover {
+    background: var(--color-primary-dark);
+    box-shadow: 0 14px 36px -10px rgba(75, 40, 255, 0.65);
+  }
+
+  .pill-soft {
+    background: rgba(75, 40, 255, 0.1);
+    color: var(--color-primary);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(75, 40, 255, 0.18);
+  }
+
+  .pill-soft:hover {
+    background: rgba(75, 40, 255, 0.16);
+    color: var(--color-primary-dark);
+  }
+
+  .pill-solid-secondary {
+    background: var(--color-primary);
+    color: #ffffff;
+    box-shadow: 0 10px 30px -12px rgba(75, 40, 255, 0.45);
+  }
+
+  .pill-solid-secondary:hover {
+    background: var(--color-primary-dark);
+  }
+}
+
+/* ─── Focus ring (keyboard-only) ─── */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+/* ─── Nav link with animated underline ─── */
+/* Figma spec: Albert Sans Regular 20px, letter-spacing -6% */
+@layer components {
+  .nav-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 12px 6px;
+    font-size: 20px;
+    font-weight: 400;
+    letter-spacing: -0.06em;
+    color: var(--color-foreground);
+    transition: color 0.2s ease;
+  }
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  height: 1.5px;
+  background: var(--color-primary);
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-link:hover {
+  color: var(--color-primary);
+}
+
+.nav-link:hover::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+
+.nav-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+/* ─── AnimateIn primitive (CSS-driven reveal) ───
+   The component sets CSS variables (--ai-y, --ai-duration, --ai-delay)
+   and toggles [data-in-view] via an IntersectionObserver. All paint work
+   stays on the GPU compositor; no JS per frame. */
+.animate-in-reveal {
+  opacity: 0;
+  transform: translateY(var(--ai-y, 28px));
+  transition:
+    opacity var(--ai-duration, 0.7s) cubic-bezier(0.22, 1, 0.36, 1) var(--ai-delay, 0s),
+    transform var(--ai-duration, 0.7s) cubic-bezier(0.22, 1, 0.36, 1) var(--ai-delay, 0s);
+  will-change: opacity, transform;
+}
+
+.animate-in-reveal[data-in-view] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ─── Reduced motion ─── */
+/* Disable animations entirely so reveal elements settle at their final state
+   (shortening duration to 0 leaves some browsers stuck on the `from` keyframe). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Ensure reveal-hidden paragraphs/CTAs don't remain at opacity:0 */
+  [style*="animation:"][class*="opacity-0"] {
+    opacity: 1 !important;
+  }
+
+  /* AnimateIn primitive — pin to final state instantly. `!important`
+     wins over the transition definition above so reduced-motion users
+     see content immediately, no fade, no slide. */
+  [data-animate-in] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .site-shell {
+    width: min(100% - 32px, 1440px);
+  }
+  .section-pad {
+    padding-block: 4rem;
+  }
 }
