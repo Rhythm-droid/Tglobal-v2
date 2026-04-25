@@ -88,6 +88,17 @@ const STEPS = [
   },
 ] as const;
 
+/* ─── SCROLL FEEL ──────────────────────────────────────────── */
+/**
+ * Fraction of the pinned scroll range that's a "settle" beat — the section
+ * stays locked centre-of-viewport while the user feels the pin engage,
+ * before any card translation begins. 0.20 = 20% of pin scroll. Raise to
+ * 0.25–0.30 if the lock-in should feel longer; lower to 0.10–0.15 for a
+ * snappier handover. Used by both the pin timeline and the pill-click
+ * progress remap so they stay in sync.
+ */
+const SETTLE_RATIO = 0.2;
+
 /* ─── TUNING ───────────────────────────────────────────────── */
 const TUNING = {
   background: "#ffffff",
@@ -118,7 +129,16 @@ const TUNING = {
      *  cleanly when the card is shrunk to 85vw on phones. */
     aspectRatio: "380 / 376",
     radius: 16,
-    bg: "#F7F7F7",
+    /** Soft radial wash of the Figma frame colour (#F7F7F7) fading to
+     *  transparent before it reaches the wrapper edge. Replaces the old
+     *  flat `bg: "#F7F7F7"`, which painted a hard rectangle that didn't
+     *  blend into the white card. The matching `<rect fill="#F7F7F7"/>`
+     *  inside each illust-N.svg has been stripped (extract step) so the
+     *  wash is now the only frame the user sees. Centre y-bias 55% keeps
+     *  the wash a touch lower than the geometric centre, matching the
+     *  Services section's CardIllustration treatment. */
+    bgGradient:
+      "radial-gradient(ellipse 80% 70% at 50% 55%, rgba(247,247,247,1) 0%, rgba(247,247,247,0) 78%)",
   },
   cardGap: 20,
   pill: {
@@ -220,14 +240,15 @@ function StepCard({ step }: { readonly step: Step }) {
     >
       {/* Illustration frame — fills card width inside the 20px padding,
           height follows via aspect-ratio so internal proportions stay locked
-          at every card width. The SVG itself embeds the same gray frame,
-          so this wrapper is also a CLS reservation. */}
+          at every card width. The wrapper background is a soft radial wash
+          (no hard rectangle); the matching `<rect fill="#F7F7F7"/>` was
+          stripped from each illust-N.svg so the wash is the only frame. */}
       <div
         className="w-full overflow-hidden"
         style={{
           aspectRatio: TUNING.illust.aspectRatio,
           borderRadius: TUNING.illust.radius,
-          background: TUNING.illust.bg,
+          background: TUNING.illust.bgGradient,
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element
@@ -409,6 +430,22 @@ export default function HowItWorks() {
      Reverse direction (scrolling back up) just plays the same translate
      in reverse.
 
+     Two-stage timeline (settle → translate):
+       The track tween used to start the moment pin engaged, which felt
+       rushed — the user "fell into" horizontal scroll the instant the
+       section locked. Splitting the timeline into a settle stage (no
+       movement) followed by a translate stage gives a beat where the
+       section is locked but cards stay in their initial position. The
+       user perceives "section locked → THEN cards move", which matches
+       the tactile feel they asked for.
+
+       SETTLE_RATIO = 0.20 means: 20% of the pin range is the settle beat,
+       the remaining 80% is card translation. End is computed as
+       `getDistance() / (1 - SETTLE_RATIO)` so the translate phase covers
+       exactly `getDistance()` px of scroll regardless of the settle ratio.
+       Tune SETTLE_RATIO to make the lock-in feel longer (0.25–0.30) or
+       shorter (0.10–0.15).
+
      Smoothing strategy with Lenis present:
        Lenis interpolates wheel/trackpad input over ~150ms (lerp 0.1) and
        drives `window.scrollY` itself. ScrollTrigger reads that smoothed
@@ -440,7 +477,8 @@ export default function HowItWorks() {
                            timing; ScrollTrigger is a pure mapper.
      - invalidateOnRefresh ScrollTrigger.refresh() is invoked on resize;
                            this re-runs `getDistance()` against the new
-                           wrapper.clientWidth.
+                           wrapper.clientWidth and re-evaluates the
+                           function-based `x` and `end`.
      - matchMedia gate     Pin only above lg. Below lg the pin code path
                            never registers (no GSAP cost on phones). We do
                            NOT gate on `prefers-reduced-motion: no-preference`
@@ -454,7 +492,7 @@ export default function HowItWorks() {
         const track = trackRef.current;
         if (!viewport || !track) return;
 
-        /* The track's parent is now an `overflow-hidden` cards-area wrapper
+        /* The track's parent is an `overflow-hidden` cards-area wrapper
            (left=cardsLeft, right=0) that clips cards from bleeding into
            the header column. The amount the track has to travel to bring
            its last card flush with the wrapper's right edge is exactly
@@ -467,27 +505,79 @@ export default function HowItWorks() {
 
         const stops = STEPS.length - 1; // 2 gaps between 3 cards
 
-        const tween = gsap.to(track, {
-          x: () => -getDistance(),
-          ease: "none",
-          force3D: true,
+        const tl = gsap.timeline({
           scrollTrigger: {
             trigger: viewport,
+            /* Higher refreshPriority = refreshes earlier. Both HowItWorks
+               and Services are dynamic()-imported in page.tsx, which means
+               their `useGSAP` effects can fire in either order depending on
+               which chunk Webpack resolves first. ScrollTrigger refreshes
+               in creation order by default — when refresh runs out of page
+               order, the second pin's spacer is calculated against an
+               already-spaced first pin, OR vice versa, and the spacers end
+               up offset by one pin range. That's how two sections can
+               occupy the same scroll Y. We pin the priority so HowItWorks
+               (page section 4) always refreshes before Services (section 5),
+               regardless of which dynamic chunk lands first. Page-section
+               order: lower number = lower in document = refreshes first. */
+            refreshPriority: 0,
             start: "top top",
-            end: () => `+=${getDistance()}`,
+            /* Pin range = settle (SETTLE_RATIO) + translate (1 - SETTLE_RATIO).
+               We want translate to cover exactly `getDistance()` px of
+               scroll, so total = distance / (1 - SETTLE_RATIO). */
+            end: () =>
+              `+=${getDistance() / (1 - SETTLE_RATIO)}`,
             pin: true,
+            /* `pinSpacing: false` — do NOT insert a pin-spacer below the
+               pinned element.
+
+               Why: with the default `pinSpacing: true`, GSAP injects a
+               spacer of `pinDistance` px after the pinned viewport so
+               document height stays consistent while the element is in
+               `position: fixed`. The visible cost: after pin releases,
+               the user has to scroll through the pin-spacer's empty
+               band PLUS the residual white space below the centered cards
+               inside the section's 100vh. For a 600 px translate distance
+               and 920-ish px viewport that adds up to ~950 px of static
+               white scroll between cards-finish and the next section's
+               pin engaging — feels like a long dead zone followed by a
+               sudden snap.
+
+               With `pinSpacing: false`, no spacer is added. The next
+               sibling (Services section) is the immediate next painted
+               block, so HowItWorks unpins → Services pins on the next
+               frame. The "snap" disappears because there's no scroll gap
+               between them — the handoff is the standard GSAP stacked-pin
+               pattern.
+
+               The original concern with `pinSpacing: false` is that the
+               next section can paint *underneath* the pinned (fixed)
+               element. We've already neutralised that by giving the
+               viewport `bg-white` (line 744) so it's fully opaque during
+               pin. Without that opaque guard this flag would re-introduce
+               the section-overlap bug we fixed last round; with it, the
+               flag is safe. */
+            pinSpacing: false,
             scrub: true,
             invalidateOnRefresh: true,
             onUpdate: (self) => {
-              /* Map continuous progress to a single active pill. With
-                 `Math.round` and stops=2 we get 0 for [0..0.25], 1 for
-                 (0.25..0.75], 2 for (0.75..1] — pill flips at the
-                 midpoint between cards. Deduped via `lastActiveRef` so
-                 React only re-renders the pill row at transitions, not
-                 on every Lenis frame. */
+              /* Remap timeline progress (which includes the settle phase)
+                 to card progress (0..1 across the 3 cards). During the
+                 settle phase, cardProgress stays clamped at 0. */
+              const cardProgress = Math.max(
+                0,
+                Math.min(
+                  1,
+                  (self.progress - SETTLE_RATIO) / (1 - SETTLE_RATIO),
+                ),
+              );
+              /* Math.round on a 0..1 progress with `stops` gaps: pill
+                 flips at the midpoint between adjacent cards. Deduped
+                 via `lastActiveRef` so React only re-renders the pill
+                 row at transitions, not on every Lenis frame. */
               const idx = Math.min(
                 STEPS.length - 1,
-                Math.max(0, Math.round(self.progress * stops)),
+                Math.max(0, Math.round(cardProgress * stops)),
               );
               if (idx !== lastActiveRef.current) {
                 lastActiveRef.current = idx;
@@ -497,11 +587,28 @@ export default function HowItWorks() {
           },
         });
 
-        scrollTriggerRef.current = tween.scrollTrigger ?? null;
+        /* Stage 1 — settle: dummy tween that consumes SETTLE_RATIO of the
+           timeline without moving anything. The track stays at its
+           initial x=0 while the user scrolls into the locked section. */
+        tl.to({}, { duration: SETTLE_RATIO });
+
+        /* Stage 2 — translate: slide the track left by exactly `getDistance()`
+           px over the remaining (1 - SETTLE_RATIO) of timeline. Because
+           durations sum to 1 and the pin range is `distance / (1 - ratio)`,
+           the translate phase maps 1:1 to scroll px (i.e. 1 px of wheel
+           = 1 px of card translation during this stage, no acceleration). */
+        tl.to(track, {
+          x: () => -getDistance(),
+          ease: "none",
+          force3D: true,
+          duration: 1 - SETTLE_RATIO,
+        });
+
+        scrollTriggerRef.current = tl.scrollTrigger ?? null;
 
         return () => {
-          tween.scrollTrigger?.kill();
-          tween.kill();
+          tl.scrollTrigger?.kill();
+          tl.kill();
           scrollTriggerRef.current = null;
         };
       });
@@ -547,10 +654,20 @@ export default function HowItWorks() {
 
   /* Pill click → navigate to the corresponding card.
      ─────────────────────────────────────────────────────────
-     Desktop: compute the page-Y that puts ScrollTrigger's progress at
-     i/(N-1), then ask Lenis to scroll there. Lenis's animator runs the
-     scroll on GSAP's ticker; ScrollTrigger sees the new positions on every
-     tick and drives the cards with the existing scrub.
+     Desktop: compute the page-Y that puts ScrollTrigger's timeline at the
+     scroll position where the target card is fully translated into view,
+     then ask Lenis to scroll there. Lenis's animator runs the scroll on
+     GSAP's ticker; ScrollTrigger sees the new positions on every tick and
+     drives the cards with the existing scrub.
+
+     The target timeline progress accounts for the settle phase: card N's
+     translation reaches its "card N visible" point at cardProgress = N/stops,
+     which is timelineProgress = SETTLE_RATIO + (N/stops) * (1 - SETTLE_RATIO).
+     Card 0 in particular lands AT the end of settle — clicking pill 0 from
+     anywhere scrolls back to the start of the translate phase, leaving the
+     section pinned with cards in initial position. Without this remap the
+     pill clicks would land in the wrong scroll position and the card under
+     the cursor would still appear shifted.
 
      Why `lenis.scrollTo` instead of `gsap.to(window, { scrollTo })`:
      GSAP's ScrollToPlugin calls `window.scrollTo()` directly, which Lenis
@@ -568,8 +685,24 @@ export default function HowItWorks() {
 
       const st = scrollTriggerRef.current;
       if (st) {
-        const progress = target / stops;
-        const targetY = st.start + progress * (st.end - st.start);
+        const cardProgress = target / stops;
+        const timelineProgress =
+          SETTLE_RATIO + cardProgress * (1 - SETTLE_RATIO);
+        /* Clamp targetY 1 px inside the pin range. Pill `last` would
+           otherwise compute timelineProgress = 1, landing the user at
+           exactly `st.end` — the pin-engage/release boundary. Lenis's
+           smoothed scroll arrives there with sub-pixel rounding noise
+           and ScrollTrigger toggles pin state across the boundary in a
+           single tick: the `position: fixed` viewport is removed,
+           re-laid-out as static, then re-fixed, producing the visible
+           "blink" the user reported on pill clicks. The 1 px margin is
+           imperceptible to the user but keeps the scroll target firmly
+           inside the pinned range. */
+        const rawTargetY = st.start + timelineProgress * (st.end - st.start);
+        const targetY = Math.max(
+          st.start + 1,
+          Math.min(st.end - 1, rawTargetY),
+        );
         if (lenis) {
           lenis.scrollTo(targetY, { duration: 0.6, lock: true });
         } else {
@@ -636,10 +769,23 @@ export default function HowItWorks() {
           reference; everything inside positions absolutely against it.
           Below 1440 the inner frame shrinks with the viewport and the
           clamp() values scale proportionally; above 1440 the frame caps and
-          the whole composition centres in the leftover margin. */}
+          the whole composition centres in the leftover margin.
+
+          Why `bg-white` lives on THIS element (not the parent <section>):
+            ScrollTrigger pins this `viewportRef` with `pinType: "fixed"`
+            (default for window-scroller pins). During pin the element is
+            `position: fixed; top: 0; left: 0` — taken out of the document
+            flow visually. The parent section's white background still paints
+            its own box correctly, but the fixed viewport is a separate
+            stacking layer floating over whatever content is currently
+            scrolled underneath it (i.e. the next section sliding up under
+            the pin spacer). If the viewport itself is transparent, the next
+            section's heading and cards bleed through and you see two
+            sections layered. Painting the viewport opaque white closes that
+            window — the next section is fully occluded until pin releases. */}
       <div
         ref={viewportRef}
-        className="relative hidden h-screen w-full overflow-hidden lg:block"
+        className="relative hidden h-screen w-full overflow-hidden bg-white lg:block"
       >
         <div className="absolute inset-0 flex items-center">
           <div

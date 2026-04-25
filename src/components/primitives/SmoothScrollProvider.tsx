@@ -83,15 +83,48 @@ function GsapLenisSync() {
     const onScroll = () => ScrollTrigger.update();
     lenis.on("scroll", onScroll);
 
+    /* Re-measure Lenis whenever ScrollTrigger refreshes.
+       ──────────────────────────────────────────────────
+       Why this matters: ScrollTrigger pins (HowItWorks, Services) insert a
+       `pin-spacer` element at refresh time to keep document height stable
+       while a section is `position: fixed`. Each spacer adds its pin range
+       (~600–800 px per pinned section) to scrollHeight. Lenis caches
+       scrollHeight in `instance.dimensions` and clamps its scroll target to
+       that cached value. If we don't tell Lenis the document grew, the
+       user wheel-scrolls fine until they hit the OLD (pre-spacer) bottom —
+       Lenis stops accepting input and the page feels like it ends a
+       section or two before the actual document end. `lenis.resize()` re-
+       reads dimensions so its clamp matches the spacer-extended scrollHeight.
+
+       We listen on `refresh` (not `refreshInit`) so DOM mutations are
+       committed before we re-measure. */
+    const onRefresh = () => lenis.resize();
+    ScrollTrigger.addEventListener("refresh", onRefresh);
+
     /* ScrollTrigger reads document height when registering each instance.
        After Lenis attaches, refresh once so any triggers that registered
-       before this effect ran (HowItWorks, etc.) recompute their start/end
-       against the correct scroll context. */
-    ScrollTrigger.refresh();
+       before this effect ran (HowItWorks, Services, etc.) recompute their
+       start/end against the correct scroll context. The `refresh` listener
+       above also fires here so Lenis picks up the document height on this
+       very first refresh.
+
+       Why `requestAnimationFrame` instead of calling refresh inline:
+         In dev (HMR) and on Next.js client-side route remounts this effect
+         can fire while the user is mid-scroll inside a pinned section.
+         A synchronous refresh during pin causes ScrollTrigger to tear down
+         and rebuild the pin spacer (or, with `pinSpacing: false`, to flip
+         the pinned element between fixed and static positioning) within
+         the current paint frame — which the user sees as a one-frame
+         layout flash. Deferring to the next animation frame pushes the
+         refresh past the current paint so the rebuild happens between
+         frames and is invisible. */
+    const refreshHandle = requestAnimationFrame(() => ScrollTrigger.refresh());
 
     return () => {
+      cancelAnimationFrame(refreshHandle);
       gsap.ticker.remove(update);
       lenis.off("scroll", onScroll);
+      ScrollTrigger.removeEventListener("refresh", onRefresh);
     };
   }, [lenis]);
 
