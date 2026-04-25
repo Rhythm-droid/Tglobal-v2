@@ -1,423 +1,301 @@
-"use client";
-
 import AnimateIn from "./primitives/AnimateIn";
+import ToolsCard from "./problem/ToolsCard";
+import CyclesCard from "./problem/CyclesCard";
+import ScalingCard from "./problem/ScalingCard";
+import TGlobalCard from "./problem/TGlobalCard";
 
-const topCards = [
-  {
-    title: "Too many tools, not enough clarity",
-    description:
-      "Building software today means stitching together dozens of tools — design, development, testing, deployment.",
-    type: "logos",
+/**
+ * Section 3 — "Problem with Development Currently"
+ * ────────────────────────────────────────────────────────────
+ *
+ *    ┌──────────────────────────────────────────────────────┐
+ *    │ HOW TO EDIT THIS SECTION                             │
+ *    │                                                      │
+ *    │ • Copy (eyebrow, heading, description)               │
+ *    │     → COPY block below                               │
+ *    │ • Shared spacing, radii, rail colors, type scale     │
+ *    │     → TUNING block below                             │
+ *    │ • A specific card's content or illustration          │
+ *    │     → src/components/problem/<Card>.tsx              │
+ *    │ • The decorative rails/corner dots between cards     │
+ *    │     → CornerDot + Rail components below              │
+ *    └──────────────────────────────────────────────────────┘
+ *
+ * Figma: 1440 × ~850 section, white-ish bg (#f7f9ff).
+ *   Header block at top (eyebrow 14–16 / heading 72–80 / description 18–20)
+ *   2 × 2 card grid with a subtle #dfe1e7 stroked rail around each row
+ *   Corner dots at every intersection — the "blueprint" motif.
+ *
+ * Responsive:
+ *   <lg: single-column card stack, rails hidden (no visual payoff on mobile).
+ *   ≥lg: spec-exact 2 × 2 grid with rails + corner dots.
+ *
+ * Server component: AnimateIn (the only client dependency) is imported by
+ * a server component, which is allowed and keeps Problem itself off the
+ * client bundle.
+ * ────────────────────────────────────────────────────────────
+ */
+
+/* ─── COPY ─────────────────────────────────────────────────── */
+const COPY = {
+  eyebrow: "Problem with Development Currently",
+  heading: "Building Software Is Still Too Slow",
+  description:
+    "Despite better tools, teams still struggle to ship fast and scale efficiently.",
+} as const;
+
+/* ─── TUNING ───────────────────────────────────────────────── */
+const TUNING = {
+  /** Figma section background. */
+  background: "#f7f9ff",
+  /** Max canvas width — matches the 1440 Figma frame. */
+  maxWidth: 1440,
+  /** Side padding / vertical padding at common breakpoints. */
+  pad: {
+    sideMobile: "1.5rem", // 24px
+    sideTablet: "2.5rem", // 40px
+    sideDesktop: "7.5rem", // 120px
+    yMobile: "4rem", // 64px
+    yDesktop: "5rem", // 80px
   },
-  {
-    title: "Development cycles take months",
-    description:
-      "From writing code to testing and deployment, most of the process is still manual.",
-    type: "progress",
+  /** Gap between header and the card grid. */
+  headerToGridGap: "3rem",
+  /** Gap between rows of the card grid on desktop. */
+  rowGap: "1.25rem",
+  /** Gap between the two columns on desktop. */
+  colGap: "1.25rem",
+  /** Rail + corner-dot spec (dot stroke #DFE1E7 21px per Pagination.svg; rail stroke #DEE3E8 per Divider Container.svg). */
+  rail: {
+    railStroke: "#dee3e8",
+    dotStroke: "#dfe1e7",
+    dotSize: 21,
+    dividerWidth: 20,
   },
-] as const;
-
-const bottomCards = [
-  {
-    title: "Scaling introduces complexity",
-    description: "As systems evolve, they become harder to maintain.",
-    type: "scaling",
+  /** Header column widths (Figma: heading 526, description 606). */
+  headerCols: {
+    heading: "526px",
+    description: "606px",
   },
-  {
-    title: "Enters TGlobal",
-    description: "4x >>>>>",
-    type: "tglobal",
+  /**
+   * Typography — Figma-exact at ≥1440, fluidly scaled below via clamp().
+   * The MAX in every clamp is the Figma value; the min is a comfortable
+   * floor for ~375px viewports.
+   */
+  type: {
+    // Eyebrow + description share spec: Albert Sans Regular 20/28
+    eyebrow: {
+      size: "clamp(16px, 1.389vw, 20px)", // 20/1440 = 1.389vw
+      lineHeight: "1.4", // 28/20
+      color: "#2f2b43b2", // #2F2B43 @ 70%
+    },
+    // Heading: Albert Sans Medium 54/68 / -2%
+    heading: {
+      size: "clamp(36px, 3.75vw, 54px)", // 54/1440 = 3.75vw
+      lineHeight: "1.26", // 68/54
+      tracking: "-0.02em", // Figma -2%
+      color: "#010101",
+    },
+    description: {
+      size: "clamp(16px, 1.389vw, 20px)",
+      lineHeight: "1.4",
+      color: "#2f2b43b2",
+    },
   },
-] as const;
+} as const;
 
-const logoItems = ["OpenAI", "Angular", "Node", "AWS", "Google", ""] as const;
-
-const statusRows = [{ label: "Live" }, { label: "Live" }] as const;
-
-function SparklesIcon({ className }: { className?: string }) {
+/* ─── Rail primitives ─────────────────────────────────────────
+   Solid thin line + 21px ringed dots at the corners. Used to draw
+   the Figma "blueprint" frame around each row.
+   ─────────────────────────────────────────────────────────── */
+function CornerDot() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <path
-        d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3zM19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14zM5 14l.6 1.8L7.4 16l-1.8.6L5 18l-.6-1.8L2.6 16l1.8-.6L5 14z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={3}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
+    <span
       aria-hidden
-    >
-      <path d="M20 6L9 17l-5-5" />
-    </svg>
+      className="block h-[21px] w-[21px] rounded-full border border-[#dfe1e7] bg-white shadow-[0px_1px_2px_#0d0d120a,0px_1px_3px_#0d0d120d]"
+    />
   );
 }
 
-function CloudIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <path d="M17.5 19a4.5 4.5 0 100-9h-1.26a7 7 0 10-12.23 6" />
-      <path d="M4 15.5a3.5 3.5 0 003.5 3.5H17" />
-    </svg>
-  );
+function HRail() {
+  return <span aria-hidden className="block h-px flex-1 bg-[#dee3e8]" />;
 }
 
-function MousePointerIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
-      <path d="M4 3l6.5 16L12 12l7-1.5L4 3z" />
-    </svg>
-  );
+// NOTE: no `flex-1` here. In a row-flex parent (which CardRow's cells are),
+// flex-1 expands the *main* axis — it would blow the line out to 20px wide and
+// render the whole gutter as a filled strip. `w-px` + default align-items:stretch
+// gives us a 1px line that spans the full row height, matching Divider Container.svg.
+function VRail() {
+  return <span aria-hidden className="block w-px bg-[#dee3e8]" />;
 }
 
-function TimelineConnector() {
+/** Top/bottom rail: dot — line — dot — line — dot. */
+function RowRail() {
   return (
-    <div className="flex items-center gap-2.5 self-stretch">
-      <div className="h-[21px] w-[21px] rounded-full border border-[#dfe1e7] bg-white shadow-[0px_1px_2px_#0d0d120a,0px_1px_3px_#0d0d120d]" />
-      <div className="h-px flex-1 bg-[#dfe1e7]" />
-      <div className="h-[21px] w-[21px] rounded-full border border-[#dfe1e7] bg-white shadow-[0px_1px_2px_#0d0d120a,0px_1px_3px_#0d0d120d]" />
-      <div className="h-px flex-1 bg-[#dfe1e7]" />
-      <div className="h-[21px] w-[21px] rounded-full border border-[#dfe1e7] bg-white shadow-[0px_1px_2px_#0d0d120a,0px_1px_3px_#0d0d120d]" />
+    <div className="flex w-full items-center gap-2.5">
+      <CornerDot />
+      <HRail />
+      <CornerDot />
+      <HRail />
+      <CornerDot />
     </div>
   );
 }
 
-function VerticalRail() {
-  return <div className="w-px self-stretch bg-[#dfe1e7]" />;
-}
-
-function PaginationLine() {
-  return <div className="h-px w-full bg-[#dfe1e7]" />;
-}
-
-function LogoBadge({ label }: { label: string }) {
-  const commonClass =
-    "flex h-11 w-11 items-center justify-center rounded-full bg-[#f5f5f5] text-sm font-medium text-[#6b677d]";
-
-  if (label === "OpenAI") {
-    return (
-      <div className={commonClass} aria-label="OpenAI">
-        <SparklesIcon className="h-5 w-5 text-[#5f5a6f]" />
-      </div>
-    );
-  }
-
-  if (label === "Angular") {
-    return (
-      <div className={commonClass} aria-label="Angular">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#e45a4f] text-[15px] font-bold text-white">
-          A
-        </div>
-      </div>
-    );
-  }
-
-  if (label === "Node") {
-    return (
-      <div className={commonClass} aria-label="Node">
-        <span className="text-[11px] font-semibold tracking-tight text-[#6b8f5b]">
-          node
-        </span>
-      </div>
-    );
-  }
-
-  if (label === "AWS") {
-    return (
-      <div className={commonClass} aria-label="AWS">
-        <div className="flex flex-col items-center leading-none">
-          <span className="text-[14px] font-semibold text-[#6d6d6d]">aws</span>
-          <span className="mt-0.5 h-[2px] w-6 rounded-full bg-[#f6a623]" />
-        </div>
-      </div>
-    );
-  }
-
-  if (label === "Google") {
-    return (
-      <div className={commonClass} aria-label="Google">
-        <span className="text-xl font-bold">
-          <span className="text-[#4285f4]">G</span>
-          <span className="text-[#ea4335]">o</span>
-          <span className="text-[#fbbc05]">o</span>
-          <span className="text-[#4285f4]">g</span>
-          <span className="text-[#34a853]">l</span>
-          <span className="text-[#ea4335]">e</span>
-        </span>
-      </div>
-    );
-  }
-
-  return <div className={commonClass} aria-hidden="true" />;
-}
-
-function StatusPill() {
+/* ─── Card row — content flanked by vertical rails + a middle rail.
+   Grid template:
+     [rail 21px] [card 1fr] [rail 21px] [card 1fr] [rail 21px]
+   ─────────────────────────────────────────────────────────── */
+function CardRow({
+  left,
+  right,
+}: {
+  readonly left: React.ReactNode;
+  readonly right: React.ReactNode;
+}) {
   return (
-    <div className="inline-flex items-center justify-center gap-[1.7px] rounded-[2.27px] border border-[#2eb79f] bg-[#f4fcf7] px-[4.55px] py-[3.41px]">
-      <span className="[font-family:var(--font-albert-sans),Helvetica] text-[6.8px] font-medium leading-[9.4px] tracking-[0.14px] text-[#2eb79f]">
-        Live
-      </span>
-      <span className="h-[3.61px] w-[3.61px] rounded-full bg-[#32d583] shadow-[0px_0px_1.8px_0.9px_#32d5834c]" />
-    </div>
-  );
-}
-
-function ProgressCardBody() {
-  return (
-    <div className="relative mt-auto flex w-full flex-col gap-2">
-      <div className="flex items-end gap-2 rounded-xl border border-[#f2f2f2] bg-white px-4 py-[7px]">
-        <div className="relative h-[39.41px] w-[57.74px] shrink-0 bg-white">
-          <div className="[font-family:var(--font-albert-sans),Helvetica] absolute left-0 top-0 text-[10px] font-normal leading-[13px] text-[#010101]">
-            Completion
-          </div>
-          <div className="[font-family:var(--font-albert-sans),Helvetica] absolute left-0 top-5 text-base font-bold leading-[20.8px] text-[#010101]">
-            60%
-          </div>
-        </div>
-        <div className="flex h-[30.6px] flex-1 flex-col justify-center gap-1 py-0.5">
-          <div className="h-2 w-[193px] rounded-[100px] bg-[linear-gradient(90deg,rgba(255,255,255,1)_0%,rgba(117,123,255,1)_100%)]" />
-          <div className="h-2 w-[121px] rounded-[100px] bg-[linear-gradient(90deg,rgba(255,255,255,1)_0%,rgba(241,179,179,1)_100%)]" />
-        </div>
-        <div className="h-1.5 w-[73px] shrink-0 rounded-[100px] bg-[#e8bff7]" />
+    <div className="grid w-full grid-cols-[20px_minmax(0,1fr)_20px_minmax(0,1fr)_20px] items-stretch">
+      <div className="flex justify-center">
+        <VRail />
       </div>
-      <div className="rounded-xl border border-[#f2f2f2] bg-white px-4 py-[7px]">
-        <div className="flex h-[30.6px] flex-col justify-center gap-1 py-0.5 blur-[2px]">
-          <div className="h-2 w-[296px] rounded-[100px] bg-[linear-gradient(90deg,rgba(255,255,255,1)_0%,rgba(117,123,255,1)_100%)]" />
-          <div className="h-2 w-[121px] rounded-[100px] bg-[linear-gradient(90deg,rgba(255,255,255,1)_0%,rgba(241,179,179,1)_100%)]" />
-        </div>
+      <div className="p-5">{left}</div>
+      <div className="flex justify-center">
+        <VRail />
       </div>
-      <div className="pointer-events-none absolute inset-x-[-24px] bottom-0 h-[35px] bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,1)_100%)]" />
-    </div>
-  );
-}
-
-function ScalingPreview() {
-  return (
-    <div className="relative mt-1 h-[150px] w-full">
-      <div className="absolute left-[108px] top-[-2px] h-[35px] w-[35px] rounded-[4.92px] border-[1.48px] border-[#ffffffd9] bg-[radial-gradient(50%_50%_at_49%_50%,rgba(117,123,255,1)_0%,rgba(255,255,255,1)_100%)] shadow-[0px_-2.33px_5.87px_-1.16px_#7ab4f761]" />
-      <div className="absolute left-[77px] top-[43px] h-[18px] w-[84px] rounded-full border border-[#d9ddff]" />
-      <div className="absolute left-[160px] top-[43px] h-[18px] w-[72px] rounded-full border border-[#d9ddff]" />
-      <div className="absolute left-[145px] top-[45px] h-[30px] w-px bg-[#d9ddff]" />
-      <div className="absolute left-[112px] top-[43px] h-[30px] w-px bg-[#d9ddff]" />
-      <div className="absolute left-[196px] top-[43px] h-[30px] w-px bg-[#d9ddff]" />
-      <div className="absolute left-[117px] top-[17px] flex h-[30px] w-[30px] items-center justify-center rounded-[2.45px] bg-[#ffffff4c] shadow-[0px_0.47px_1.9px_#b5b5b540] backdrop-blur-[0.24px]">
-        <div className="relative flex h-[23.24px] w-[23.24px] items-center justify-center overflow-hidden rounded-[4.29px] border border-[#f5f5f5] bg-[#f5f5f5]">
-          <div className="absolute left-0 top-[11px] h-[13px] w-[23px] bg-[linear-gradient(180deg,rgba(255,255,255,0.1)_0%,rgba(255,255,255,0.07)_100%)]" />
-          <CloudIcon className="relative z-10 h-[19px] w-[19px] text-[#757bff]" />
-        </div>
-      </div>
-      <div className="absolute left-[37px] top-[52px] flex h-5 w-5 items-center justify-center rounded bg-[#757bff] text-white shadow-sm">
-        <span className="text-[9px] font-semibold">↘</span>
-      </div>
-      <div className="absolute left-[218px] top-[52px] flex h-5 w-5 items-center justify-center rounded bg-[#757bff] text-white shadow-sm">
-        <span className="text-[9px] font-semibold">↙</span>
-      </div>
-      <div className="absolute bottom-0 left-[34px] w-[182px] rounded-md border border-[#ececf3] bg-white p-1 shadow-[0px_1.16px_11.63px_#00000014]">
-        <div className="mb-1 h-[22px] rounded-[3px] border border-[#f0f0f4] bg-white px-2 py-1">
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#d8d8df]" />
-            <span className="h-1.5 w-1.5 rounded-full bg-[#d8d8df]" />
-            <span className="h-1.5 w-1.5 rounded-full bg-[#d8d8df]" />
-          </div>
-        </div>
-        <div className="space-y-1">
-          {statusRows.map((row, index) => (
-            <div
-              key={`${row.label}-${index}`}
-              className="flex items-center justify-between rounded-[2.47px] bg-neutral-50 p-[3.92px]"
-            >
-              <div className="flex h-2.5 w-2.5 items-center justify-center rounded-[2px] bg-[#757bff]">
-                <CheckIcon className="h-[87.5%] w-[87.5%] text-white" />
-              </div>
-              <div className="w-[41.86px]" />
-              <StatusPill />
-            </div>
-          ))}
-        </div>
+      <div className="p-5">{right}</div>
+      <div className="flex justify-center">
+        <VRail />
       </div>
     </div>
   );
 }
 
-function TGlobalPreview() {
-  return (
-    <div className="relative mt-auto min-h-[120px] w-full">
-      <div className="absolute left-0 top-0 [font-family:var(--font-albert-sans),Helvetica] text-[58px] font-semibold leading-[58px] tracking-[-1.16px] text-white sm:text-[80px] sm:leading-[80px] sm:tracking-[-1.6px]">
-        4x &gt;&gt;&gt;&gt;&gt;
-      </div>
-      <div className="absolute right-0 top-[-16px] h-[170px] w-[200px]">
-        <div className="absolute right-[22px] top-[10px] rounded-full bg-[linear-gradient(90deg,#7f6fff_0%,#8c7cff_48%,#9d87ff_100%)] px-3 py-1 text-[10px] font-medium text-white shadow-[0px_9px_20px_#1f1b4333]">
-          40% Faster
-        </div>
-        <div className="absolute right-[52px] top-[26px] h-[36px] w-[52px] rounded-full bg-[#00000033] blur-[10px]" />
-        <div className="absolute right-[31px] top-[35px]">
-          <MousePointerIcon className="h-[15px] w-[15px] text-white" />
-        </div>
-        <div className="absolute right-[95px] top-[65px] h-1 w-1 rounded-full bg-[#f3e9ff]" />
-        <div className="absolute right-[42px] top-[65px] h-1 w-1 rounded-full bg-[#f3e9ff]" />
-        <div className="absolute right-[98px] top-[91px] h-1 w-1 rounded-full bg-[#f3e9ff]" />
-        <div className="absolute right-[42px] top-[91px] h-1 w-1 rounded-full bg-[#f3e9ff]" />
-        <div className="absolute right-[99px] top-[117px] h-1 w-1 rounded-full bg-[#f3e9ff]" />
-        <div className="absolute right-[42px] top-[117px] h-1 w-1 rounded-full bg-[#f3e9ff]" />
-        <div className="absolute right-[86px] top-[77px] h-[42px] w-px bg-[#cdbdff]" />
-        <div className="absolute right-[30px] top-[77px] h-[42px] w-px bg-[#cdbdff]" />
-        <div className="absolute right-[86px] top-[96px] h-px w-[56px] bg-[#cdbdff]" />
-        <div className="absolute right-[142px] top-[96px] h-px w-[28px] bg-[#cdbdff]" />
-        <div className="absolute right-[130px] top-[90px] text-white">
-          <SparklesIcon className="h-4 w-4 text-white" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TopCard({ title, description, type }: (typeof topCards)[number]) {
-  return (
-    <article className="relative flex h-[261px] flex-col overflow-hidden rounded-xl bg-white p-6">
-      <div className="flex flex-col gap-4">
-        <h2 className="[font-family:var(--font-albert-sans),Helvetica] text-xl font-medium leading-[26px] text-[#2f2b43]">
-          {title}
-        </h2>
-        <p className="[font-family:var(--font-albert-sans),Helvetica] text-base font-normal leading-[20.8px] text-[#2f2b43b2]">
-          {description}
-        </p>
-      </div>
-      {type === "logos" ? (
-        <>
-          <div className="mt-auto flex items-center gap-4">
-            {logoItems.map((item, index) => (
-              <LogoBadge key={`${item}-${index}`} label={item} />
-            ))}
-          </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[74px] bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,1)_58%,rgba(255,255,255,1)_100%)]" />
-        </>
-      ) : (
-        <ProgressCardBody />
-      )}
-    </article>
-  );
-}
-
-function BottomCard({
-  title,
-  type,
-  description,
-}: (typeof bottomCards)[number]) {
-  if (type === "tglobal") {
-    return (
-      <article className="relative flex h-[261px] flex-col overflow-hidden rounded-xl bg-[radial-gradient(50%_50%_at_49%_50%,rgba(117,123,255,1)_0%,rgba(255,255,255,1)_100%)] p-6">
-        <div className="flex flex-col gap-4">
-          <h2 className="[font-family:var(--font-albert-sans),Helvetica] text-[32px] font-bold leading-[41.6px] text-white">
-            {title}
-          </h2>
-        </div>
-        <TGlobalPreview />
-      </article>
-    );
-  }
-
-  return (
-    <article className="relative flex h-[261px] flex-col overflow-hidden rounded-xl bg-white p-6">
-      <div className="flex max-w-[220px] flex-col gap-4">
-        <h2 className="[font-family:var(--font-albert-sans),Helvetica] text-xl font-normal leading-[26px] text-[#2f2b43]">
-          {title}
-        </h2>
-        <p className="[font-family:var(--font-albert-sans),Helvetica] text-base font-normal leading-[20.8px] text-[#2f2b43b2]">
-          {description}
-        </p>
-      </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[38px] bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,1)_58%,rgba(255,255,255,1)_100%)]" />
-      <div className="absolute right-[18px] top-[30px] w-[259px] max-w-[58%]">
-        <ScalingPreview />
-      </div>
-    </article>
-  );
-}
-
+/* ─── SECTION ─────────────────────────────────────────────── */
 export default function Problem() {
+  const sectionVars = {
+    ["--prob-side-mobile" as string]: TUNING.pad.sideMobile,
+    ["--prob-side-tablet" as string]: TUNING.pad.sideTablet,
+    ["--prob-side-desktop" as string]: TUNING.pad.sideDesktop,
+    ["--prob-y-mobile" as string]: TUNING.pad.yMobile,
+    ["--prob-y-desktop" as string]: TUNING.pad.yDesktop,
+    ["--prob-max" as string]: `${TUNING.maxWidth}px`,
+  } as React.CSSProperties;
+
   return (
     <section
       id="problem"
-      className="flex min-h-screen w-full items-center justify-center bg-[#f7f9ff]"
+      aria-labelledby="problem-heading"
+      className="relative w-full"
+      style={{ background: TUNING.background, ...sectionVars }}
     >
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-12 px-6 py-16 sm:px-10 lg:px-[120px] lg:py-20">
+      <div
+        className="mx-auto flex w-full flex-col px-[var(--prob-side-mobile)] py-[var(--prob-y-mobile)] sm:px-[var(--prob-side-tablet)] lg:px-[var(--prob-side-desktop)] lg:py-[var(--prob-y-desktop)]"
+        style={{ maxWidth: "var(--prob-max)", gap: TUNING.headerToGridGap }}
+      >
+        {/* Header: eyebrow + heading + description
+            Figma: eyebrow 20/28, heading 54/68 medium -2%, description 20/28.
+            Column template uses Figma's 526 / 606 widths (instead of 50/50) so
+            the heading wraps at the same break as the mock. */}
         <AnimateIn>
           <header className="flex flex-col gap-4">
-            <p className="[font-family:var(--font-albert-sans),Helvetica] text-xl font-normal leading-7 text-[#2f2b43b2]">
-              Problem with Development Currently
+            <p
+              className="m-0"
+              style={{
+                fontSize: TUNING.type.eyebrow.size,
+                lineHeight: TUNING.type.eyebrow.lineHeight,
+                color: TUNING.type.eyebrow.color,
+              }}
+            >
+              {COPY.eyebrow}
             </p>
-            <div className="grid items-end gap-8 lg:grid-cols-[minmax(0,526px)_minmax(0,1fr)] lg:gap-10">
-              <h1 className="[font-family:var(--font-albert-sans),Helvetica] max-w-[526px] text-[42px] font-medium leading-[52px] tracking-[-0.84px] text-[#010101] sm:text-[54px] sm:leading-[68px] sm:tracking-[-1.08px]">
-                Building Software Is Still Too Slow
-              </h1>
-              <p className="[font-family:var(--font-albert-sans),Helvetica] max-w-[606px] pb-1 text-xl font-normal leading-7 text-[#2f2b43b2]">
-                Despite better tools, teams still struggle to ship fast and
-                scale efficiently.
+            <div className="grid items-end gap-8 lg:grid-cols-[minmax(0,526px)_minmax(0,606px)] lg:gap-10">
+              <h2
+                id="problem-heading"
+                className="m-0 font-medium"
+                style={{
+                  fontSize: TUNING.type.heading.size,
+                  lineHeight: TUNING.type.heading.lineHeight,
+                  letterSpacing: TUNING.type.heading.tracking,
+                  color: TUNING.type.heading.color,
+                  maxWidth: TUNING.headerCols.heading,
+                }}
+              >
+                {COPY.heading}
+              </h2>
+              <p
+                className="m-0 lg:pb-2"
+                style={{
+                  fontSize: TUNING.type.description.size,
+                  lineHeight: TUNING.type.description.lineHeight,
+                  color: TUNING.type.description.color,
+                  maxWidth: TUNING.headerCols.description,
+                }}
+              >
+                {COPY.description}
               </p>
             </div>
           </header>
         </AnimateIn>
 
-        <div className="flex flex-col">
-          <div className="flex flex-col items-center gap-2.5">
-            <TimelineConnector />
-            <div className="grid w-full grid-cols-[20px_minmax(0,1fr)_20px_minmax(0,1fr)_20px] items-stretch">
-              <div className="flex justify-center">
-                <VerticalRail />
-              </div>
-              <div className="p-6">
-                <TopCard {...topCards[0]} />
-              </div>
-              <div className="flex justify-center py-2.5">
-                <VerticalRail />
-              </div>
-              <div className="p-6">
-                <TopCard {...topCards[1]} />
-              </div>
-              <div className="flex justify-center">
-                <VerticalRail />
-              </div>
-            </div>
-            <PaginationLine />
-          </div>
-          <div className="flex flex-col items-center gap-2.5">
-            <div className="grid w-full grid-cols-[20px_minmax(0,1fr)_20px_minmax(0,1fr)_20px] items-stretch">
-              <div className="flex justify-center">
-                <VerticalRail />
-              </div>
-              <div className="p-6">
-                <BottomCard {...bottomCards[0]} />
-              </div>
-              <div className="flex justify-center py-2.5">
-                <VerticalRail />
-              </div>
-              <div className="p-6">
-                <BottomCard {...bottomCards[1]} />
-              </div>
-              <div className="flex justify-center">
-                <VerticalRail />
-              </div>
-            </div>
-            <TimelineConnector />
-          </div>
+        {/* Card grid — mobile stack, desktop 2×2 with rails.
+            Per-card stagger: each card has its own IntersectionObserver via
+            AnimateIn so the grid cascades in diagonally (TL → TR → BL → BR)
+            instead of all four landing simultaneously. 100ms step mirrors the
+            Figma motion direction and keeps the whole reveal under 600ms. */}
+        {/* Mobile/tablet: simple stack, no rails. Capped at 640px so cards
+            don't balloon past the Figma design width when the tablet viewport
+            is wide; centred when smaller than the cap. */}
+        <div className="mx-auto flex w-full max-w-[640px] flex-col gap-4 lg:hidden">
+          <AnimateIn delay={0.15}>
+            <ToolsCard />
+          </AnimateIn>
+          <AnimateIn delay={0.25}>
+            <CyclesCard />
+          </AnimateIn>
+          <AnimateIn delay={0.35}>
+            <ScalingCard />
+          </AnimateIn>
+          <AnimateIn delay={0.45}>
+            <TGlobalCard />
+          </AnimateIn>
+        </div>
+
+        {/* Desktop: Figma-exact grid with corner dots + rails. Rails fade in
+            with the first card; cards cascade independently so the motion
+            feels anchored to the blueprint frame. */}
+        <div className="hidden flex-col lg:flex">
+          <AnimateIn delay={0.15}>
+            <RowRail />
+          </AnimateIn>
+          <CardRow
+            left={
+              <AnimateIn delay={0.15}>
+                <ToolsCard />
+              </AnimateIn>
+            }
+            right={
+              <AnimateIn delay={0.25}>
+                <CyclesCard />
+              </AnimateIn>
+            }
+          />
+          <AnimateIn delay={0.3}>
+            <RowRail />
+          </AnimateIn>
+          <CardRow
+            left={
+              <AnimateIn delay={0.35}>
+                <ScalingCard />
+              </AnimateIn>
+            }
+            right={
+              <AnimateIn delay={0.45}>
+                <TGlobalCard />
+              </AnimateIn>
+            }
+          />
+          <AnimateIn delay={0.5}>
+            <RowRail />
+          </AnimateIn>
         </div>
       </div>
     </section>

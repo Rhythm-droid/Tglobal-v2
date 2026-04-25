@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Albert_Sans } from "next/font/google";
 import MotionProvider from "@/components/primitives/MotionProvider";
+import SmoothScrollProvider from "@/components/primitives/SmoothScrollProvider";
 import "./globals.css";
 
 const albertSans = Albert_Sans({
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
   title: "TGlobal — Software, Without the Friction",
   description:
     "A new way to build — where ideas turn into systems, and systems turn into products. AI-driven engineering that ships 4× faster.",
-  metadataBase: new URL("https://tglobal.ai"),
+  metadataBase: new URL("https://tglobal.in"),
   robots: isStaging
     ? {
         index: false,
@@ -40,7 +41,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${albertSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
-        <MotionProvider>{children}</MotionProvider>
+        <SmoothScrollProvider>
+          <MotionProvider>{children}</MotionProvider>
+        </SmoothScrollProvider>
       </body>
     </html>
   );
