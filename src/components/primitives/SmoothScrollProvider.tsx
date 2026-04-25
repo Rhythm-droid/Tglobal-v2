@@ -150,6 +150,9 @@ export default function SmoothScrollProvider({
            inertia on touch already feels good; overriding it tends to
            fight against the OS's gesture handling. */
         smoothWheel: true,
+        /* Let in-page anchors route through Lenis so nav/footer jumps
+           stay in sync with the single page-level scroll owner. */
+        anchors: true,
       }}
     >
       <GsapLenisSync />

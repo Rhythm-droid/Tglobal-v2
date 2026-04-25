@@ -96,9 +96,9 @@ export default function ScalingCard() {
       {/* Illustration — absolute so it doesn't push the copy block out of the
           card. Hidden below sm where the narrow stacked layout leaves no room
           for it to sit next to the text. */}
-      {/* eslint-disable-next-line @next/next/no-img-element
-          ── this is a decorative static vector; using next/image adds no value
-             for SVG and would require dangerouslyAllowSvg in next.config */}
+      {/* Decorative static SVG: next/image adds no value here and would
+          require dangerouslyAllowSvg in next.config. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={TUNING.illustration.src}
         alt=""

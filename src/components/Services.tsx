@@ -1,14 +1,7 @@
 "use client";
 
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useLenis } from "@/components/primitives/SmoothScrollProvider";
-import { useCallback, useEffect, useRef, useState } from "react";
-
-if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger, useGSAP);
-}
+import { useRef } from "react";
+import { usePinnedHorizontalScroll } from "@/components/primitives/usePinnedHorizontalScroll";
 
 /**
  * Section 5 — "Quickly Build Impactful Softwares."
@@ -486,205 +479,15 @@ export default function Services() {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const mobileTrackRef = useRef<HTMLDivElement | null>(null);
-  const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
-  const lastActiveRef = useRef(0);
-  const [active, setActive] = useState(0);
-  const lenis = useLenis();
-
-  /* Desktop pinned scroll — same Lenis-aware config as HowItWorks, same
-     two-stage timeline (settle then translate). Lenis owns smoothing
-     (lerp 0.1 in SmoothScrollProvider); ScrollTrigger runs 1:1 against
-     it (`scrub: true`) so we don't get compound interpolation.
-
-     The settle stage is what turns "section enters viewport → cards
-     immediately start sliding" into "section enters → locks in centre →
-     beat → cards slide". The user reads it as deliberate handoff between
-     vertical scroll and horizontal travel rather than a rushed scrub.
-
-     End is computed as `getDistance() / (1 - SETTLE_RATIO)` so the
-     translate phase covers exactly `getDistance()` px of scroll regardless
-     of the settle ratio — i.e. the cards still move at 1 px per scroll px
-     during stage 2. No snap (would call `gsap.to(window, scrollTo)` which
-     Lenis doesn't intercept). Pills handle direct navigation. */
-  useGSAP(
-    () => {
-      const mm = gsap.matchMedia();
-      mm.add("(min-width: 1024px)", () => {
-        const viewport = viewportRef.current;
-        const track = trackRef.current;
-        if (!viewport || !track) return;
-
-        /* Track lives inside an `overflow-hidden` cards-area wrapper. The
-           track's translation distance is `track.scrollWidth - wrapper.clientWidth`. */
-        const getDistance = () => {
-          const wrapper = track.parentElement;
-          if (!wrapper) return 0;
-          return Math.max(0, track.scrollWidth - wrapper.clientWidth);
-        };
-
-        const stops = STEPS.length - 1;
-
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: viewport,
-            /* Refresh priority: 1 = refreshes AFTER HowItWorks (which has
-               priority 0). Both sections are dynamic()-imported, so without
-               this the refresh order depends on which Webpack chunk lands
-               first — and out-of-order refresh produces miscalculated pin
-               spacers, causing the two sections to share scroll Y range
-               and visually overlap. Numbering matches page-section order:
-               Services is page section 5, after HowItWorks (section 4),
-               so it refreshes second. See HowItWorks.tsx for the longer
-               rationale. */
-            refreshPriority: 1,
-            start: "top top",
-            end: () =>
-              `+=${getDistance() / (1 - SETTLE_RATIO)}`,
-            pin: true,
-            /* `pinSpacing: false` — no pin-spacer inserted after the pinned
-               viewport. Eliminates the ~750 px dead-scroll zone the spacer
-               would otherwise produce between Services pin-end and the
-               next section. Safe because the viewport already has
-               `bg-white` (line 718) so it paints opaque over anything
-               underneath during pin. See HowItWorks.tsx for the longer
-               rationale — both pinned sections must use the same flag or
-               the gap reappears between them. */
-            pinSpacing: false,
-            scrub: true,
-            invalidateOnRefresh: true,
-            onUpdate: (self) => {
-              /* Remap timeline progress (which includes the settle phase)
-                 to card progress (0..1 across the 6 cards). cardProgress
-                 stays clamped at 0 during the settle so the pill index
-                 doesn't tick over before any card actually moves. */
-              const cardProgress = Math.max(
-                0,
-                Math.min(
-                  1,
-                  (self.progress - SETTLE_RATIO) / (1 - SETTLE_RATIO),
-                ),
-              );
-              const idx = Math.min(
-                STEPS.length - 1,
-                Math.max(0, Math.round(cardProgress * stops)),
-              );
-              if (idx !== lastActiveRef.current) {
-                lastActiveRef.current = idx;
-                setActive(idx);
-              }
-            },
-          },
-        });
-
-        /* Stage 1 — settle: dummy tween that consumes SETTLE_RATIO of the
-           timeline. Track stays at x=0 while the user scrolls into the
-           pinned section. */
-        tl.to({}, { duration: SETTLE_RATIO });
-
-        /* Stage 2 — translate: slide the track left by exactly `getDistance()`
-           px over the remaining (1 - SETTLE_RATIO) of timeline. Pin range
-           was sized so this stage maps 1 wheel px to 1 card-translation
-           px (no acceleration/compression). */
-        tl.to(track, {
-          x: () => -getDistance(),
-          ease: "none",
-          force3D: true,
-          duration: 1 - SETTLE_RATIO,
-        });
-
-        scrollTriggerRef.current = tl.scrollTrigger ?? null;
-
-        return () => {
-          tl.scrollTrigger?.kill();
-          tl.kill();
-          scrollTriggerRef.current = null;
-        };
-      });
-      return () => mm.kill();
-    },
-    { scope: sectionRef },
-  );
-
-  /* Mobile pill sync — same passive scroll listener pattern as HowItWorks. */
-  useEffect(() => {
-    const track = mobileTrackRef.current;
-    if (!track) return;
-
-    const stops = STEPS.length - 1;
-    const update = () => {
-      const max = track.scrollWidth - track.clientWidth;
-      if (max <= 0) {
-        if (lastActiveRef.current !== 0) {
-          lastActiveRef.current = 0;
-          setActive(0);
-        }
-        return;
-      }
-      const progress = track.scrollLeft / max;
-      const idx = Math.min(
-        STEPS.length - 1,
-        Math.max(0, Math.round(progress * stops)),
-      );
-      if (idx !== lastActiveRef.current) {
-        lastActiveRef.current = idx;
-        setActive(idx);
-      }
-    };
-
-    update();
-    track.addEventListener("scroll", update, { passive: true });
-    return () => track.removeEventListener("scroll", update);
-  }, []);
-
-  /* Pill click → navigate. Desktop uses lenis.scrollTo so the smoothed
-     scroll position stays consistent with wheel input; mobile uses the
-     overflow track's native smooth scroll.
-
-     Target progress is remapped through SETTLE_RATIO so the click lands
-     in the translate phase, not the settle phase. Card N reaches its
-     "fully visible" position at cardProgress=N/stops, which maps to
-     timelineProgress = SETTLE_RATIO + (N/stops) * (1 - SETTLE_RATIO).
-     Without this remap pill 0 would land at the very start of the pin
-     (mid-settle) and pill 5 would over-scroll past the last card. */
-  const onPillSelect = useCallback(
-    (index: number) => {
-      const stops = STEPS.length - 1;
-      const target = Math.min(STEPS.length - 1, Math.max(0, index));
-
-      const st = scrollTriggerRef.current;
-      if (st) {
-        const cardProgress = target / stops;
-        const timelineProgress =
-          SETTLE_RATIO + cardProgress * (1 - SETTLE_RATIO);
-        /* Clamp 1 px inside the pin range so pill `last` (cardProgress=1)
-           doesn't land at exactly `st.end` — the pin engage/release
-           boundary. Without this, Lenis's sub-pixel rounding makes
-           ScrollTrigger toggle pin state in a single tick, producing the
-           "blink" reported on pill clicks. See HowItWorks.tsx for the
-           longer rationale. */
-        const rawTargetY = st.start + timelineProgress * (st.end - st.start);
-        const targetY = Math.max(
-          st.start + 1,
-          Math.min(st.end - 1, rawTargetY),
-        );
-        if (lenis) {
-          lenis.scrollTo(targetY, { duration: 0.6, lock: true });
-        } else {
-          window.scrollTo({ top: targetY, behavior: "smooth" });
-        }
-        return;
-      }
-
-      const track = mobileTrackRef.current;
-      if (!track) return;
-      const cards = track.querySelectorAll<HTMLElement>("[data-step-card]");
-      const card = cards[target];
-      if (card) {
-        track.scrollTo({ left: card.offsetLeft, behavior: "smooth" });
-      }
-    },
-    [lenis],
-  );
+  const { active, onPillSelect } = usePinnedHorizontalScroll({
+    sectionRef,
+    viewportRef,
+    trackRef,
+    mobileTrackRef,
+    stepCount: STEPS.length,
+    settleRatio: SETTLE_RATIO,
+    refreshPriority: 1,
+  });
 
   return (
     <section

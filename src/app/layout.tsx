@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Albert_Sans } from "next/font/google";
 import MotionProvider from "@/components/primitives/MotionProvider";
 import SmoothScrollProvider from "@/components/primitives/SmoothScrollProvider";
+import "lenis/dist/lenis.css";
 import "./globals.css";
 
 const albertSans = Albert_Sans({
@@ -40,7 +41,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${albertSans.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
+      <body
+        id="top"
+        className="min-h-full flex flex-col bg-background text-foreground font-sans"
+      >
         <SmoothScrollProvider>
           <MotionProvider>{children}</MotionProvider>
         </SmoothScrollProvider>

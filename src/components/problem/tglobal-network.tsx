@@ -99,7 +99,6 @@ export function TGlobalNetwork({ className }: { readonly className?: string }) {
           <g key={i}>
             <foreignObject x={dot.foX} y={dot.foY} width="27" height="48">
               <div
-                xmlns="http://www.w3.org/1999/xhtml"
                 style={{
                   backdropFilter: "blur(4.5px)",
                   WebkitBackdropFilter: "blur(4.5px)",
@@ -127,7 +126,6 @@ export function TGlobalNetwork({ className }: { readonly className?: string }) {
         <g clipPath="url(#tg-clip-pill)">
           <foreignObject x="119" y="24" width="112" height="63">
             <div
-              xmlns="http://www.w3.org/1999/xhtml"
               style={{
                 backdropFilter: "blur(4.5px)",
                 WebkitBackdropFilter: "blur(4.5px)",
@@ -169,7 +167,6 @@ export function TGlobalNetwork({ className }: { readonly className?: string }) {
       {/* Larger dot at (175, 72.5) */}
       <foreignObject x="158.5" y="56" width="33" height="54">
         <div
-          xmlns="http://www.w3.org/1999/xhtml"
           style={{
             backdropFilter: "blur(4.5px)",
             WebkitBackdropFilter: "blur(4.5px)",
