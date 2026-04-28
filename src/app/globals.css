@@ -454,6 +454,12 @@ body {
   border-radius: 6px;
 }
 
+/* Mirror the hover underline for keyboard users so the affordance is consistent */
+.nav-link:focus-visible::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+
 /* ─── AnimateIn primitive (CSS-driven reveal) ───
    The component sets CSS variables (--ai-y, --ai-duration, --ai-delay)
    and toggles [data-in-view] via an IntersectionObserver. All paint work
@@ -508,3 +514,4 @@ body {
     padding-block: 4rem;
   }
 }
+

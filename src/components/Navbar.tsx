@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import LogoMark from "./primitives/LogoMark";
 
 interface NavLink {
@@ -10,19 +10,36 @@ interface NavLink {
 
 const NAV_LINKS: readonly NavLink[] = [
   { label: "Capabilities", href: "#capabilities" },
-  { label: "How it Work", href: "#how-it-works" },
+  { label: "How it Works", href: "#how-it-works" },
   { label: "Projects", href: "#our-work" },
 ] as const;
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const burgerRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const wasOpenRef = useRef(false);
 
+  /* rAF-gated scroll listener — passive scroll events on 120 Hz devices
+     fire ~120×/sec; coalescing them into one read per frame keeps state
+     updates aligned to paint. Cleanup must cancel any pending rAF or it
+     can fire after unmount and assign to a stale state setter. */
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 16);
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 16);
+        raf = 0;
+      });
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
 
   useEffect(() => {
@@ -40,6 +57,25 @@ export default function Navbar() {
     return () => {
       body.style.overflow = prev;
     };
+  }, [mobileOpen]);
+
+  /* Focus management for the mobile drawer.
+     ──────────────────────────────────────────
+     • On open → move focus into the first link so keyboard / screen-reader
+       users land inside the menu instead of having to tab through the page.
+     • On close (only if it was previously open) → return focus to the
+       burger button so the trigger keeps the focus context. The
+       wasOpenRef gate prevents stealing focus on initial mount. */
+  useEffect(() => {
+    if (mobileOpen) {
+      requestAnimationFrame(() => {
+        drawerRef.current?.querySelector<HTMLElement>("a")?.focus();
+      });
+      wasOpenRef.current = true;
+    } else if (wasOpenRef.current) {
+      burgerRef.current?.focus();
+      wasOpenRef.current = false;
+    }
   }, [mobileOpen]);
 
   const closeMobile = () => setMobileOpen(false);
@@ -87,6 +123,7 @@ export default function Navbar() {
 
         {/* Mobile burger */}
         <button
+          ref={burgerRef}
           type="button"
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
@@ -98,12 +135,20 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer
+          ──────────────────────────────────────────────────
+          • `inert` removes contents from focus order AND a11y tree when
+            closed (replaces the previous aria-hidden, which was a WCAG
+            violation because focusable links were marked hidden).
+          • `dvh` — dynamic viewport height — accounts for the iOS Safari
+            URL bar so the drawer never clips on small phones (iPhone SE
+            375×667 etc.). 80px is the rendered header height. */}
       <div
+        ref={drawerRef}
         id="mobile-menu"
-        aria-hidden={!mobileOpen}
+        inert={!mobileOpen}
         className={`overflow-hidden transition-[max-height,opacity] duration-300 md:hidden ${
-          mobileOpen ? "max-h-[80vh] opacity-100" : "max-h-0 opacity-0"
+          mobileOpen ? "max-h-[calc(100dvh-80px)] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
         <div className="border-t border-border/60 bg-white/95 px-6 py-6 backdrop-blur-md">

@@ -143,9 +143,26 @@ export default function SmoothScrollProvider({
         /* Lenis would normally run its own rAF; we drive it from GSAP. */
         autoRaf: false,
         /* Linear interpolation factor between current and target scroll.
-           0.1 ≈ ~150 ms catch-up — gentle enough to feel native, smooth
-           enough to remove wheel-tick jitter. Lower = smoother but laggier. */
-        lerp: 0.1,
+           ──────────────────────────────────────────────────────────────
+           Lenis default is 0.1 (~150 ms catch-up). On a Windows wheel
+           mouse — where deltas arrive in discrete 100–120 px bursts —
+           that catch-up reads as "page is trailing my input." 0.08
+           (~120 ms) is the snappiest value where wheel-tick jitter is
+           still smoothed but the input lag isn't perceptible. Going
+           lower than ~0.07 starts to expose individual wheel ticks
+           again on slow scrolls. Lerp wins over `duration` when both
+           are set, so we omit duration entirely. */
+        lerp: 0.08,
+        /* Multiplier applied to wheel deltas before Lenis processes them.
+           Default 1.0 leaves OS-reported deltas untouched, which on
+           Windows is conservative — a single wheel notch only travels
+           ~100 px so users feel they have to spin the wheel a lot to
+           cross the page. 1.2 amplifies each notch by 20% so scrolling
+           feels responsive without feeling "throw-y". Trackpad users
+           are already used to high-precision deltas; this multiplier
+           applies to both wheel and trackpad but the perceptual change
+           is dominated by the wheel case (where deltas are coarsest). */
+        wheelMultiplier: 1.2,
         /* Smooth wheel input (desktop) but not touch (mobile). Native
            inertia on touch already feels good; overriding it tends to
            fight against the OS's gesture handling. */

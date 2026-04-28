@@ -22,7 +22,12 @@ import { usePinnedHorizontalScroll } from "@/components/primitives/usePinnedHori
  *   Section          1440 × 792, white background
  *   Header           x=80, y=80, w=1280, h=136 — heading left, description right
  *   Cards container  x=80, y=248, w=1280, h=464, clip content, count: 6
- *   Each card        ≈308 × 464, rx 24, white, soft drop-shadow
+ *   Each card        400 × 464, rx 8, white, soft drop-shadow
+ *   Text container   x=24, y=24, w=352, h=122 hug (step label + title + body)
+ *   Illustration     x=43, y=142, 315 × 315 SVG centred horizontally
+ *                    (Group 2147225016). Bottom of the SVG fades to
+ *                    transparent so the footer can read through it.
+ *   Card footer      x=24, y=422, w=352, h=18, Albert Sans 14 / 130%
  *   Pills            below cards, centred ~y=720
  *
  * Behaviour mirrors HowItWorks exactly:
@@ -50,7 +55,7 @@ const COPY = {
 
 /* ─── STEPS ────────────────────────────────────────────────── */
 /**
- * 6 cards per Figma's `count: 6` on the cards container. `accent` is a
+ * 7 cards (Figma's cards container — Step 7 added late). `accent` is a
  * single rgba string the card's illustration uses as the centre of its
  * radial gradient — fades to transparent so the wash blends into the
  * white card with no hard rectangular edge.
@@ -66,6 +71,9 @@ const STEPS = [
     footerTrail: "of contact.",
     accent: "rgba(248, 158, 158, 0.55)", // coral
     accentSolid: "#E26A78",
+    /** Static SVG export from Figma (315 × 315, node 211-4905). When
+     *  present the card swaps the inline placeholder for this asset. */
+    illust: "/services/illust-1.svg",
   },
   {
     n: "Step 2",
@@ -77,6 +85,7 @@ const STEPS = [
     footerTrail: "",
     accent: "rgba(168, 198, 248, 0.55)", // sky
     accentSolid: "#4B7DD0",
+    illust: "/services/illust-2.svg",
   },
   {
     n: "Step 3",
@@ -88,6 +97,7 @@ const STEPS = [
     footerTrail: "",
     accent: "rgba(196, 178, 255, 0.55)", // lavender
     accentSolid: "#7A5CF0",
+    illust: "/services/illust-3.svg",
   },
   {
     n: "Step 4",
@@ -99,6 +109,7 @@ const STEPS = [
     footerTrail: "",
     accent: "rgba(168, 230, 196, 0.55)", // mint
     accentSolid: "#3FA56F",
+    illust: "/services/illust-4.svg",
   },
   {
     n: "Step 5",
@@ -110,6 +121,7 @@ const STEPS = [
     footerTrail: "",
     accent: "rgba(255, 200, 138, 0.55)", // amber
     accentSolid: "#D8893E",
+    illust: "/services/illust-5.svg",
   },
   {
     n: "Step 6",
@@ -121,6 +133,19 @@ const STEPS = [
     footerTrail: "of cut.",
     accent: "rgba(228, 184, 240, 0.55)", // lilac
     accentSolid: "#A75AC4",
+    illust: "/services/illust-6.svg",
+  },
+  {
+    n: "Step 7",
+    title: "DevOps & Scale",
+    description:
+      "Infrastructure, CI/CD, monitoring, and release operations are set up early so the full product can keep scaling after the MVP launches.",
+    footerLead: "Production handover within",
+    footerHours: "7 days",
+    footerTrail: "of launch.",
+    accent: "rgba(166, 220, 226, 0.55)", // teal
+    accentSolid: "#2A9097",
+    illust: "/services/illust-7.svg",
   },
 ] as const;
 
@@ -143,12 +168,13 @@ const TUNING = {
     yMobile: "4rem", // 64
   },
   card: {
-    /** Figma: 308 × 464, rx 24. `min(82vw, 308px)` lets a single card hug
-     *  most of the viewport on phones while staying capped at the Figma
-     *  pixel on desktop (where 82vw is way past 308). */
-    width: "min(82vw, 308px)",
+    /** Figma: 400 × 464, rx 8 (Frame 2147227679). `min(85vw, 400px)`
+     *  lets a single card hug most of the viewport on phones while
+     *  staying capped at the Figma pixel on desktop (where 85vw is way
+     *  past 400). */
+    width: "min(85vw, 400px)",
     minHeight: 464,
-    radius: 24,
+    radius: 8,
     padding: 24,
     border: "#f0f1f4",
     /** Same soft purple-tinted drop shadow we use in HowItWorks — 4 stacked
@@ -222,14 +248,19 @@ const TUNING = {
       color: "#010101",
     },
     cardBody: {
-      size: "13px",
-      lineHeight: "1.55",
-      tracking: "-0.02em",
-      color: "#5f5f5f",
+      /** Figma: Albert Sans Regular 14 / 130% / 0% tracking, 18.2px tall.
+       *  Wraps to 3 lines in the 352px content column → 54px hug height,
+       *  matching the Figma frame's text container. */
+      size: "14px",
+      lineHeight: "1.3",
+      tracking: "0",
+      /** Figma fill: #2F2B43 at 70% opacity. */
+      color: "rgba(47, 43, 67, 0.7)",
     },
     cardFooter: {
-      size: "12px",
-      lineHeight: "1.4",
+      /** Figma: Albert Sans Mixed 14 / 130% / 0% tracking, 18px tall. */
+      size: "14px",
+      lineHeight: "1.3",
       tracking: "0",
       color: "#7a7a7a",
     },
@@ -251,12 +282,31 @@ type Step = (typeof STEPS)[number];
  * /public/services/ and replace the inline `<svg>` with an `<img>`.
  */
 function CardIllustration({ step }: { readonly step: Step }) {
+  // Figma export — 315 × 315 SVG centred horizontally inside the 352px
+  // content column (400 card − 2×24 padding). All 7 steps currently ship
+  // an illust asset; the `'illust' in step` narrowing keeps the inline
+  // placeholder reachable for any future step that lacks one.
+  const illust = "illust" in step ? step.illust : undefined;
+  if (illust) {
+    return (
+      <img
+        src={illust}
+        alt=""
+        aria-hidden
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none mx-auto block w-full"
+        style={{ maxWidth: 315, aspectRatio: "1 / 1", flex: "0 0 auto" }}
+      />
+    );
+  }
   return (
     <div
       aria-hidden
-      className="pointer-events-none relative w-full overflow-hidden"
+      className="pointer-events-none relative mx-auto block w-full overflow-hidden"
       style={{
-        flex: "1 1 auto",
+        maxWidth: 315,
+        aspectRatio: "1 / 1",
         background: `radial-gradient(ellipse 80% 70% at 50% 55%, ${step.accent} 0%, rgba(255,255,255,0) 78%)`,
       }}
     >
@@ -320,7 +370,7 @@ function StepCard({ step }: { readonly step: Step }) {
   return (
     <article
       data-step-card
-      className="relative flex shrink-0 snap-start flex-col bg-white"
+      className="relative flex shrink-0 snap-start flex-col overflow-hidden bg-white"
       style={{
         width: TUNING.card.width,
         minHeight: TUNING.card.minHeight,
@@ -330,8 +380,9 @@ function StepCard({ step }: { readonly step: Step }) {
         boxShadow: TUNING.card.shadow,
       }}
     >
-      {/* Top text block — Step label, title, description */}
-      <div className="flex flex-col gap-2">
+      {/* Top text block — Step label, title, description.
+          z-30 so it stays sharp on the card-footer-top feather. */}
+      <div className="relative z-30 flex flex-col gap-2">
         <p
           className="m-0 font-medium uppercase tracking-wide"
           style={{
@@ -367,15 +418,52 @@ function StepCard({ step }: { readonly step: Step }) {
         </p>
       </div>
 
-      {/* Illustration — fills the middle of the card and blends into the
-          white surround via its radial-gradient background. */}
-      <div className="my-5 flex-1">
+      {/* Illustration — Figma puts the 315 × 315 group at y=142 in the
+          464 card (so it starts ~4px before the text block ends and runs
+          past the footer at y=422). The SVG has a gradient mask that
+          fades the bottom to transparent, so the footer text reads
+          through cleanly. We mirror that by anchoring the footer
+          absolutely at the card bottom and letting this block sit in
+          normal flow above it with permission to overlap. z-10 keeps it
+          underneath the card-footer feather overlays. */}
+      <div className="relative z-10 mt-2 flex flex-1 items-start justify-center">
         <CardIllustration step={step} />
       </div>
 
-      {/* Footer — "<lead> <hours bold> <trail>" */}
+      {/* Card-footer feather — Figma "Card Footer" (top): a vertical
+          gradient that opaque-#F8F8F8s the upper ~100px of the card
+          and feathers transparent over the next ~80px, sitting above
+          the illustration so the illustration's top edge dissolves
+          softly into the title block. Bleeds full-width with
+          preserveAspectRatio="none" (the underlying SVG is 400×183,
+          letting it stretch across the card's actual rendered width). */}
+      <img
+        src="/services/card-footer-top.svg"
+        alt=""
+        aria-hidden
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none absolute left-0 right-0 top-0 z-20 w-full"
+      />
+      {/* Card-footer feather (bottom): mirror of the top — transparent
+          fading into opaque #F8F8F8 over the bottom ~95px. Anchors the
+          footer text on a soft tint that also masks the illustration's
+          lower bleed. */}
+      <img
+        src="/services/card-footer-bottom.svg"
+        alt=""
+        aria-hidden
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 w-full"
+      />
+
+      {/* Footer — pinned to the card bottom with a 24px gutter (Figma
+          x=24, y=422, w=352, h=18) so the illustration above can reach
+          the lower edge without pushing this text out of view. z-30 to
+          sit on top of the bottom feather. */}
       <p
-        className="m-0"
+        className="absolute bottom-6 left-6 right-6 z-30 m-0"
         style={{
           fontSize: TUNING.type.cardFooter.size,
           lineHeight: TUNING.type.cardFooter.lineHeight,
@@ -479,13 +567,25 @@ export default function Services() {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const mobileTrackRef = useRef<HTMLDivElement | null>(null);
+  /* Wrapper around the pinned viewport. The hook sizes its height to the
+     pin's scroll range minus the cross-fade tail, so Capabilities (the
+     next section) lands at viewport top exactly when the cross-fade
+     starts dissolving Services. Without this, with the new 400-px-wide
+     cards the pin's scroll range exceeds the viewport's natural 100vh
+     extent and Capabilities scrolls fully past behind the fixed pin. */
+  const pinSpacerRef = useRef<HTMLDivElement | null>(null);
   const { active, onPillSelect } = usePinnedHorizontalScroll({
     sectionRef,
     viewportRef,
     trackRef,
     mobileTrackRef,
+    pinSpacerRef,
     stepCount: STEPS.length,
     settleRatio: SETTLE_RATIO,
+    /* Later-in-DOM pinned section. Must refresh AFTER HowItWorks so that
+       its `start: "top top"` is computed against a document that already
+       has HowItWorks's pin-spacer inserted. Lower number = later refresh.
+       See the option's JSDoc in usePinnedHorizontalScroll for the rationale. */
     refreshPriority: 1,
   });
 
@@ -534,10 +634,20 @@ export default function Services() {
           scrolls visibly underneath the pinned rectangle and you get two
           sections layered (HowItWorks heading bleeding through Services
           heading, etc.). Painting opaque closes that window — see the same
-          comment in HowItWorks.tsx for the longer rationale. */}
+          comment in HowItWorks.tsx for the longer rationale.
+
+          The outer `pinSpacerRef` wrapper is sized by the GSAP hook to
+          absorb the pin's scroll distance (≈ pin_range × 0.85) so that
+          Capabilities (the next section) lands at viewport-top exactly
+          when the cross-fade begins. Without it, with 400px cards the
+          pin range (~1846px) exceeds the viewport's natural 100vh
+          extent and Capabilities scrolls fully past behind the fixed
+          pin — the user never sees the handover. The wrapper has no
+          visible content; it just reserves document space. */}
+      <div ref={pinSpacerRef} className="hidden w-full lg:block">
       <div
         ref={viewportRef}
-        className="relative hidden h-screen w-full overflow-hidden bg-white lg:block"
+        className="relative h-screen w-full overflow-hidden bg-white"
       >
         <div className="absolute inset-0 flex items-center">
           <div
@@ -601,6 +711,7 @@ export default function Services() {
             </nav>
           </div>
         </div>
+      </div>
       </div>
     </section>
   );

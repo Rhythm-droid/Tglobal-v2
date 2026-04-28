@@ -404,7 +404,10 @@ export default function HowItWorks() {
     mobileTrackRef,
     stepCount: STEPS.length,
     settleRatio: SETTLE_RATIO,
-    refreshPriority: 0,
+    /* Earlier-in-DOM pinned section, so it must refresh BEFORE Services.
+       Higher number = earlier refresh. See the option's JSDoc in
+       usePinnedHorizontalScroll for the full rationale. */
+    refreshPriority: 2,
   });
 
   return (
