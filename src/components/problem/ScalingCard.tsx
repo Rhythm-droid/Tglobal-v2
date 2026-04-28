@@ -105,6 +105,7 @@ export default function ScalingCard() {
         width={TUNING.illustration.width}
         height={TUNING.illustration.height}
         loading="lazy"
+        decoding="async"
         draggable={false}
         className="pointer-events-none absolute hidden select-none sm:block"
         style={{

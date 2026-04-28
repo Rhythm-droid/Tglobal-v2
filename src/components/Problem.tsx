@@ -128,43 +128,33 @@ function VRail() {
   return <span aria-hidden className="block w-px bg-[#dee3e8]" />;
 }
 
-/** Top/bottom rail: dot — line — dot — line — dot. */
-function RowRail() {
+/* ─── DesktopHRail — 5-column-spanning horizontal rail used at the top,
+   middle, and bottom of the desktop grid. Equivalent to RowRail wrapped
+   for the unified grid: hides on mobile, lays out as full-row on desktop.
+   ─────────────────────────────────────────────────────────── */
+function DesktopHRail({ delay }: { readonly delay: number }) {
   return (
-    <div className="flex w-full items-center gap-2.5">
-      <CornerDot />
-      <HRail />
-      <CornerDot />
-      <HRail />
-      <CornerDot />
-    </div>
+    <AnimateIn delay={delay} className="hidden lg:col-span-5 lg:block">
+      <div className="flex w-full items-center gap-2.5">
+        <CornerDot />
+        <HRail />
+        <CornerDot />
+        <HRail />
+        <CornerDot />
+      </div>
+    </AnimateIn>
   );
 }
 
-/* ─── Card row — content flanked by vertical rails + a middle rail.
-   Grid template:
-     [rail 21px] [card 1fr] [rail 21px] [card 1fr] [rail 21px]
+/* ─── DesktopVRail — vertical rail for the gutter columns.
+   `lg:flex` makes it visible only on desktop; `items-stretch` from the
+   parent grid stretches it to the row's full height (matches the per-row
+   1px line that ran the height of CardRow before the dedup).
    ─────────────────────────────────────────────────────────── */
-function CardRow({
-  left,
-  right,
-}: {
-  readonly left: React.ReactNode;
-  readonly right: React.ReactNode;
-}) {
+function DesktopVRail() {
   return (
-    <div className="grid w-full grid-cols-[20px_minmax(0,1fr)_20px_minmax(0,1fr)_20px] items-stretch">
-      <div className="flex justify-center">
-        <VRail />
-      </div>
-      <div className="p-5">{left}</div>
-      <div className="flex justify-center">
-        <VRail />
-      </div>
-      <div className="p-5">{right}</div>
-      <div className="flex justify-center">
-        <VRail />
-      </div>
+    <div className="hidden lg:flex lg:justify-center">
+      <VRail />
     </div>
   );
 }
@@ -236,66 +226,50 @@ export default function Problem() {
           </header>
         </AnimateIn>
 
-        {/* Card grid — mobile stack, desktop 2×2 with rails.
-            Per-card stagger: each card has its own IntersectionObserver via
-            AnimateIn so the grid cascades in diagonally (TL → TR → BL → BR)
-            instead of all four landing simultaneously. 100ms step mirrors the
-            Figma motion direction and keeps the whole reveal under 600ms. */}
-        {/* Mobile/tablet: simple stack, no rails. Capped at 640px so cards
-            don't balloon past the Figma design width when the tablet viewport
-            is wide; centred when smaller than the cap. */}
-        <div className="mx-auto flex w-full max-w-[640px] flex-col gap-4 lg:hidden">
-          <AnimateIn delay={0.15}>
-            <ToolsCard />
-          </AnimateIn>
-          <AnimateIn delay={0.25}>
-            <CyclesCard />
-          </AnimateIn>
-          <AnimateIn delay={0.35}>
-            <ScalingCard />
-          </AnimateIn>
-          <AnimateIn delay={0.45}>
-            <TGlobalCard />
-          </AnimateIn>
-        </div>
+        {/* Card grid — single DOM that toggles between layouts.
+            Mobile/tablet (<lg): flex column, max-w-640 centered, no rails.
+            Desktop (≥lg): 5-column grid [20px gutter | 1fr | 20px | 1fr | 20px]
+              — gutter cols hold the vertical rails, 1fr cols hold cards
+              wrapped in lg:p-5 (20px inset). Three full-width horizontal
+              rails (top / middle / bottom) span all 5 cols.
 
-        {/* Desktop: Figma-exact grid with corner dots + rails. Rails fade in
-            with the first card; cards cascade independently so the motion
-            feels anchored to the blueprint frame. */}
-        <div className="hidden flex-col lg:flex">
-          <AnimateIn delay={0.15}>
-            <RowRail />
-          </AnimateIn>
-          <CardRow
-            left={
-              <AnimateIn delay={0.15}>
-                <ToolsCard />
-              </AnimateIn>
-            }
-            right={
-              <AnimateIn delay={0.25}>
-                <CyclesCard />
-              </AnimateIn>
-            }
-          />
-          <AnimateIn delay={0.3}>
-            <RowRail />
-          </AnimateIn>
-          <CardRow
-            left={
-              <AnimateIn delay={0.35}>
-                <ScalingCard />
-              </AnimateIn>
-            }
-            right={
-              <AnimateIn delay={0.45}>
-                <TGlobalCard />
-              </AnimateIn>
-            }
-          />
-          <AnimateIn delay={0.5}>
-            <RowRail />
-          </AnimateIn>
+            Per-card stagger: each card keeps its own AnimateIn so the grid
+            cascades TL→TR→BL→BR with 100ms steps, identical to the previous
+            two-tree implementation but with no DOM duplication. */}
+        <div className="mx-auto flex w-full max-w-[640px] flex-col gap-4 lg:max-w-none lg:grid lg:grid-cols-[20px_minmax(0,1fr)_20px_minmax(0,1fr)_20px] lg:items-stretch lg:gap-0">
+          <DesktopHRail delay={0.15} />
+
+          <DesktopVRail />
+          <div className="lg:p-5">
+            <AnimateIn delay={0.15}>
+              <ToolsCard />
+            </AnimateIn>
+          </div>
+          <DesktopVRail />
+          <div className="lg:p-5">
+            <AnimateIn delay={0.25}>
+              <CyclesCard />
+            </AnimateIn>
+          </div>
+          <DesktopVRail />
+
+          <DesktopHRail delay={0.3} />
+
+          <DesktopVRail />
+          <div className="lg:p-5">
+            <AnimateIn delay={0.35}>
+              <ScalingCard />
+            </AnimateIn>
+          </div>
+          <DesktopVRail />
+          <div className="lg:p-5">
+            <AnimateIn delay={0.45}>
+              <TGlobalCard />
+            </AnimateIn>
+          </div>
+          <DesktopVRail />
+
+          <DesktopHRail delay={0.5} />
         </div>
       </div>
     </section>

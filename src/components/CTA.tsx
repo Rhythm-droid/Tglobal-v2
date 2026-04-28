@@ -211,7 +211,7 @@ export default function CTA() {
   };
 
   return (
-    <section id="talk-to-us" className="section-pad relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden">
+    <section id="talk-to-us" aria-labelledby="talk-to-us-heading" className="section-pad relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden">
       {/* Lavender wash backdrop */}
       <div
         aria-hidden
@@ -222,7 +222,7 @@ export default function CTA() {
         }}
       />
 
-      <div className="relative">
+      <div className="relative w-full">
         {/* Heading */}
         <div className="site-shell text-center">
           <motion.p
@@ -235,6 +235,7 @@ export default function CTA() {
             Talk to us
           </motion.p>
           <motion.h2
+            id="talk-to-us-heading"
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.5 }}
@@ -267,14 +268,20 @@ export default function CTA() {
             ))}
           </div>
 
-          {/* Foreground chat card */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          {/* Foreground chat card.
+              Gutter is on the overlay (px-6), not on the card (mx-6). The
+              two are nearly equivalent on viewports ≥720, but at narrower
+              widths only padding-on-the-overlay correctly bounds the card:
+              `w-full` on the card resolves to the overlay's *content* area,
+              so padding shrinks it instead of letting it overflow into
+              `mx-6` margin while the box itself stays at parent-width. */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-6">
             <motion.div
               initial={{ opacity: 0, y: 24, scale: 0.96 }}
               whileInView={{ opacity: 1, y: 0, scale: 1 }}
               viewport={{ once: true, amount: 0.3 }}
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              className="pointer-events-auto w-full max-w-[720px] mx-6 rounded-[32px] bg-white border border-border p-5 sm:p-6 shadow-[0_40px_100px_-40px_rgba(75,40,255,0.35)]"
+              className="pointer-events-auto w-full max-w-[720px] rounded-[32px] bg-white border border-border p-5 sm:p-6 shadow-[0_40px_100px_-40px_rgba(75,40,255,0.35)]"
             >
               {/* Assistant header */}
               <div className="flex items-center justify-between border-b border-border pb-4">

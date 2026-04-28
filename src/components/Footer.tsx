@@ -359,9 +359,9 @@ export default function Footer() {
                 aria-label="Quick Link"
                 className="col-span-2 flex flex-col gap-6 sm:col-span-1 lg:col-auto"
               >
-                <h4 className="text-xl font-semibold leading-7 text-black">
+                <h3 className="text-xl font-semibold leading-7 text-black">
                   Quick Link
-                </h4>
+                </h3>
                 <div className="flex items-start gap-10 md:gap-12">
                   {FOOTER_CONTENT.quickLinkColumns.map((column, colIdx) => (
                     <ul
@@ -385,9 +385,9 @@ export default function Footer() {
 
               {/* Support */}
               <nav aria-label="Support" className="flex flex-col gap-6">
-                <h4 className="text-xl font-semibold leading-7 text-black">
+                <h3 className="text-xl font-semibold leading-7 text-black">
                   Support
-                </h4>
+                </h3>
                 <ul className="flex list-none flex-col gap-3 p-0">
                   {FOOTER_CONTENT.supportLinks.map((link) => (
                     <li key={link.label}>
@@ -404,9 +404,9 @@ export default function Footer() {
 
               {/* Social links */}
               <div className="flex w-[152px] flex-col gap-4">
-                <h4 className="text-base font-semibold leading-[26px] text-black">
+                <h3 className="text-base font-semibold leading-[26px] text-black">
                   Social Link
-                </h4>
+                </h3>
                 <div className="flex items-center gap-4">
                   <FacebookIcon href={FOOTER_CONTENT.socialLinks.facebook} />
                   <XIcon href={FOOTER_CONTENT.socialLinks.twitter} />

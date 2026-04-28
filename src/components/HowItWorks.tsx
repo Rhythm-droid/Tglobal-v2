@@ -253,6 +253,7 @@ function StepCard({ step }: { readonly step: Step }) {
           width={380}
           height={376}
           loading="lazy"
+          decoding="async"
           draggable={false}
           className="block h-full w-full select-none"
         />
