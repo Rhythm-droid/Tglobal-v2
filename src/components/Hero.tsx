@@ -120,34 +120,54 @@ export default function Hero() {
       />
 
       {/*
-        Figma 1440×745 canvas — stripes, blur ellipses, and scrollbars all
-        live here so their X positions are always relative to the design
-        canvas (not the viewport edges). On wider viewports the canvas
-        stays 1440 and centers; on narrower ones it shrinks to fit.
+        Full-bleed responsive stripes — tile size 102.857px (1440/14) so
+        at 1440 viewport you get Figma's 14 columns; at any other viewport
+        the count auto-adapts (~7 at 768, ~19 at 1920, ~37 at 4K).
+        Implemented as a tiled CSS background (one DOM node, one paint
+        layer) instead of N divs for cheaper paint and zero JS.
+        `mask-image` fades the leftmost and rightmost 5% of the viewport
+        so stripes don't hard-cut at the edges.
+
+        Stays OUTSIDE the 1440 canvas (which keeps glow blobs + scrollbar
+        decorations at their Figma-spec positions) so stripes go full-bleed
+        independently of the design canvas.
+
+        Tile composition (top → bottom of background-image stack):
+          • 1px white divider on the LEFT edge of every tile (mirrors
+            the original `border-r` + `first:border-l` rhythm so dividers
+            sit at every 102.857px boundary, including x=0).
+          • 270° gradient: rgba(0,0,0,0.035) at the right edge fading to
+            rgba(0,0,0,0) at the left — same as the original per-stripe
+            gradient. Direct alpha (no mix-blend-mode) because overlay-mode
+            at 15% reads almost invisible over a lavender base in
+            Chrome/Firefox, unlike Figma's renderer.
+      */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 hidden md:block"
+        style={{
+          backgroundImage:
+            "linear-gradient(90deg, rgba(255,255,255,0.3) 0, rgba(255,255,255,0.3) 1px, transparent 1px, transparent 100%)," +
+            "linear-gradient(270deg, rgba(0,0,0,0.035) 0%, rgba(0,0,0,0) 100%)",
+          backgroundSize: "102.857px 100%, 102.857px 100%",
+          backgroundRepeat: "repeat-x, repeat-x",
+          WebkitMaskImage:
+            "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.4) 8%, black 16%, black 84%, rgba(0,0,0,0.4) 92%, transparent 100%)",
+          maskImage:
+            "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.4) 8%, black 16%, black 84%, rgba(0,0,0,0.4) 92%, transparent 100%)",
+        }}
+      />
+
+      {/*
+        Figma 1440×745 canvas — holds the 3 blur ellipses only. Their
+        positions are percentages of this 1440-capped canvas so the glow
+        cluster stays centered on wider viewports (the stripes and
+        scrollbars above/below go full-bleed independently).
       */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 mx-auto hidden max-w-[1440px] md:block"
       >
-        {/*
-          14 background columns — each with a right→left black-to-transparent
-          gradient and a 1px white divider. Using direct alpha colors (no
-          mix-blend-mode) because overlay-mode at 15% reads almost invisible
-          over a lavender base in Chrome/Firefox, unlike Figma's renderer.
-        */}
-        <div className="absolute inset-0 grid grid-cols-[repeat(14,minmax(0,1fr))]">
-          {Array.from({ length: 14 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-full border-r border-white/30 first:border-l"
-              style={{
-                background:
-                  "linear-gradient(270deg, rgba(0,0,0,0.035) 0%, rgba(0,0,0,0) 100%)",
-              }}
-            />
-          ))}
-        </div>
-
         {/* 3 brand-primary glow blobs — fixed 285×285, blur 250px, #4B28FF */}
         {GLOW_BLOBS.map((blob, i) => (
           <div
@@ -160,24 +180,26 @@ export default function Hero() {
             }}
           />
         ))}
-
-        {/*
-          Scrollbar decorations — positioned relative to the 1440 canvas so
-          they hug the DESIGN edges, not the viewport edges. On a 1920
-          display the canvas is centered at 1440 wide, and these stay
-          tucked to the canvas's own left/right edges — exactly like Figma.
-            Scrollbar 1 (left):  X=-16, Y=254 → left:-16px, top:34.09%
-            Scrollbar 2 (right): X=1327, Y=668, rot 180° → right:-11px, top:89.66%
-        */}
-        <ScrollbarDecor
-          className="left-[-16px] top-[34.09%] rotate-180"
-          delay={dashDelay}
-        />
-        <ScrollbarDecor
-          className="right-[-11px] top-[95%]"
-          delay={dashDelay + 0.08}
-        />
       </div>
+
+      {/*
+        Scrollbar decorations — anchored to the VIEWPORT edges (full-bleed),
+        siblings of the 1440 canvas instead of children. At 1440 viewport
+        the viewport edge coincides with the canvas edge so positioning is
+        identical to Figma; on wider viewports they ride the viewport edge
+        outward (instead of staying tucked at the canvas edge), matching
+        the same full-bleed treatment as the stripes above.
+          Scrollbar 1 (left):  X=-16, Y=254 → left:-16px, top:34.09%
+          Scrollbar 2 (right): X=1327, Y=668, rot 180° → right:-11px, top:95%
+      */}
+      <ScrollbarDecor
+        className="left-[-16px] top-[34.09%] rotate-180"
+        delay={dashDelay}
+      />
+      <ScrollbarDecor
+        className="right-[-11px] top-[95%]"
+        delay={dashDelay + 0.08}
+      />
 
       {/* Mobile soft glow — single centered blob since the 3-ellipse composition
           collapses on narrow screens */}

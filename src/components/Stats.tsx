@@ -22,8 +22,16 @@ export default function Stats() {
   return (
     <section
       id="stats"
+      aria-labelledby="stats-heading"
       className="relative w-full bg-white py-12 lg:py-[53px]"
     >
+      {/* Visually-hidden section heading — kept out of the Figma layout per
+          design intent but included in the document outline so screen-reader
+          users get a labeled landmark and search engines see the proper
+          h1 → h2 → h3 hierarchy on the page. */}
+      <h2 id="stats-heading" className="sr-only">
+        Results that speak
+      </h2>
       <div className="mx-auto w-full max-w-[1440px] px-6 sm:px-8 lg:px-20">
         <div className="rounded-[32px] bg-white p-3">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-[390px_minmax(0,1fr)_377px] lg:grid-rows-[auto_auto_auto] min-[1456px]:grid-rows-[auto_auto_98px]">
@@ -77,17 +85,20 @@ function BigStatCard({
     >
       {children}
       <div className="relative z-10 flex h-full flex-col justify-between gap-6">
-        <h3 className="font-semibold text-[64px] leading-[64px] tracking-[-0.02em] text-[color:var(--color-foreground)] lg:text-[80px] lg:leading-[80px] lg:tracking-[-1.6px]">
+        {/* Stat number is decorative — rendered as <p> not a heading so the
+            descriptor below becomes the actual h3 (descriptive heading is
+            stronger semantically than the number itself). */}
+        <p className="font-semibold text-[64px] leading-[64px] tracking-[-0.02em] text-[color:var(--color-foreground)] lg:text-[80px] lg:leading-[80px] lg:tracking-[-1.6px]">
           {stat}
-        </h3>
+        </p>
         <div className="flex flex-col gap-2">
-          <h4
+          <h3
             className={`text-2xl leading-[38.4px] text-[color:var(--color-foreground)] ${
               titleWeight === "medium" ? "font-medium" : "font-normal"
             }`}
           >
             {title}
-          </h4>
+          </h3>
           <p className="text-base leading-6 text-[color:var(--color-muted)]">
             {description}
           </p>
@@ -297,9 +308,9 @@ function IntegrationCard({ className = "" }: { className?: string }) {
     >
       <div className="flex items-center gap-6">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h4 className="font-medium text-xl leading-[32px] text-[color:var(--color-foreground)]">
+          <h3 className="font-medium text-xl leading-[32px] text-[color:var(--color-foreground)]">
             Seamless Workflow Integration
-          </h4>
+          </h3>
           <p className="text-sm leading-[21px] text-[color:var(--color-muted)]">
             From Design to Delivery — we keep things clean, fast, and collaborative.
           </p>
@@ -345,9 +356,9 @@ function WorldwideCard({ className = "" }: { className?: string }) {
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-5">
         <div className="flex min-w-0 flex-1 flex-col gap-1 min-[1456px]:h-[57px] min-[1456px]:max-w-[500.64px]">
-          <h4 className="font-medium text-xl leading-[32px] text-[color:var(--color-foreground)]">
+          <h3 className="font-medium text-xl leading-[32px] text-[color:var(--color-foreground)]">
             Worldwide development
-          </h4>
+          </h3>
           <p className="text-sm leading-[21px] text-[color:var(--color-muted)] min-[1456px]:whitespace-nowrap">
             We collaborate with startups and businesses across the US, Europe, and Asia.
           </p>
