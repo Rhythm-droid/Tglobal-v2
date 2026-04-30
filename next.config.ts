@@ -46,10 +46,17 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  // Web3Forms is the form-to-email backend used by the #talk-to-us
+  // section in CTA.tsx. Whitelist its API endpoint so the fetch call
+  // isn't blocked by the connect-src directive.
+  "connect-src 'self' https://api.web3forms.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  // form-action governs where <form> can POST to. The form here uses
+  // fetch() (covered by connect-src) instead of native form submission,
+  // but we keep form-action permissive for the same Web3Forms domain
+  // in case we ever fall back to a no-JS submit.
+  "form-action 'self' https://api.web3forms.com",
   "object-src 'none'",
   "upgrade-insecure-requests",
 ].join("; ");

@@ -37,6 +37,17 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Defensive horizontal-scrollbar guard. The page layout is intentionally
+     full-bleed in several places (Hero glow blobs, footer wordmark, GSAP
+     pinned tracks) and each section uses its own `overflow-hidden` to clip
+     decorative bleeds. Sub-pixel rounding, browser zoom states, transient
+     ScrollTrigger pin spacer insertion, and Brave/Edge scrollbar quirks
+     can still produce a 1–2px horizontal scrollbar in edge cases.
+     `overflow-x: clip` prevents the document from ever growing a horizontal
+     scrollbar regardless of cause — preferred over `hidden` because `clip`
+     doesn't establish a scroll container, so it doesn't break
+     `position: sticky` or scroll-anchoring on descendant elements. */
+  overflow-x: clip;
 }
 
 body {
@@ -45,6 +56,7 @@ body {
   color: var(--color-foreground);
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   text-rendering: optimizeLegibility;
+  overflow-x: clip;
 }
 
 @layer base {
@@ -508,7 +520,9 @@ body {
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
   .site-shell {
-    width: min(100% - 32px, 1440px);
+    /* 48px total side gutter (24px each) — matches the px-6 used by every
+       other section component, so heading rhythm is consistent across the page. */
+    width: min(100% - 48px, 1440px);
   }
   .section-pad {
     padding-block: 4rem;

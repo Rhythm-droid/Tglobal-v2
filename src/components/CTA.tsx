@@ -1,412 +1,590 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
+import { useState } from "react";
 
-function BotIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 8V4H8" />
-      <rect width="16" height="12" x="4" y="8" rx="2" />
-      <path d="M2 14h2" />
-      <path d="M20 14h2" />
-      <path d="M15 13v2" />
-      <path d="M9 13v2" />
-    </svg>
-  );
-}
+/* ─── Web3Forms backend ──────────────────────────────────────────
+ * Submissions POST to https://api.web3forms.com/submit and email
+ * the configured inbox for this access key — same endpoint used by
+ * the previous tglobal.in site, so submissions land in the same
+ * place without any new wiring. To rotate the destination, replace
+ * the access key in the Web3Forms dashboard rather than touching
+ * code. */
+const ACCESS_KEY = "8ca5ba96-be53-4698-bbc8-89b92c007835";
+const ENDPOINT = "https://api.web3forms.com/submit";
 
-function SparklesIcon({ size = 12 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063L6.5 13.5l2-.563A2 2 0 0 0 9.937 11.5L10.5 9.5l.563 2A2 2 0 0 0 12.5 12.937l2 .563-2 .563A2 2 0 0 0 11.063 15.5L10.5 17.5z" />
-      <path d="M18 3v4" />
-      <path d="M16 5h4" />
-    </svg>
-  );
-}
-
-function SendIcon({ size = 13 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="22" y1="2" x2="11" y2="13" />
-      <polygon points="22 2 15 22 11 13 2 9 22 2" />
-    </svg>
-  );
-}
-
-function ResetIcon({ size = 13 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-      <path d="M3 3v5h5" />
-    </svg>
-  );
-}
-
-type ChatMessage = {
-  id: number;
-  role: "bot" | "user";
-  text: string;
-};
-
-const MARQUEE_QUESTIONS = [
-  "How much time to create a landing page?",
-  "Do you build AI softwares?",
-  "Can you integrate Stripe billing?",
-  "What's the cost of a custom CRM?",
-  "Do you provide ongoing support?",
-  "How fast can you ship an MVP?",
-  "Can you handle HIPAA compliance?",
-  "Do you work with startups?",
-  "What's your tech stack?",
-  "Do you offer DevOps?",
-];
-
-const ROWS = [
-  { questions: MARQUEE_QUESTIONS, reverse: false, speed: "" },
-  { questions: [...MARQUEE_QUESTIONS].reverse(), reverse: true, speed: "slow" },
-  { questions: MARQUEE_QUESTIONS, reverse: false, speed: "fast" },
-  { questions: [...MARQUEE_QUESTIONS].reverse(), reverse: true, speed: "" },
-  { questions: MARQUEE_QUESTIONS, reverse: false, speed: "slow" },
+const BUDGET_OPTIONS = [
+  { value: "", label: "Select a budget range" },
+  { value: "<25k", label: "Less than $25,000" },
+  { value: "25-100k", label: "$25,000 – $100,000" },
+  { value: "100k+", label: "$100,000+" },
+  { value: "exploring", label: "Just exploring" },
 ] as const;
 
-const QUICK_ACTIONS = [
-  "Scope an MVP",
-  "Redesign UX",
-  "Build internal tools",
-  "Add AI workflow",
-];
+const DETAILS_MAX = 300;
+const EASE = [0.22, 1, 0.36, 1] as const;
 
-const STARTER_MESSAGES: ChatMessage[] = [
-  {
-    id: 1,
-    role: "bot",
-    text: "Hi, I'm the TGlobal assistant. Tell me what you want to launch and I'll help frame the fastest path from MVP to product build.",
-  },
-  {
-    id: 2,
-    role: "bot",
-    text: "Ask about MVP scope, delivery timelines, UX redesigns, internal tools, healthcare workflows, or how we use AI to ship in weeks instead of months.",
-  },
-];
-
-function createReply(query: string): string {
-  const lower = query.toLowerCase();
-
-  if (lower.includes("mvp") || lower.includes("launch")) {
-    return "For an MVP, we lock the core workflow, required integrations, and launch constraints first. Then design and engineering move in parallel so the first release can happen in weeks, not months.";
-  }
-
-  if (lower.includes("design") || lower.includes("ux") || lower.includes("redesign")) {
-    return "That sounds like a UX and systems cleanup problem. We normally review the current flow, remove friction, redesign the key screens, and carry the new UX straight into implementation so the work does not stall after design.";
-  }
-
-  if (lower.includes("health") || lower.includes("hipaa") || lower.includes("healthcare")) {
-    return "Yes. We support regulated healthcare-oriented product work by defining workflow clarity, permissions, and implementation boundaries early so compliance and usability stay aligned during the build.";
-  }
-
-  if (lower.includes("ai") || lower.includes("chatbot") || lower.includes("automation")) {
-    return "AI works best when it supports a real workflow. We use it to accelerate scoping, implementation, and QA, while senior product and engineering oversight keeps the product reliable and launch-ready.";
-  }
-
-  if (lower.includes("internal") || lower.includes("ops") || lower.includes("tool")) {
-    return "For internal tools, the biggest wins come from tightening the workflow first, then building the smallest system that removes manual effort. That keeps the MVP practical and valuable from day one.";
-  }
-
-  return "That's a strong starting point. The next move is usually to define the core flow, scope the fastest useful MVP, and map how the same build can continue into the full product. If you want, continue by email and we'll take it further.";
+interface FormState {
+  name: string;
+  email: string;
+  company: string;
+  role: string;
+  budget: string;
+  details: string;
 }
 
-function QuestionPill({ text }: { text: string }) {
+const INITIAL_FORM: FormState = {
+  name: "",
+  email: "",
+  company: "",
+  role: "",
+  budget: "",
+  details: "",
+};
+
+type FieldKey = keyof FormState;
+type SubmitStatus = "idle" | "submitting" | "success";
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+/* ─── Framer-motion variants for staggered field entrance ──────
+ * Triggered once when the form card enters the viewport. The card
+ * wrapper handles its own scale-in; this variant set drives the
+ * fields' rhythm so they arrive sequentially rather than all at
+ * once, matching the Capabilities and Hero entrance feel. */
+const fieldGroup: Variants = {
+  hidden: { opacity: 1 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.055, delayChildren: 0.18 },
+  },
+};
+
+const fieldItem: Variants = {
+  hidden: { opacity: 0, y: 14 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.55, ease: EASE },
+  },
+};
+
+/* ─── Icons ──────────────────────────────────────────────────── */
+function ArrowRight({ size = 16 }: { size?: number }) {
   return (
-    <span className="inline-flex items-center rounded-full bg-white border border-border px-5 py-3 text-[14px] text-muted whitespace-nowrap">
-      {text}
-    </span>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
+    </svg>
   );
 }
 
-function MarqueeRow({
-  questions,
-  reverse,
-  speed,
-}: {
-  questions: readonly string[];
-  reverse: boolean;
-  speed: string;
-}) {
-  const items = [...questions, ...questions];
+function ChevronDown({ size = 16 }: { size?: number }) {
   return (
-    <div className="overflow-hidden">
-      <div className={`marquee-track ${reverse ? "reverse" : ""} ${speed} gap-4`}>
-        {items.map((q, i) => (
-          <QuestionPill key={`${q}-${i}`} text={q} />
-        ))}
-      </div>
-    </div>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
   );
 }
 
+function Spinner({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      className="animate-spin"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3a9 9 0 1 1-9 9" opacity="0.85" />
+    </svg>
+  );
+}
+
+/* Animated stroke draw — pathLength is framer-motion's idiomatic
+   way of doing the SVG dash-offset trick without the manual
+   stroke-dasharray dance. */
+function AnimatedCheck({ size = 32 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <motion.polyline
+        points="20 6 9 17 4 12"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 1 }}
+        transition={{ duration: 0.55, ease: EASE, delay: 0.15 }}
+      />
+    </svg>
+  );
+}
+
+/* ─── Field wrapper ──────────────────────────────────────────── */
+const inputBase =
+  "w-full rounded-2xl border border-border bg-white/95 px-5 py-4 text-[16px] text-foreground placeholder:text-tertiary outline-none transition-[border-color,background-color,box-shadow] duration-200 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10";
+const inputError =
+  "border-red-400 focus:border-red-500 focus:ring-red-100";
+
+interface FieldProps {
+  id: string;
+  label: string;
+  required?: boolean;
+  error?: string;
+  hint?: string;
+  children: React.ReactNode;
+}
+
+function Field({ id, label, required, error, hint, children }: FieldProps) {
+  return (
+    <motion.div variants={fieldItem}>
+      <label
+        htmlFor={id}
+        className="flex items-center gap-1 text-[13px] font-semibold tracking-[-0.005em] text-foreground"
+      >
+        {label}
+        {required && (
+          <span aria-hidden="true" className="text-primary">
+            *
+          </span>
+        )}
+        {required && <span className="sr-only">(required)</span>}
+      </label>
+      <div className="mt-2">{children}</div>
+      {(error || hint) && (
+        <p
+          id={`${id}-error`}
+          role={error ? "alert" : undefined}
+          className={`mt-1.5 text-[12px] ${
+            error ? "text-red-600" : "text-tertiary"
+          }`}
+        >
+          {error || hint}
+        </p>
+      )}
+    </motion.div>
+  );
+}
+
+/* ─── Section ────────────────────────────────────────────────── */
 export default function CTA() {
-  const [inputValue, setInputValue] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>(STARTER_MESSAGES);
-  const [isTyping, setIsTyping] = useState(false);
-  const [messageId, setMessageId] = useState(3);
-  const chatContainerRef = useRef<HTMLDivElement | null>(null);
+  const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
+  const [status, setStatus] = useState<SubmitStatus>("idle");
+  const [submitError, setSubmitError] = useState<string>("");
 
-  useEffect(() => {
-    const container = chatContainerRef.current;
-    if (!container) return;
-    container.scrollTop = container.scrollHeight;
-  }, [messages, isTyping]);
-
-  const transcript = useMemo(
-    () =>
-      messages
-        .map((m) => `${m.role === "bot" ? "TGlobal" : "You"}: ${m.text}`)
-        .join("\n"),
-    [messages]
-  );
-
-  const mailtoHref = useMemo(() => {
-    const subject = encodeURIComponent("Project inquiry from website");
-    const body = encodeURIComponent(
-      `${transcript}\n\nLatest draft:\n${inputValue.trim() || "I would like to discuss a project."}`
-    );
-    return `mailto:hello@tglobal.ai?subject=${subject}&body=${body}`;
-  }, [inputValue, transcript]);
-
-  const queueReply = (content: string) => {
-    const userMessageId = messageId;
-    const botMessageId = messageId + 1;
-
-    setMessages((current) => [
-      ...current,
-      { id: userMessageId, role: "user", text: content },
-    ]);
-    setMessageId(botMessageId + 1);
-    setIsTyping(true);
-
-    window.setTimeout(() => {
-      setMessages((current) => [
-        ...current,
-        { id: botMessageId, role: "bot", text: createReply(content) },
-      ]);
-      setIsTyping(false);
-    }, 520);
+  const update = <K extends FieldKey>(key: K, value: FormState[K]) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    if (errors[key]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
   };
 
-  const sendMessage = (message?: string) => {
-    if (isTyping) return;
-    const content = (message ?? inputValue).trim();
-    if (!content) return;
-    queueReply(content);
-    setInputValue("");
+  const validate = (): boolean => {
+    const next: Partial<Record<FieldKey, string>> = {};
+    if (!form.name.trim()) next.name = "Your name is required";
+    if (!form.email.trim()) next.email = "Email is required";
+    else if (!isValidEmail(form.email)) next.email = "Please enter a valid email";
+    if (!form.company.trim()) next.company = "Company name is required";
+    setErrors(next);
+    return Object.keys(next).length === 0;
   };
 
-  const resetChat = () => {
-    setMessages(STARTER_MESSAGES);
-    setInputValue("");
-    setIsTyping(false);
-    setMessageId(3);
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (status === "submitting") return;
+    if (!validate()) {
+      const firstInvalid = (Object.keys(errors)[0] || "name") as FieldKey;
+      document.getElementById(`ct-${firstInvalid}`)?.focus();
+      return;
+    }
+
+    setStatus("submitting");
+    setSubmitError("");
+
+    try {
+      const res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          access_key: ACCESS_KEY,
+          from_name: "TGlobal Website",
+          subject: `Project inquiry — ${form.name} (${form.company})`,
+          name: form.name,
+          email: form.email,
+          company: form.company,
+          role: form.role || "—",
+          budget: form.budget || "—",
+          details: form.details || "—",
+          botcheck: "",
+        }),
+      });
+
+      const data = (await res.json()) as { success?: boolean; message?: string };
+      if (data.success) {
+        setStatus("success");
+        return;
+      }
+      throw new Error(data.message || "Submission failed");
+    } catch (err) {
+      setStatus("idle");
+      setSubmitError(
+        err instanceof Error
+          ? err.message
+          : "We couldn't send your message. Please try again or email growth@tglobal.in.",
+      );
+    }
   };
 
   return (
-    <section id="talk-to-us" aria-labelledby="talk-to-us-heading" className="section-pad relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden">
-      {/* Lavender wash backdrop */}
+    <section
+      id="talk-to-us"
+      aria-labelledby="talk-to-us-heading"
+      className="relative w-full overflow-hidden pt-12 pb-20 sm:pt-16 sm:pb-28 lg:pt-20 lg:pb-32"
+    >
+      {/* Lavender wash backdrop — preserved but with a slightly cooler
+          radial centre so the form card feels like it's resting on a
+          warm spotlight rather than a flat tint. */}
       <div
         aria-hidden
-        className="absolute inset-0 pointer-events-none"
+        className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(189,112,246,0.18) 0%, rgba(75,40,255,0.08) 40%, transparent 70%), linear-gradient(180deg, #ffffff 0%, #faf7ff 100%)",
+            "radial-gradient(ellipse 65% 55% at 50% 48%, rgba(189,112,246,0.20) 0%, rgba(75,40,255,0.07) 38%, transparent 72%), linear-gradient(180deg, #ffffff 0%, #f8f4ff 60%, #f3edff 100%)",
         }}
+      />
+      {/* Two stacked glow blobs for depth. The lower one is brighter
+          and offset right; the upper one is dimmer and offset left.
+          md:block keeps them off mobile where the wash already does
+          enough. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-[55%] top-[60%] hidden h-[460px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4B28FF] opacity-[0.14] blur-[160px] md:block"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-[42%] top-[28%] hidden h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#8B5CF6] opacity-[0.10] blur-[140px] md:block"
       />
 
       <div className="relative w-full">
-        {/* Heading */}
-        <div className="site-shell text-center">
+        {/* ─── Heading ─── */}
+        <div className="mx-auto w-full max-w-[1440px] px-6 text-center sm:px-8 lg:px-14 xl:px-20">
           <motion.p
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 14 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.55, ease: EASE }}
             className="eyebrow"
           >
             Talk to us
           </motion.p>
           <motion.h2
             id="talk-to-us-heading"
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 22 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 0.7, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.7, delay: 0.05, ease: EASE }}
             className="display-lg mt-3"
           >
-            Ask Question. Get Instant Business Insights
+            Tell us about your project
           </motion.h2>
           <motion.p
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 14 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="body-lg mt-5 mx-auto max-w-[560px]"
+            transition={{ duration: 0.55, delay: 0.1, ease: EASE }}
+            className="body-lg mx-auto mt-5 max-w-[560px]"
           >
-            Tell us what you&apos;re building, where execution is getting stuck, or what needs to launch next. The assistant will help shape the path.
+            Share what you&apos;re building and we&apos;ll come back with a focused next step — usually within a business day.
           </motion.p>
         </div>
 
-        {/* Marquee background + chat card */}
-        <div className="relative mt-16">
-          <div className="space-y-4 opacity-40">
-            {ROWS.map((row, i) => (
-              <MarqueeRow
-                key={i}
-                questions={row.questions}
-                reverse={row.reverse}
-                speed={row.speed}
-              />
-            ))}
-          </div>
-
-          {/* Foreground chat card.
-              Gutter is on the overlay (px-6), not on the card (mx-6). The
-              two are nearly equivalent on viewports ≥720, but at narrower
-              widths only padding-on-the-overlay correctly bounds the card:
-              `w-full` on the card resolves to the overlay's *content* area,
-              so padding shrinks it instead of letting it overflow into
-              `mx-6` margin while the box itself stays at parent-width. */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 24, scale: 0.96 }}
-              whileInView={{ opacity: 1, y: 0, scale: 1 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              className="pointer-events-auto w-full max-w-[720px] rounded-[32px] bg-white border border-border p-5 sm:p-6 shadow-[0_40px_100px_-40px_rgba(75,40,255,0.35)]"
-            >
-              {/* Assistant header */}
-              <div className="flex items-center justify-between border-b border-border pb-4">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-white shadow-[0_12px_28px_-8px_rgba(75,40,255,0.5)]">
-                    <BotIcon size={18} />
-                  </span>
-                  <div>
-                    <p className="text-[15px] font-semibold text-foreground">TGlobal Assistant</p>
-                    <p className="text-xs text-muted">Online now</p>
-                  </div>
-                </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
-                  <SparklesIcon size={12} />
-                  AI chat
-                </span>
-              </div>
-
-              {/* Message list */}
-              <div
-                ref={chatContainerRef}
-                className="mt-4 max-h-[300px] space-y-3 overflow-y-auto pr-1"
-              >
-                {messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+        {/* ─── Form card ─── */}
+        <motion.div
+          initial={{ opacity: 0, y: 28, scale: 0.97 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.75, ease: EASE }}
+          className="relative mx-auto mt-8 w-full max-w-[720px] px-6 sm:mt-10 sm:px-8"
+        >
+          {/* Gradient stroke wrapper — 1px purple→lavender→transparent
+              ring around the white card. The wrapping div paints the
+              gradient; the inner div sits 1px inset to expose only the
+              border. Cheaper than ::before/mask hacks and avoids extra
+              CSS layers. */}
+          <div
+            className="rounded-[28px] p-px"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(75,40,255,0.32) 0%, rgba(197,186,255,0.45) 35%, rgba(244,225,252,0.55) 65%, rgba(75,40,255,0.10) 100%)",
+            }}
+          >
+            <div className="relative rounded-[27px] bg-white p-6 shadow-[0_36px_90px_-32px_rgba(75,40,255,0.30),0_8px_24px_-12px_rgba(75,40,255,0.10)] sm:p-8">
+              <AnimatePresence mode="wait" initial={false}>
+                {status === "success" ? (
+                  <motion.div
+                    key="success"
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -14 }}
+                    transition={{ duration: 0.45, ease: EASE }}
+                    className="flex flex-col items-center py-6 text-center sm:py-10"
                   >
-                    <div
-                      className={`max-w-[88%] rounded-2xl px-4 py-3 text-[14px] leading-[1.6] ${
-                        m.role === "user"
-                          ? "bg-primary text-white"
-                          : "bg-primary-soft/60 text-foreground"
-                      }`}
+                    <motion.span
+                      initial={{ scale: 0.6, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{
+                        duration: 0.5,
+                        ease: EASE,
+                        type: "spring",
+                        damping: 14,
+                      }}
+                      className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary text-white shadow-[0_14px_30px_-8px_rgba(75,40,255,0.55)]"
                     >
-                      {m.text}
-                    </div>
-                  </div>
-                ))}
+                      <AnimatedCheck size={32} />
+                    </motion.span>
+                    <h3 className="mt-6 text-[24px] font-semibold tracking-[-0.02em] text-foreground">
+                      Thanks — we got it.
+                    </h3>
+                    <p className="mt-3 max-w-[420px] text-[15px] text-muted">
+                      {form.name.trim().split(/\s+/)[0]
+                        ? `${form.name.trim().split(/\s+/)[0]}, `
+                        : ""}
+                      we&apos;ll review your details and come back within one business day.
+                    </p>
+                  </motion.div>
+                ) : (
+                  <motion.form
+                    key="form"
+                    onSubmit={handleSubmit}
+                    variants={fieldGroup}
+                    initial="hidden"
+                    whileInView="show"
+                    exit={{ opacity: 0 }}
+                    viewport={{ once: true, amount: 0.2 }}
+                    className="space-y-5"
+                    noValidate
+                  >
+                    {/* Honeypot — hidden from humans, common bot trap. */}
+                    <input
+                      type="text"
+                      name="botcheck"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      className="hidden"
+                      aria-hidden="true"
+                    />
 
-                {isTyping && (
-                  <div className="flex justify-start">
-                    <div className="rounded-2xl bg-primary-soft/60 px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 animate-pulse rounded-full bg-primary/60" />
-                        <span className="h-2 w-2 animate-pulse rounded-full bg-primary/60 [animation-delay:120ms]" />
-                        <span className="h-2 w-2 animate-pulse rounded-full bg-primary/60 [animation-delay:240ms]" />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Input */}
-              <div className="mt-5">
-                <label
-                  htmlFor="cta-query"
-                  className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary"
-                >
-                  Your message
-                </label>
-                <textarea
-                  id="cta-query"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      sendMessage();
-                    }
-                  }}
-                  placeholder="We need to redesign our platform and ship a new MVP in eight weeks..."
-                  rows={3}
-                  className="mt-2.5 w-full resize-none rounded-[20px] border border-border bg-transparent px-4 py-3 text-[15px] text-foreground outline-none placeholder:text-tertiary focus:border-primary/40"
-                />
-
-                {/* Quick actions + send */}
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-wrap gap-2">
-                    {QUICK_ACTIONS.map((action) => (
-                      <button
-                        key={action}
-                        type="button"
-                        onClick={() => sendMessage(action)}
-                        disabled={isTyping}
-                        className="rounded-full bg-primary-soft px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary transition hover:bg-primary-tint/40 disabled:opacity-55"
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <Field
+                        id="ct-name"
+                        label="Full name"
+                        required
+                        error={errors.name}
                       >
-                        {action}
+                        <input
+                          id="ct-name"
+                          name="name"
+                          type="text"
+                          autoComplete="name"
+                          value={form.name}
+                          onChange={(e) => update("name", e.target.value)}
+                          aria-invalid={!!errors.name}
+                          aria-describedby={errors.name ? "ct-name-error" : undefined}
+                          placeholder="Your full name"
+                          className={`${inputBase} ${errors.name ? inputError : ""}`}
+                        />
+                      </Field>
+                      <Field
+                        id="ct-email"
+                        label="Work email"
+                        required
+                        error={errors.email}
+                      >
+                        <input
+                          id="ct-email"
+                          name="email"
+                          type="email"
+                          autoComplete="email"
+                          inputMode="email"
+                          value={form.email}
+                          onChange={(e) => update("email", e.target.value)}
+                          aria-invalid={!!errors.email}
+                          aria-describedby={errors.email ? "ct-email-error" : undefined}
+                          placeholder="you@company.com"
+                          className={`${inputBase} ${errors.email ? inputError : ""}`}
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <Field
+                        id="ct-company"
+                        label="Company name"
+                        required
+                        error={errors.company}
+                      >
+                        <input
+                          id="ct-company"
+                          name="company"
+                          type="text"
+                          autoComplete="organization"
+                          value={form.company}
+                          onChange={(e) => update("company", e.target.value)}
+                          aria-invalid={!!errors.company}
+                          aria-describedby={errors.company ? "ct-company-error" : undefined}
+                          placeholder="Your company"
+                          className={`${inputBase} ${errors.company ? inputError : ""}`}
+                        />
+                      </Field>
+                      <Field id="ct-role" label="Role / Title">
+                        <input
+                          id="ct-role"
+                          name="role"
+                          type="text"
+                          autoComplete="organization-title"
+                          value={form.role}
+                          onChange={(e) => update("role", e.target.value)}
+                          placeholder="Founder, CTO, PM..."
+                          className={inputBase}
+                        />
+                      </Field>
+                    </div>
+
+                    <Field id="ct-budget" label="Project budget">
+                      <div className="relative">
+                        <select
+                          id="ct-budget"
+                          name="budget"
+                          value={form.budget}
+                          onChange={(e) => update("budget", e.target.value)}
+                          className={`${inputBase} cursor-pointer appearance-none pr-12 ${
+                            form.budget ? "" : "text-tertiary"
+                          }`}
+                        >
+                          {BUDGET_OPTIONS.map((opt) => (
+                            <option
+                              key={opt.value}
+                              value={opt.value}
+                              disabled={opt.value === ""}
+                              className="text-foreground"
+                            >
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-muted">
+                          <ChevronDown size={16} />
+                        </span>
+                      </div>
+                    </Field>
+
+                    <Field id="ct-details" label="Tell us about your project">
+                      <textarea
+                        id="ct-details"
+                        name="details"
+                        value={form.details}
+                        onChange={(e) =>
+                          update("details", e.target.value.slice(0, DETAILS_MAX))
+                        }
+                        placeholder="What are you building, and where are you stuck?"
+                        rows={4}
+                        maxLength={DETAILS_MAX}
+                        className={`${inputBase} resize-none`}
+                      />
+                      <div className="mt-1.5 flex justify-end text-[11px] text-tertiary">
+                        <span aria-live="polite">
+                          {form.details.length}/{DETAILS_MAX}
+                        </span>
+                      </div>
+                    </Field>
+
+                    {submitError && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        role="alert"
+                        className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700"
+                      >
+                        {submitError}
+                      </motion.div>
+                    )}
+
+                    <motion.div variants={fieldItem} className="flex flex-col gap-3 pt-2">
+                      <button
+                        type="submit"
+                        disabled={status === "submitting"}
+                        className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-primary px-7 py-[18px] text-[15px] font-semibold text-white shadow-[0_12px_30px_-12px_rgba(75,40,255,0.65)] transition-all duration-300 hover:shadow-[0_16px_38px_-10px_rgba(75,40,255,0.75)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {/* Shine sweep on hover — pure CSS, GPU-cheap */}
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute inset-0 translate-x-[-120%] bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[120%]"
+                        />
+                        {status === "submitting" ? (
+                          <>
+                            <Spinner size={16} />
+                            <span>Sending…</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="relative">Talk to our team</span>
+                            <span className="relative inline-block transition-transform duration-300 ease-out group-hover:translate-x-1">
+                              <ArrowRight size={16} />
+                            </span>
+                          </>
+                        )}
                       </button>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={resetChat}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-[13px] font-medium text-muted transition hover:text-foreground hover:border-border-mid"
-                      aria-label="Reset chat"
-                    >
-                      <ResetIcon size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => sendMessage()}
-                      disabled={!inputValue.trim() || isTyping}
-                      className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-55 shadow-[0_10px_28px_-12px_rgba(75,40,255,0.6)]"
-                    >
-                      Send
-                      <SendIcon size={13} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-3 text-center sm:text-right">
-                  <a
-                    href={mailtoHref}
-                    className="text-[12px] font-medium text-muted hover:text-primary transition"
-                  >
-                    Continue by email →
-                  </a>
-                </div>
-              </div>
-            </motion.div>
+                      <p className="text-center text-[12px] text-tertiary">
+                        No spam — just a focused reply from a real human.
+                      </p>
+                    </motion.div>
+                  </motion.form>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );

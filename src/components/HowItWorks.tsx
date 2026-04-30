@@ -309,8 +309,10 @@ function ScrollPills({
   return (
     <div
       role="tablist"
-      className="flex items-center"
-      style={{ gap: TUNING.pill.gap }}
+      // gap-2 on mobile (8px — meets touch-spacing min) → gap-1 (4px, Figma) on sm+.
+      // The 8px floor on phones keeps adjacent pills tappable without overlap; on
+      // tablet/desktop the cursor doesn't need the breathing room so we honor Figma.
+      className="flex items-center gap-2 sm:gap-1"
     >
       {STEPS.map((step, i) => {
         const isActive = i === active;

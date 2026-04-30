@@ -98,7 +98,7 @@ export default function Hero() {
     <section
       id="top"
       aria-label="Hero"
-      className="relative w-full overflow-hidden bg-white min-h-screen lg:h-screen lg:min-h-[745px]"
+      className="relative flex w-full flex-col overflow-hidden bg-white min-h-[50svh] sm:min-h-screen lg:h-screen lg:min-h-[745px]"
     >
       {/* Soft base wash — white top fading to lavender, plus a subtle radial
           pulled from the blob cluster so the purple reads even when heavy blur
@@ -209,9 +209,9 @@ export default function Hero() {
       />
 
       {/* Content container — 1440 max, Figma positions via percentages of 745h */}
-      <div className="relative mx-auto flex h-full w-full max-w-[1440px] flex-col px-6 sm:px-8 lg:px-14 xl:px-20">
+      <div className="relative mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-6 sm:px-8 lg:px-14 xl:px-20">
         {/* Headline block — Figma top 220/745 ≈ 29.5%, centered */}
-        <div className="flex flex-1 flex-col justify-start pt-[22vh] sm:pt-[24vh] lg:pt-[29.5vh]">
+        <div className="flex flex-1 flex-col justify-start pt-28 sm:pt-[24vh] lg:pt-[29.5vh]">
           <h1
             className="mx-auto text-center text-black [font-family:var(--font-albert-sans),Helvetica] font-medium leading-[1]"
             style={{
@@ -238,9 +238,9 @@ export default function Hero() {
         </div>
 
         {/* Bottom row — subtitle (left) + CTA (right), Figma top 560/745 ≈ 75.2% */}
-        <div className="flex flex-col gap-6 pb-[5vh] lg:flex-row lg:items-end lg:justify-between lg:gap-10 lg:pb-[9vh]">
+        <div className="flex flex-col gap-6 pb-[8vh] lg:flex-row lg:items-end lg:justify-between lg:gap-10 lg:pb-[9vh]">
           <p
-            className="max-w-[908px] text-left [font-family:var(--font-albert-sans),Helvetica] font-normal text-neutral-700 leading-[1.15] opacity-0"
+            className="max-w-[908px] text-center lg:text-left [font-family:var(--font-albert-sans),Helvetica] font-normal text-neutral-700 leading-[1.15] opacity-0"
             style={{
               fontSize: "clamp(20px, 2.2vw, 32px)",
               letterSpacing: "-0.06em",
@@ -253,7 +253,7 @@ export default function Hero() {
           </p>
 
           <div
-            className="flex shrink-0 justify-start opacity-0 lg:justify-end"
+            className="flex shrink-0 justify-center opacity-0 lg:justify-end"
             style={{
               animation: "fade-up 0.7s cubic-bezier(0.22,1,0.36,1) both",
               animationDelay: `${ctaDelay}s`,
