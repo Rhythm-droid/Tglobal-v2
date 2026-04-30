@@ -4,15 +4,20 @@ import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { useState } from "react";
 
 /* ─── Web3Forms backend ──────────────────────────────────────────
- * Submissions POST to https://api.web3forms.com/submit and email
- * the configured inbox for this access key — same endpoint used by
- * the previous tglobal.in site, so submissions land in the same
- * place without any new wiring. To rotate the destination, replace
- * the access key in the Web3Forms dashboard rather than touching
- * code. */
+ * Both modes (Project / Startup) POST to the same access key. The
+ * `subject` field is prefixed differently so the inbox can filter
+ * the two streams (e.g. a Gmail filter on "[Startup]"). Same
+ * endpoint as the previous tglobal.in site, so submissions land in
+ * the same inbox with no new wiring. */
 const ACCESS_KEY = "8ca5ba96-be53-4698-bbc8-89b92c007835";
 const ENDPOINT = "https://api.web3forms.com/submit";
 
+const DETAILS_MAX = 300;
+const EASE = [0.22, 1, 0.36, 1] as const;
+
+type FormMode = "project" | "startup";
+
+/* ─── Selects ────────────────────────────────────────────────── */
 const BUDGET_OPTIONS = [
   { value: "", label: "Select a budget range" },
   { value: "<25k", label: "Less than $25,000" },
@@ -21,16 +26,45 @@ const BUDGET_OPTIONS = [
   { value: "exploring", label: "Just exploring" },
 ] as const;
 
-const DETAILS_MAX = 300;
-const EASE = [0.22, 1, 0.36, 1] as const;
+const STAGE_OPTIONS = [
+  { value: "", label: "Select your stage" },
+  { value: "pre-seed", label: "Pre-seed / Idea" },
+  { value: "seed", label: "Seed" },
+  { value: "series-a", label: "Series A" },
+  { value: "series-b+", label: "Series B+" },
+  { value: "bootstrapped", label: "Bootstrapped / Profitable" },
+] as const;
 
+const COUNTRY_CODES = [
+  { value: "+91", label: "+91" },
+  { value: "+1", label: "+1" },
+  { value: "+44", label: "+44" },
+  { value: "+61", label: "+61" },
+  { value: "+971", label: "+971" },
+  { value: "+49", label: "+49" },
+  { value: "+33", label: "+33" },
+  { value: "+81", label: "+81" },
+  { value: "+86", label: "+86" },
+] as const;
+
+/* ─── Single state shape covers both modes.
+ * Common fields (name, email, company, role) carry over when the
+ * user toggles between modes so they don't retype if they change
+ * their mind mid-fill. Mode-specific fields stay separate. */
 interface FormState {
+  // Shared
   name: string;
   email: string;
   company: string;
   role: string;
+  // Project-only
   budget: string;
   details: string;
+  // Startup-only
+  countryCode: string;
+  phone: string;
+  stage: string;
+  linkedin: string;
 }
 
 const INITIAL_FORM: FormState = {
@@ -40,36 +74,47 @@ const INITIAL_FORM: FormState = {
   role: "",
   budget: "",
   details: "",
+  countryCode: "+91",
+  phone: "",
+  stage: "",
+  linkedin: "",
 };
 
 type FieldKey = keyof FormState;
 type SubmitStatus = "idle" | "submitting" | "success";
 
+const SUBTITLES: Record<FormMode, string> = {
+  project:
+    "Share what you're building and we'll come back with a focused next step — usually within a business day.",
+  startup:
+    "Tell us your stage and we'll route you to a sprint planner who's shipped MVPs in your space.",
+};
+
+const SUBMIT_LABELS: Record<FormMode, string> = {
+  project: "Talk to our team",
+  startup: "Request my Sprint Plan",
+};
+
+const TOGGLE_PROMPT: Record<FormMode, { lead: string; cta: string }> = {
+  project: {
+    lead: "Building an early-stage startup? ",
+    cta: "Try Sprint Planning",
+  },
+  startup: {
+    lead: "Not a startup? ",
+    cta: "Talk to our team",
+  },
+};
+
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-/* ─── Framer-motion variants for staggered field entrance ──────
- * Triggered once when the form card enters the viewport. The card
- * wrapper handles its own scale-in; this variant set drives the
- * fields' rhythm so they arrive sequentially rather than all at
- * once, matching the Capabilities and Hero entrance feel. */
-const fieldGroup: Variants = {
-  hidden: { opacity: 1 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.055, delayChildren: 0.18 },
-  },
-};
-
-const fieldItem: Variants = {
-  hidden: { opacity: 0, y: 14 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.55, ease: EASE },
-  },
-};
+function isValidPhone(value: string): boolean {
+  // Permissive: 7+ digits, allows spaces/dashes/dots — server-side can normalise.
+  const digits = value.replace(/[^\d]/g, "");
+  return digits.length >= 7 && digits.length <= 15;
+}
 
 /* ─── Icons ──────────────────────────────────────────────────── */
 function ArrowRight({ size = 16 }: { size?: number }) {
@@ -127,9 +172,6 @@ function Spinner({ size = 16 }: { size?: number }) {
   );
 }
 
-/* Animated stroke draw — pathLength is framer-motion's idiomatic
-   way of doing the SVG dash-offset trick without the manual
-   stroke-dasharray dance. */
 function AnimatedCheck({ size = 32 }: { size?: number }) {
   return (
     <svg
@@ -153,10 +195,28 @@ function AnimatedCheck({ size = 32 }: { size?: number }) {
   );
 }
 
-/* ─── Field wrapper ──────────────────────────────────────────── */
+/* ─── Animation variants ─────────────────────────────────────── */
+const fieldGroup: Variants = {
+  hidden: { opacity: 1 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.045, delayChildren: 0.08 },
+  },
+};
+
+const fieldItem: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: EASE },
+  },
+};
+
+/* ─── Shared input styling ───────────────────────────────────── */
 const inputBase =
   "w-full rounded-2xl border border-border bg-white/95 px-5 py-4 text-[16px] text-foreground placeholder:text-tertiary outline-none transition-[border-color,background-color,box-shadow] duration-200 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10";
-const inputError =
+const inputErrorClass =
   "border-red-400 focus:border-red-500 focus:ring-red-100";
 
 interface FieldProps {
@@ -201,6 +261,7 @@ function Field({ id, label, required, error, hint, children }: FieldProps) {
 
 /* ─── Section ────────────────────────────────────────────────── */
 export default function CTA() {
+  const [mode, setMode] = useState<FormMode>("project");
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [status, setStatus] = useState<SubmitStatus>("idle");
@@ -217,12 +278,38 @@ export default function CTA() {
     }
   };
 
+  const switchMode = (next: FormMode) => {
+    if (next === mode) return;
+    /* Clear errors that were specific to the previous mode — keeping
+       them would show "phone is required" after toggling away from
+       the startup form, which is noisy. Common-field errors stay so
+       a half-validated user doesn't lose feedback when toggling. */
+    setErrors((prev) => {
+      const carry: Partial<Record<FieldKey, string>> = {};
+      const sharedKeys: FieldKey[] = ["name", "email", "company", "role"];
+      for (const k of sharedKeys) {
+        if (prev[k]) carry[k] = prev[k];
+      }
+      return carry;
+    });
+    setSubmitError("");
+    setMode(next);
+  };
+
   const validate = (): boolean => {
     const next: Partial<Record<FieldKey, string>> = {};
     if (!form.name.trim()) next.name = "Your name is required";
     if (!form.email.trim()) next.email = "Email is required";
     else if (!isValidEmail(form.email)) next.email = "Please enter a valid email";
     if (!form.company.trim()) next.company = "Company name is required";
+
+    if (mode === "startup") {
+      if (!form.phone.trim()) next.phone = "Phone number is required";
+      else if (!isValidPhone(form.phone))
+        next.phone = "Please enter a valid phone number";
+      if (!form.stage.trim()) next.stage = "Please select your stage";
+    }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -231,13 +318,61 @@ export default function CTA() {
     e.preventDefault();
     if (status === "submitting") return;
     if (!validate()) {
-      const firstInvalid = (Object.keys(errors)[0] || "name") as FieldKey;
-      document.getElementById(`ct-${firstInvalid}`)?.focus();
+      const firstInvalid = Object.keys(errors)[0] as FieldKey | undefined;
+      const idMap: Partial<Record<FieldKey, string>> = {
+        name: "ct-name",
+        email: "ct-email",
+        company: "ct-company",
+        role: "ct-role",
+        budget: "ct-budget",
+        details: "ct-details",
+        phone: "ct-phone",
+        stage: "ct-stage",
+        linkedin: "ct-linkedin",
+      };
+      const id = idMap[firstInvalid ?? "name"] ?? "ct-name";
+      document.getElementById(id)?.focus();
       return;
     }
 
     setStatus("submitting");
     setSubmitError("");
+
+    const subjectPrefix = mode === "startup" ? "Startup" : "Project";
+    const fullPhone =
+      mode === "startup"
+        ? `${form.countryCode} ${form.phone}`.trim()
+        : "—";
+
+    const payload =
+      mode === "project"
+        ? {
+            access_key: ACCESS_KEY,
+            from_name: "TGlobal Website",
+            subject: `[${subjectPrefix}] inquiry — ${form.name} (${form.company})`,
+            mode,
+            name: form.name,
+            email: form.email,
+            company: form.company,
+            role: form.role || "—",
+            budget: form.budget || "—",
+            details: form.details || "—",
+            botcheck: "",
+          }
+        : {
+            access_key: ACCESS_KEY,
+            from_name: "TGlobal Website",
+            subject: `[${subjectPrefix}] inquiry — ${form.name} (${form.company})`,
+            mode,
+            name: form.name,
+            email: form.email,
+            phone: fullPhone,
+            company: form.company,
+            stage: form.stage,
+            role: form.role || "—",
+            linkedin: form.linkedin || "—",
+            botcheck: "",
+          };
 
     try {
       const res = await fetch(ENDPOINT, {
@@ -246,20 +381,8 @@ export default function CTA() {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({
-          access_key: ACCESS_KEY,
-          from_name: "TGlobal Website",
-          subject: `Project inquiry — ${form.name} (${form.company})`,
-          name: form.name,
-          email: form.email,
-          company: form.company,
-          role: form.role || "—",
-          budget: form.budget || "—",
-          details: form.details || "—",
-          botcheck: "",
-        }),
+        body: JSON.stringify(payload),
       });
-
       const data = (await res.json()) as { success?: boolean; message?: string };
       if (data.success) {
         setStatus("success");
@@ -276,15 +399,16 @@ export default function CTA() {
     }
   };
 
+  const otherMode: FormMode = mode === "project" ? "startup" : "project";
+  const togglePrompt = TOGGLE_PROMPT[mode];
+
   return (
     <section
       id="talk-to-us"
       aria-labelledby="talk-to-us-heading"
       className="relative w-full overflow-hidden pt-12 pb-20 sm:pt-16 sm:pb-28 lg:pt-20 lg:pb-32"
     >
-      {/* Lavender wash backdrop — preserved but with a slightly cooler
-          radial centre so the form card feels like it's resting on a
-          warm spotlight rather than a flat tint. */}
+      {/* Lavender wash backdrop */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -293,10 +417,6 @@ export default function CTA() {
             "radial-gradient(ellipse 65% 55% at 50% 48%, rgba(189,112,246,0.20) 0%, rgba(75,40,255,0.07) 38%, transparent 72%), linear-gradient(180deg, #ffffff 0%, #f8f4ff 60%, #f3edff 100%)",
         }}
       />
-      {/* Two stacked glow blobs for depth. The lower one is brighter
-          and offset right; the upper one is dimmer and offset left.
-          md:block keeps them off mobile where the wash already does
-          enough. */}
       <div
         aria-hidden
         className="pointer-events-none absolute left-[55%] top-[60%] hidden h-[460px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4B28FF] opacity-[0.14] blur-[160px] md:block"
@@ -328,15 +448,23 @@ export default function CTA() {
           >
             Tell us about your project
           </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 14 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 0.55, delay: 0.1, ease: EASE }}
-            className="body-lg mx-auto mt-5 max-w-[560px]"
-          >
-            Share what you&apos;re building and we&apos;ll come back with a focused next step — usually within a business day.
-          </motion.p>
+
+          {/* Subtitle swaps with mode — heading stays stable so the
+              section's identity doesn't visibly shift. */}
+          <div className="mx-auto mt-5 max-w-[560px] min-h-[3.5rem]">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.p
+                key={mode}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.35, ease: EASE }}
+                className="body-lg"
+              >
+                {SUBTITLES[mode]}
+              </motion.p>
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* ─── Form card ─── */}
@@ -347,11 +475,6 @@ export default function CTA() {
           transition={{ duration: 0.75, ease: EASE }}
           className="relative mx-auto mt-8 w-full max-w-[720px] px-6 sm:mt-10 sm:px-8"
         >
-          {/* Gradient stroke wrapper — 1px purple→lavender→transparent
-              ring around the white card. The wrapping div paints the
-              gradient; the inner div sits 1px inset to expose only the
-              border. Cheaper than ::before/mask hacks and avoids extra
-              CSS layers. */}
           <div
             className="rounded-[28px] p-px"
             style={{
@@ -395,17 +518,15 @@ export default function CTA() {
                   </motion.div>
                 ) : (
                   <motion.form
-                    key="form"
+                    key={`form-${mode}`}
                     onSubmit={handleSubmit}
                     variants={fieldGroup}
                     initial="hidden"
-                    whileInView="show"
+                    animate="show"
                     exit={{ opacity: 0 }}
-                    viewport={{ once: true, amount: 0.2 }}
                     className="space-y-5"
                     noValidate
                   >
-                    {/* Honeypot — hidden from humans, common bot trap. */}
                     <input
                       type="text"
                       name="botcheck"
@@ -415,6 +536,7 @@ export default function CTA() {
                       aria-hidden="true"
                     />
 
+                    {/* Shared row 1 — Name + Email */}
                     <div className="grid gap-5 sm:grid-cols-2">
                       <Field
                         id="ct-name"
@@ -432,12 +554,12 @@ export default function CTA() {
                           aria-invalid={!!errors.name}
                           aria-describedby={errors.name ? "ct-name-error" : undefined}
                           placeholder="Your full name"
-                          className={`${inputBase} ${errors.name ? inputError : ""}`}
+                          className={`${inputBase} ${errors.name ? inputErrorClass : ""}`}
                         />
                       </Field>
                       <Field
                         id="ct-email"
-                        label="Work email"
+                        label={mode === "startup" ? "Email" : "Work email"}
                         required
                         error={errors.email}
                       >
@@ -451,12 +573,62 @@ export default function CTA() {
                           onChange={(e) => update("email", e.target.value)}
                           aria-invalid={!!errors.email}
                           aria-describedby={errors.email ? "ct-email-error" : undefined}
-                          placeholder="you@company.com"
-                          className={`${inputBase} ${errors.email ? inputError : ""}`}
+                          placeholder={mode === "startup" ? "you@startup.com" : "you@company.com"}
+                          className={`${inputBase} ${errors.email ? inputErrorClass : ""}`}
                         />
                       </Field>
                     </div>
 
+                    {/* Startup-only — Phone with country code (single visual
+                        field with shared border, internal divider). */}
+                    {mode === "startup" && (
+                      <Field
+                        id="ct-phone"
+                        label="Phone number"
+                        required
+                        error={errors.phone}
+                      >
+                        <div
+                          className={`flex items-stretch overflow-hidden rounded-2xl border bg-white/95 transition-[border-color,background-color,box-shadow] duration-200 focus-within:border-primary focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/10 ${
+                            errors.phone ? "border-red-400 focus-within:border-red-500 focus-within:ring-red-100" : "border-border"
+                          }`}
+                        >
+                          <div className="relative">
+                            <select
+                              aria-label="Country code"
+                              value={form.countryCode}
+                              onChange={(e) => update("countryCode", e.target.value)}
+                              className="h-full cursor-pointer appearance-none border-0 bg-transparent py-4 pl-5 pr-9 text-[16px] text-foreground focus:outline-none"
+                            >
+                              {COUNTRY_CODES.map((c) => (
+                                <option key={c.value} value={c.value}>
+                                  {c.label}
+                                </option>
+                              ))}
+                            </select>
+                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted">
+                              <ChevronDown size={14} />
+                            </span>
+                          </div>
+                          <span className="my-3 w-px bg-border" />
+                          <input
+                            id="ct-phone"
+                            name="phone"
+                            type="tel"
+                            autoComplete="tel-national"
+                            inputMode="tel"
+                            value={form.phone}
+                            onChange={(e) => update("phone", e.target.value)}
+                            aria-invalid={!!errors.phone}
+                            aria-describedby={errors.phone ? "ct-phone-error" : undefined}
+                            placeholder="98765 43210"
+                            className="flex-1 border-0 bg-transparent px-4 py-4 text-[16px] text-foreground placeholder:text-tertiary focus:outline-none"
+                          />
+                        </div>
+                      </Field>
+                    )}
+
+                    {/* Shared row 2 — Company + (Role | Stage) */}
                     <div className="grid gap-5 sm:grid-cols-2">
                       <Field
                         id="ct-company"
@@ -473,71 +645,141 @@ export default function CTA() {
                           onChange={(e) => update("company", e.target.value)}
                           aria-invalid={!!errors.company}
                           aria-describedby={errors.company ? "ct-company-error" : undefined}
-                          placeholder="Your company"
-                          className={`${inputBase} ${errors.company ? inputError : ""}`}
+                          placeholder={mode === "startup" ? 'Even "Project X" works' : "Your company"}
+                          className={`${inputBase} ${errors.company ? inputErrorClass : ""}`}
                         />
                       </Field>
-                      <Field id="ct-role" label="Role / Title">
-                        <input
-                          id="ct-role"
-                          name="role"
-                          type="text"
-                          autoComplete="organization-title"
-                          value={form.role}
-                          onChange={(e) => update("role", e.target.value)}
-                          placeholder="Founder, CTO, PM..."
-                          className={inputBase}
-                        />
-                      </Field>
+
+                      {mode === "startup" ? (
+                        <Field
+                          id="ct-stage"
+                          label="Company stage"
+                          required
+                          error={errors.stage}
+                        >
+                          <div className="relative">
+                            <select
+                              id="ct-stage"
+                              name="stage"
+                              value={form.stage}
+                              onChange={(e) => update("stage", e.target.value)}
+                              aria-invalid={!!errors.stage}
+                              aria-describedby={errors.stage ? "ct-stage-error" : undefined}
+                              className={`${inputBase} cursor-pointer appearance-none pr-12 ${
+                                form.stage ? "" : "text-tertiary"
+                              } ${errors.stage ? inputErrorClass : ""}`}
+                            >
+                              {STAGE_OPTIONS.map((opt) => (
+                                <option
+                                  key={opt.value}
+                                  value={opt.value}
+                                  disabled={opt.value === ""}
+                                  className="text-foreground"
+                                >
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                            <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-muted">
+                              <ChevronDown size={16} />
+                            </span>
+                          </div>
+                        </Field>
+                      ) : (
+                        <Field id="ct-role" label="Role / Title">
+                          <input
+                            id="ct-role"
+                            name="role"
+                            type="text"
+                            autoComplete="organization-title"
+                            value={form.role}
+                            onChange={(e) => update("role", e.target.value)}
+                            placeholder="Founder, CTO, PM..."
+                            className={inputBase}
+                          />
+                        </Field>
+                      )}
                     </div>
 
-                    <Field id="ct-budget" label="Project budget">
-                      <div className="relative">
-                        <select
-                          id="ct-budget"
-                          name="budget"
-                          value={form.budget}
-                          onChange={(e) => update("budget", e.target.value)}
-                          className={`${inputBase} cursor-pointer appearance-none pr-12 ${
-                            form.budget ? "" : "text-tertiary"
-                          }`}
-                        >
-                          {BUDGET_OPTIONS.map((opt) => (
-                            <option
-                              key={opt.value}
-                              value={opt.value}
-                              disabled={opt.value === ""}
-                              className="text-foreground"
+                    {/* Mode-specific row(s) */}
+                    {mode === "project" ? (
+                      <>
+                        <Field id="ct-budget" label="Project budget">
+                          <div className="relative">
+                            <select
+                              id="ct-budget"
+                              name="budget"
+                              value={form.budget}
+                              onChange={(e) => update("budget", e.target.value)}
+                              className={`${inputBase} cursor-pointer appearance-none pr-12 ${
+                                form.budget ? "" : "text-tertiary"
+                              }`}
                             >
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-muted">
-                          <ChevronDown size={16} />
-                        </span>
-                      </div>
-                    </Field>
+                              {BUDGET_OPTIONS.map((opt) => (
+                                <option
+                                  key={opt.value}
+                                  value={opt.value}
+                                  disabled={opt.value === ""}
+                                  className="text-foreground"
+                                >
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                            <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-muted">
+                              <ChevronDown size={16} />
+                            </span>
+                          </div>
+                        </Field>
 
-                    <Field id="ct-details" label="Tell us about your project">
-                      <textarea
-                        id="ct-details"
-                        name="details"
-                        value={form.details}
-                        onChange={(e) =>
-                          update("details", e.target.value.slice(0, DETAILS_MAX))
-                        }
-                        placeholder="What are you building, and where are you stuck?"
-                        rows={4}
-                        maxLength={DETAILS_MAX}
-                        className={`${inputBase} resize-none`}
-                      />
-                      <div className="mt-1.5 flex justify-end text-[11px] text-tertiary">
-                        <span aria-live="polite">
-                          {form.details.length}/{DETAILS_MAX}
-                        </span>
+                        <Field id="ct-details" label="Tell us about your project">
+                          <textarea
+                            id="ct-details"
+                            name="details"
+                            value={form.details}
+                            onChange={(e) =>
+                              update("details", e.target.value.slice(0, DETAILS_MAX))
+                            }
+                            placeholder="What are you building, and where are you stuck?"
+                            rows={4}
+                            maxLength={DETAILS_MAX}
+                            className={`${inputBase} resize-none`}
+                          />
+                          <div className="mt-1.5 flex justify-end text-[11px] text-tertiary">
+                            <span aria-live="polite">
+                              {form.details.length}/{DETAILS_MAX}
+                            </span>
+                          </div>
+                        </Field>
+                      </>
+                    ) : (
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <Field id="ct-role" label="Role / Title">
+                          <input
+                            id="ct-role"
+                            name="role"
+                            type="text"
+                            autoComplete="organization-title"
+                            value={form.role}
+                            onChange={(e) => update("role", e.target.value)}
+                            placeholder="Founder, CTO, PM..."
+                            className={inputBase}
+                          />
+                        </Field>
+                        <Field id="ct-linkedin" label="LinkedIn profile">
+                          <input
+                            id="ct-linkedin"
+                            name="linkedin"
+                            type="url"
+                            autoComplete="url"
+                            value={form.linkedin}
+                            onChange={(e) => update("linkedin", e.target.value)}
+                            placeholder="linkedin.com/in/yourprofile"
+                            className={inputBase}
+                          />
+                        </Field>
                       </div>
-                    </Field>
+                    )}
 
                     {submitError && (
                       <motion.div
@@ -550,13 +792,15 @@ export default function CTA() {
                       </motion.div>
                     )}
 
-                    <motion.div variants={fieldItem} className="flex flex-col gap-3 pt-2">
+                    <motion.div
+                      variants={fieldItem}
+                      className="flex flex-col gap-3 pt-2"
+                    >
                       <button
                         type="submit"
                         disabled={status === "submitting"}
                         className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-primary px-7 py-[18px] text-[15px] font-semibold text-white shadow-[0_12px_30px_-12px_rgba(75,40,255,0.65)] transition-all duration-300 hover:shadow-[0_16px_38px_-10px_rgba(75,40,255,0.75)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {/* Shine sweep on hover — pure CSS, GPU-cheap */}
                         <span
                           aria-hidden
                           className="pointer-events-none absolute inset-0 translate-x-[-120%] bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[120%]"
@@ -568,7 +812,7 @@ export default function CTA() {
                           </>
                         ) : (
                           <>
-                            <span className="relative">Talk to our team</span>
+                            <span className="relative">{SUBMIT_LABELS[mode]}</span>
                             <span className="relative inline-block transition-transform duration-300 ease-out group-hover:translate-x-1">
                               <ArrowRight size={16} />
                             </span>
@@ -584,6 +828,28 @@ export default function CTA() {
               </AnimatePresence>
             </div>
           </div>
+
+          {/* ─── Cross-link toggle below card ───────────────────
+              Heizen-style "Are you a startup? Start here" prompt,
+              but instead of navigating to /startups it swaps the
+              form mode in place. Hidden when the user is already
+              in the success state — they're done; switching back
+              to a fresh empty form would be confusing. */}
+          {status !== "success" && (
+            <div className="mt-6 text-center text-[13px] text-muted">
+              {togglePrompt.lead}
+              <button
+                type="button"
+                onClick={() => switchMode(otherMode)}
+                className="group inline-flex items-center gap-1 align-baseline font-medium text-primary underline decoration-primary/30 underline-offset-[3px] transition hover:text-primary-dark hover:decoration-primary/70"
+              >
+                {togglePrompt.cta}
+                <span className="inline-block transition-transform duration-200 group-hover:translate-x-0.5">
+                  →
+                </span>
+              </button>
+            </div>
+          )}
         </motion.div>
       </div>
     </section>
