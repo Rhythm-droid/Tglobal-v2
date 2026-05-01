@@ -374,14 +374,25 @@ export default function CTA() {
             botcheck: "",
           };
 
+    /* Web3Forms accepts JSON and FormData. We use FormData here because
+       FormData is a CORS "simple request" — no preflight, no
+       `Content-Type: application/json` header that would force one. The
+       JSON endpoint's preflight response from `api.web3forms.com` is
+       missing `Access-Control-Allow-Origin` for some origins (verified
+       from localhost), which causes the browser to block the actual POST.
+       FormData sidesteps that entirely and matches how the previous
+       tglobal.in site posted to the same endpoint. */
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(payload)) {
+      fd.append(k, String(v));
+    }
+
     try {
       const res = await fetch(ENDPOINT, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
+        body: fd,
+        // Intentionally NO Content-Type header — the browser sets
+        // multipart/form-data with the right boundary.
       });
       const data = (await res.json()) as { success?: boolean; message?: string };
       if (data.success) {
