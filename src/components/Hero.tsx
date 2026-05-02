@@ -1,9 +1,25 @@
 import MagneticPill from "./primitives/MagneticPill";
+import AccentTypewriter from "./primitives/AccentTypewriter";
 
-const HEADLINE_LINES = [
+/* Headline tokens. Each is either a plain string (sans-serif rise) or a
+   tagged object marking it as the editorial-accent word — italic
+   Instrument Serif on a lime-green marker highlight, with a typewriter
+   cycle between friction-synonym words. We highlight one token per
+   headline; the LAST line ends with the cycling accent so the headline
+   reads as one unit but pays off the differentiator at the end. */
+type HeadlineWord = string | { text: string; accent: true };
+const HEADLINE_LINES: ReadonlyArray<ReadonlyArray<HeadlineWord>> = [
   ["Software,", "Without"],
-  ["the", "Friction"],
+  ["the", { text: "Friction", accent: true }],
 ] as const;
+
+/* The cycling word list, timing tunings, highlight colour, fade
+   gradient, AND the visible knockout rendering (rectangle with
+   text-shaped holes via SVG mask) all live in
+   primitives/AccentTypewriter.tsx. That file is the only client
+   component in the hero subtree, keeping Hero itself a server
+   component. WordMask below only handles the SHARED rise animation
+   + soft-edge reveal mask that all headline words use. */
 
 /**
  * Three blur ellipses — Figma frame 1440×745.
@@ -20,17 +36,114 @@ const GLOW_BLOBS = [
   { top: "52.21%", left: "10.69%" }, // 389/745, 154/1440
 ] as const;
 
-function WordMask({ word, delay }: { word: string; delay: number }) {
+/* Soft-edge reveal mask — used on the outer WordMask span.
+   ─────────────────────────────────────────────────────────
+   `overflow: hidden` alone produces a sharp horizontal cut at the
+   container's bottom edge, so a rising word appears to emerge from a
+   "knife edge". The boss flagged that as visually abrupt. To soften
+   it we layer a CSS mask gradient on top of the same box: opaque from
+   0–78%, fading to transparent across 78–100%. As the word rises:
+     • the part of the word that's already in the 0–78% band paints
+       at full opacity (no visual difference from before);
+     • the part still in the 78–100% band fades smoothly toward zero
+       so the bottom edge looks like a soft halo rather than a clip;
+     • anything translated below 100% is double-protected by both
+       overflow:hidden AND mask alpha 0 — invisible.
+   At rest the small fade overlap at the baseline reads as premium
+   polish (descenders on the comma in "Software," fade slightly) and
+   is intentional — testing showed eliminating it requires growing the
+   line-box vertically, which would change line-spacing in the headline. */
+const SOFT_REVEAL_MASK =
+  "linear-gradient(180deg, black 0%, black 78%, transparent 100%)";
+
+function WordMask({
+  word,
+  delay,
+  accent = false,
+}: {
+  word: string;
+  delay: number;
+  accent?: boolean;
+}) {
+  /* Accent words need extra vertical room so the highlight box can
+     wrap the entire italic-serif glyph (cap-top above the line-box top,
+     no descenders for the chosen words but we leave room anyway). We
+     extend the OUTER span's padding-top/bottom and offset with negative
+     margins so the surrounding line layout doesn't shift. Same pattern
+     on the inner span, with the highlight rectangle filling the inner
+     span's padding-box via `inset: 0`. The negative margins net to zero
+     so neighbouring words ("the") don't move. */
+  /* Top extension is small (0.04em) so the highlight doesn't reach up
+     into the line-above's descender zone — the comma in "Software,"
+     drops a tail just below its baseline and at line-height:1 that
+     tail lands within ~0.05em of the next line's top, so any larger
+     top overshoot here causes the highlight to brush against (or
+     overlap) the comma. Bottom keeps a slightly larger 0.10em
+     extension because there's no line below the accent word to
+     collide with, and italic serif ascenders/descenders sometimes
+     dip a hair under the baseline. */
+  const outerStyle: React.CSSProperties = {
+    WebkitMaskImage: SOFT_REVEAL_MASK,
+    maskImage: SOFT_REVEAL_MASK,
+    paddingTop: accent ? "0.04em" : undefined,
+    paddingBottom: accent ? "0.10em" : "0.06em",
+    marginTop: accent ? "-0.04em" : undefined,
+    marginBottom: accent ? "-0.04em" : undefined,
+  };
   return (
-    <span className="inline-block overflow-hidden pr-[0.22em] align-bottom pb-[0.06em]">
+    <span
+      className="inline-block overflow-hidden pr-[0.22em] align-bottom"
+      style={outerStyle}
+    >
       <span
         className="inline-block will-change-transform"
         style={{
           animation: "word-rise 1s cubic-bezier(0.22,1,0.36,1) both",
           animationDelay: `${delay}s`,
+          /* Accent words swap to Instrument Serif italic (registered in
+             layout.tsx). Padding gives the highlight room to extend
+             beyond the natural glyph metrics on all sides; negative
+             margin offsets the visual position so the sentence reads
+             on the same baseline as the surrounding sans-serif words.
+
+             color: #ffffff — white text on near-black highlight reads
+             as a high-contrast editorial accent.
+
+             No `min-width` — the highlight box is sized purely by its
+             content (current typewriter text + padding). As the cycle
+             swaps Friction → Limits → Bottlenecks → Delays the box
+             grows and shrinks naturally. The downstream effect is the
+             surrounding word "the" shifting horizontally as the cycle
+             plays; the headline is centered so the whole line slides
+             a few pixels each cycle, which reads as a deliberate
+             editorial gesture rather than a layout bug. */
+          ...(accent && {
+            position: "relative",
+            fontFamily: "var(--font-instrument-serif), Georgia, serif",
+            fontStyle: "italic",
+            fontWeight: 400,
+            /* The accent's visible rendering (rectangle + text-shaped
+               holes) is handled entirely inside <AccentTypewriter />
+               via SVG masking — see primitives/AccentTypewriter.tsx.
+               The HTML text rendered here is hidden (`visibility:
+               hidden`) and exists only to reserve the parent's
+               layout width to match the SVG-rendered text. We keep
+               the matching font-family/style here so the hidden
+               text's metrics (= layout width) are identical to the
+               SVG mask's text — letter-perfect alignment. */
+            /* Padding extends the highlight box past the natural glyph
+               bounds. Top is small (0.04em — see outerStyle for the
+               comma-overlap rationale) and bottom is larger (0.10em).
+               Horizontal padding stays at 0.20em with matching
+               negative margin so the surrounding sans-serif words
+               ("the") don't shift. Net horizontal layout impact is
+               zero — the highlight is purely visual overshoot. */
+            padding: "0.04em 0.20em 0.10em",
+            margin: "-0.04em 0 -0.10em",
+          }),
         }}
       >
-        {word}
+        {accent ? <AccentTypewriter delay={delay} /> : word}
       </span>
     </span>
   );
@@ -219,21 +332,41 @@ export default function Hero() {
               letterSpacing: "-0.06em",
             }}
           >
-            {HEADLINE_LINES.map((line, lineIdx) => (
+            {HEADLINE_LINES.map((line, lineIdx) => {
+              /* Line-2 (and beyond) gets a slightly larger top gap when
+                 it contains an accent token — the highlight box rises
+                 ~0.04em above the line-box top via padding, and at
+                 line-height: 1 the previous line's descenders (e.g.
+                 the comma in "Software,") drop low enough to graze
+                 the highlight. 0.10em (≈12px at 120px headline) opens
+                 enough breathing room to fully clear the descender
+                 without visibly fragmenting the headline. Lines
+                 without an accent keep the original tight 0.02em. */
+              const hasAccent = line.some(
+                (t) => typeof t === "object" && t.accent,
+              );
+              const gap = lineIdx === 0 ? 0 : hasAccent ? "0.10em" : "0.02em";
+              return (
               <span
                 key={lineIdx}
                 className="block lg:whitespace-nowrap"
-                style={{ marginTop: lineIdx === 0 ? 0 : "0.02em" }}
+                style={{ marginTop: gap }}
               >
-                {line.map((word, localIdx) => (
-                  <WordMask
-                    key={`${lineIdx}-${localIdx}-${word}`}
-                    word={word}
-                    delay={delayFor(lineIdx, localIdx)}
-                  />
-                ))}
+                {line.map((token, localIdx) => {
+                  const text = typeof token === "string" ? token : token.text;
+                  const accent = typeof token === "object" && token.accent;
+                  return (
+                    <WordMask
+                      key={`${lineIdx}-${localIdx}-${text}`}
+                      word={text}
+                      delay={delayFor(lineIdx, localIdx)}
+                      accent={accent}
+                    />
+                  );
+                })}
               </span>
-            ))}
+              );
+            })}
           </h1>
         </div>
 
@@ -249,7 +382,8 @@ export default function Hero() {
             }}
           >
             A new way to build — where ideas turn into systems, and systems
-            turn into products.
+            turn into products. AI-native engineering that ships 4× faster,
+            with humans still in charge.
           </p>
 
           <div

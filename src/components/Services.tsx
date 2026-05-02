@@ -676,7 +676,16 @@ export default function Services() {
 
             {/* Cards-area — Figma x=80, y=248, w=1280, h=464. Same overflow:
                 hidden trick we use in HowItWorks: clip the track so cards
-                never bleed outside this band as GSAP translates them. */}
+                never bleed outside this band as GSAP translates them.
+
+                Bilateral soft fade mask (matches HowItWorks): the hard
+                vertical clip at each padX edge looks abrupt as cards
+                translate past, so we layer a `mask-image` with alpha
+                gradients on both sides. Cards entering or leaving the
+                visible band dissolve smoothly instead of snapping at
+                the clip line. Stops at 6% and 94% give a band of
+                roughly the same visible width as the HowItWorks fade,
+                keeping the two pinned sections visually consistent. */}
             <div
               className="absolute flex items-center overflow-hidden"
               style={{
@@ -684,6 +693,10 @@ export default function Services() {
                 right: TUNING.desktop.padX,
                 top: TUNING.desktop.cardsTop,
                 height: TUNING.desktop.cardsHeight,
+                WebkitMaskImage:
+                  "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
+                maskImage:
+                  "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
               }}
             >
               <div

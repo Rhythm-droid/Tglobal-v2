@@ -16,7 +16,7 @@
  *    │                                         │
  *    │ Visual / layout changes:                │
  *    │ • Logo SVG             → <BrandMark />  │
- *    │ • Social icon paths    → <FacebookIcon />, etc. │
+ *    │ • Social icon paths    → <InstagramIcon />, <LinkedInIcon /> │
  *    │ • Ambient glow         → <GlowBackground /> │
  *    │ • Giant text styling   → <GiantWordmark /> │
  *    └─────────────────────────────────────────┘
@@ -87,9 +87,13 @@
        Card bg:         linear-gradient #FAF9F8 → #FFFFFF
 
    (F) SOCIAL ICON HOVER STATE
-       Default: outlined purple ring (Facebook is filled purple always).
-       Hover/focus: solid purple bg + white icon.
+       Default: outlined purple ring around a brand-purple icon.
+       Hover/focus: solid purple bg + white icon (ring fades out, the
+       <a>'s `hover:bg-[#4B28FF]` provides the disc).
        Change via `hover:bg-[#4B28FF] hover:text-white` in each icon's <a>.
+       Only Instagram and LinkedIn are surfaced — see InstagramIcon /
+       LinkedInIcon. Both render as external links (target=_blank,
+       rel=noopener noreferrer).
    ════════════════════════════════════════════════════════════════════════════
 */
 
@@ -99,29 +103,47 @@
 const FOOTER_CONTENT = {
   tagline:
     "This membership will help you plan and execute a variety of projects.",
+  /* Quick Link columns — sourced from src/app/page.tsx section order +
+     Navbar.tsx anchors. Split across two sub-columns purely for layout
+     balance (4 / 3); the LOGICAL order across both columns must match
+     scroll order so users mentally map "footer link → page position".
+     Anchors:
+       #top          → Hero            (scroll to top)
+       #problem      → Problem
+       #how-it-works → HowItWorks
+       #services     → Services
+       #capabilities → Capabilities
+       #our-work     → Clients (Projects)
+       #talk-to-us   → CTA (Contact Us)
+     If a section is added/removed/renamed in page.tsx, mirror it here. */
   quickLinkColumns: [
     [
-      { label: "Home", href: "#" },
-      { label: "About Us", href: "#about" },
-      { label: "Pricing", href: "#pricing" },
+      { label: "Home", href: "#top" },
+      { label: "Problem", href: "#problem" },
+      { label: "How it Works", href: "#how-it-works" },
+      { label: "Services", href: "#services" },
     ],
     [
-      { label: "Blog", href: "#blog" },
-      { label: "Blog Single", href: "#blog-single" },
-      { label: "Our Team", href: "#team" },
-      { label: "Integrations", href: "#integrations" },
-      { label: "Contact Us", href: "#contact" },
+      { label: "Capabilities", href: "#capabilities" },
+      { label: "Projects", href: "#our-work" },
+      { label: "Contact Us", href: "#talk-to-us" },
     ],
   ],
   supportLinks: [
     { label: "FAQ'S", href: "#faq" },
     { label: "Privacy Policy", href: "#privacy" },
-    { label: "Contact Us", href: "#contact" },
+    /* Contact Us routes to the CTA section so the user is taken straight
+       to the "talk to us" form. Same anchor as Quick Link → Contact Us
+       and Navbar's trailing pill. */
+    { label: "Contact Us", href: "#talk-to-us" },
   ],
+  /* Only Instagram and LinkedIn are surfaced now. Both are external
+     destinations, so the icon components add `target="_blank"` and
+     `rel="noopener noreferrer"`. If you need to add or remove a network,
+     update this object AND the matching icon render block below. */
   socialLinks: {
-    facebook: "#",
-    twitter: "#",
-    linkedin: "#",
+    instagram: "https://www.instagram.com/tglobal_ai",
+    linkedin: "https://www.linkedin.com/company/tglobal-digital/",
   },
   copyright: "Copyright © 2025. All Rights Reserved",
   giantWordmark: "TGlobal", // Capital T + G per product name
@@ -161,48 +183,65 @@ function BrandMark() {
    Social icons (exact SVG paths from Anima export)
    ──────────────────────────────────────────────────────────── */
 /**
- * Social icons — ALL share the same hover pattern:
- *   Default state: outlined (except Facebook which is filled by default).
- *   Hover/focus state: solid #4B28FF background with WHITE icon — matches
- *   the reference screenshot the user provided.
+ * Social icons — Instagram and LinkedIn share the same hover pattern:
+ *   Default state: outlined ring with the brand purple icon.
+ *   Hover/focus state: solid #4B28FF background with a WHITE icon —
+ *   matches the reference screenshot.
  *
  * Implementation notes:
- *   - X and LinkedIn use `currentColor` on their SVG paths so a single
- *     `text-[#4B28FF] group-hover:text-white` class flips the icon color.
- *   - Facebook stays purple by default (matches Figma); hover just adds a
- *     subtle scale so the interaction still feels responsive.
+ *   - Both icons use `currentColor` on their SVG paths so a single
+ *     `text-[#4B28FF] group-hover:text-white` class flips the icon
+ *     colour. The outer stroked <rect> ring fades out on hover; the
+ *     <a>'s `hover:bg-[#4B28FF]` provides the filled disc underneath.
  *   - `group` + `group-hover` drives everything from the <a> wrapper.
+ *   - Both destinations are external; we add `target="_blank"` and
+ *     `rel="noopener noreferrer"` for security (noopener prevents the
+ *     destination from accessing window.opener) and to match user
+ *     expectation that brand profiles open in a new tab.
  */
-function FacebookIcon({ href }: { href: string }) {
+function InstagramIcon({ href }: { href: string }) {
   return (
     <a
       href={href}
-      aria-label="Facebook"
-      className="group inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#4B28FF] text-white transition-transform duration-200 hover:scale-105 focus-visible:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4B28FF]"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Instagram"
+      className="group relative inline-flex h-10 w-10 items-center justify-center rounded-full text-[#4B28FF] transition-colors duration-200 hover:bg-[#4B28FF] hover:text-white focus-visible:bg-[#4B28FF] focus-visible:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4B28FF]"
     >
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden>
-        <path
-          fillRule="evenodd"
-          clipRule="evenodd"
-          d="M24.8347 18.0547H21.5565V15.461C21.5565 14.7451 22.1439 14.8125 22.8678 14.8125H24.1791V11.5703H21.5565C20.5131 11.5703 19.5125 11.9802 18.7748 12.7099C18.0371 13.4395 17.6226 14.4291 17.6226 15.461V18.0547H15V21.2969H17.6226V28.4298H21.5565V21.2969H23.5234L24.8347 18.0547Z"
-          fill="currentColor"
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden className="absolute inset-0">
+        {/* Stroke ring — same pattern as LinkedIn: fades out on hover so
+            the parent <a>'s purple background reads through cleanly. */}
+        <rect
+          x="0.5"
+          y="0.5"
+          width="39"
+          height="39"
+          rx="19.5"
+          stroke="currentColor"
+          className="transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0"
         />
-      </svg>
-    </a>
-  );
-}
-function XIcon({ href }: { href: string }) {
-  return (
-    <a
-      href={href}
-      aria-label="X (Twitter)"
-      className="group inline-flex h-10 w-10 items-center justify-center rounded-full outline outline-1 -outline-offset-1 outline-[#4B28FF] text-[#4B28FF] transition-colors duration-200 hover:bg-[#4B28FF] hover:text-white focus-visible:bg-[#4B28FF] focus-visible:text-white focus-visible:outline-2"
-    >
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-        <path
-          d="M11.025 0.65625H13.172L8.482 6.03025L14 13.3442H9.68L6.294 8.90925L2.424 13.3442H0.275L5.291 7.59425L0 0.65725H4.43L7.486 4.71025L11.025 0.65625ZM10.27 12.0562H11.46L3.78 1.87725H2.504L10.27 12.0562Z"
-          fill="currentColor"
+        {/* Camera body (rounded square) */}
+        <rect
+          x="13"
+          y="13"
+          width="14"
+          height="14"
+          rx="4"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          fill="none"
         />
+        {/* Lens */}
+        <circle
+          cx="20"
+          cy="20"
+          r="3.4"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          fill="none"
+        />
+        {/* Flash / corner dot */}
+        <circle cx="23.7" cy="16.3" r="0.9" fill="currentColor" />
       </svg>
     </a>
   );
@@ -211,6 +250,8 @@ function LinkedInIcon({ href }: { href: string }) {
   return (
     <a
       href={href}
+      target="_blank"
+      rel="noopener noreferrer"
       aria-label="LinkedIn"
       className="group relative inline-flex h-10 w-10 items-center justify-center rounded-full text-[#4B28FF] transition-colors duration-200 hover:bg-[#4B28FF] hover:text-white focus-visible:bg-[#4B28FF] focus-visible:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4B28FF]"
     >
@@ -402,14 +443,17 @@ export default function Footer() {
                 </ul>
               </nav>
 
-              {/* Social links */}
+              {/* Social links — Instagram + LinkedIn only.
+                  Width fixed at 152 px to preserve the desktop layout
+                  even though we now render 2 icons instead of 3 (the
+                  earlier 3-icon row used the full 152 px; the 2-icon
+                  row sits left-aligned in that same column). */}
               <div className="flex w-[152px] flex-col gap-4">
                 <h3 className="text-base font-semibold leading-[26px] text-black">
                   Social Link
                 </h3>
                 <div className="flex items-center gap-4">
-                  <FacebookIcon href={FOOTER_CONTENT.socialLinks.facebook} />
-                  <XIcon href={FOOTER_CONTENT.socialLinks.twitter} />
+                  <InstagramIcon href={FOOTER_CONTENT.socialLinks.instagram} />
                   <LinkedInIcon href={FOOTER_CONTENT.socialLinks.linkedin} />
                 </div>
               </div>

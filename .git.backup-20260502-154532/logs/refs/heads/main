@@ -1,0 +1,16 @@
+0000000000000000000000000000000000000000 3bc9b8832207eabeaee5d513e63501323759a2f4 Rhythm Mittal <rhythmmittal19@gmail.com> 1775639531 +0000	commit (initial): Initial commit from Create Next App
+3bc9b8832207eabeaee5d513e63501323759a2f4 0836ce493093c0a19559350035d2de3fdccf0a84 Rhythm-droid <implementations@tglobal.in> 1775726580 +0000	commit: chore: project shell — security headers, globals, tooling config
+0836ce493093c0a19559350035d2de3fdccf0a84 a31c4d555718036ba9448eaae998110e8d54b2bb Rhythm-droid <implementations@tglobal.in> 1775832300 +0000	commit: feat(primitives): motion, layout, and interaction building blocks
+a31c4d555718036ba9448eaae998110e8d54b2bb 5b34c7ed3279bb97017c0477c001d2641b0d31d7 Rhythm-droid <implementations@tglobal.in> 1775905920 +0000	commit: feat(navbar): sticky header with magnetic nav pill
+5b34c7ed3279bb97017c0477c001d2641b0d31d7 c7e31945970c26a5f32d6d5241583d0033312d7b Rhythm-droid <implementations@tglobal.in> 1776011400 +0000	commit: feat(hero): hero section with animated headline and CTA
+c7e31945970c26a5f32d6d5241583d0033312d7b e14be916fbbe6869ab22940617ae78d51061a1b0 Rhythm-droid <implementations@tglobal.in> 1776074700 +0000	commit: feat(problem): problem section with scroll-linked reveal
+e14be916fbbe6869ab22940617ae78d51061a1b0 ea7d955dff0ed31917e2031b6c98868195467881 Rhythm-droid <implementations@tglobal.in> 1776181800 +0000	commit: feat(services): services section with timeline-driven cards
+ea7d955dff0ed31917e2031b6c98868195467881 ecf52a8ec8d9243b3205829b72229cab0c8a1648 Rhythm-droid <implementations@tglobal.in> 1776345420 +0000	commit: feat(how-it-works): pinned horizontal scroll timeline
+ecf52a8ec8d9243b3205829b72229cab0c8a1648 435f9472a1ca608680472145a67f0475a7c0508a Rhythm-droid <implementations@tglobal.in> 1776447660 +0000	commit: feat(stats): result section with 5-card grid
+435f9472a1ca608680472145a67f0475a7c0508a 719432361285a32a8af82d414413c973075a7775 Rhythm-droid <implementations@tglobal.in> 1776598080 +0000	commit: feat(capabilities): capability cards and brand logos
+719432361285a32a8af82d414413c973075a7775 0a2162c2dd907045b29cc22e8debb13b4f9a5896 Rhythm-droid <implementations@tglobal.in> 1776693720 +0000	commit: feat(clients): 'Our Work' brand row
+0a2162c2dd907045b29cc22e8debb13b4f9a5896 4d0adea2aaad29dd2c3f5110e48144184dce5d17 Rhythm-droid <implementations@tglobal.in> 1776797700 +0000	commit: feat(cta, footer): closing CTA and footer with ambient glow
+4d0adea2aaad29dd2c3f5110e48144184dce5d17 5da88bdf3380e5271c7de01e93a8da5131120171 Rhythm-droid <implementations@tglobal.in> 1776853980 +0000	commit: feat(app): wire up sections and enable route-level code splitting
+5da88bdf3380e5271c7de01e93a8da5131120171 d5d86a98f6224dfb820037e35a696ea19188e788 Rhythm-droid <implementations@tglobal.in> 1776960420 +0000	commit: docs: project README — stack, sections, asset conventions
+d5d86a98f6224dfb820037e35a696ea19188e788 c7cf8ad2f3b4fee4f1bd52038e6e7a935e4e0554 Rhythm-droid <implementations@tglobal.in> 1776960420 +0000	filter-branch: rewrite
+c7cf8ad2f3b4fee4f1bd52038e6e7a935e4e0554 df222e1e2cbe2592ca3f0a2ef348382f19f2a35d Rhythm-droid <implementations@tglobal.in> 1777010100 +0000	commit: chore: move AGENTS.md to local-only

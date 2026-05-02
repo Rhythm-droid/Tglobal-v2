@@ -168,8 +168,21 @@ const TUNING = {
     sectionHeight: 800,
     padLeft: "clamp(40px, 5.56vw, 80px)",
     headerWidth: "clamp(296px, 28.68vw, 413px)",
-    cardsLeft: "clamp(532px, 51.94vw, 748px)",
-    pillsLeft: "clamp(617px, 64.58vw, 930px)",
+    /* Card track + pills shifted ~120 px left of the original Figma
+       positions (cardsLeft was 748 px / 51.94vw; pillsLeft was 930 px
+       / 64.58vw). The shift is uniform: both values dropped by the
+       same delta in absolute px, % of vw, and lower-bound min, so the
+       gap between cards and pills (~182 px) is preserved across every
+       viewport — pills still sit centred under the visible card area
+       like the original layout. The header column (padLeft +
+       headerWidth, ~493 px right edge at 1440) is untouched, so the
+       gap between the heading copy and the first card just compresses
+       from ~255 px to ~135 px — visibly tighter, but still has room
+       to breathe. The pinned-scroll and cross-fade behaviour relies
+       on the cards-area wrapper extending to `right: 0`, which is
+       unchanged here, so all GSAP timelines keep working as-is. */
+    cardsLeft: "clamp(412px, 43.61vw, 628px)",
+    pillsLeft: "clamp(497px, 56.25vw, 810px)",
     /** Vertical offset from section centre to pills top edge (Figma: card
      *  bottom 655 + gap 62.5 = 717.5 → centre 400 + 317.5). Approximated to
      *  317 because pills are 7px tall and we anchor the top edge. */
@@ -513,10 +526,32 @@ export default function HowItWorks() {
                 heading. The wrapper handles vertical centring (flex
                 items-center) so the track only carries GSAP's horizontal
                 translate — if both lived on the same element GSAP's
-                transform write would clobber a translateY. */}
+                transform write would clobber a translateY.
+
+                Bilateral soft fade mask:
+                  `overflow-hidden` alone produces sharp vertical cuts at
+                  both edges of the wrapper — cards translating left
+                  snap from fully visible to clipped at the LEFT edge,
+                  and on initial state (or when scrolling backward) the
+                  rightmost partially-visible card also clips at a hard
+                  RIGHT edge. We layer a `mask-image` with horizontal
+                  alpha gradients on both sides (transparent at 0% →
+                  opaque from 6% → opaque to 94% → transparent at 100%)
+                  so cards entering or leaving either edge dissolve
+                  smoothly instead of clipping. The gradient stops are
+                  percentages so the fade scales with the wrapper width
+                  across viewports. Both -webkit-mask-image and
+                  mask-image are set for cross-browser coverage. */}
             <div
               className="absolute inset-y-0 flex items-center overflow-hidden"
-              style={{ left: TUNING.desktop.cardsLeft, right: 0 }}
+              style={{
+                left: TUNING.desktop.cardsLeft,
+                right: 0,
+                WebkitMaskImage:
+                  "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
+                maskImage:
+                  "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
+              }}
             >
               <div
                 ref={trackRef}

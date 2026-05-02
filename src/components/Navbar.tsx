@@ -3,73 +3,56 @@
 import { useEffect, useRef, useState } from "react";
 import LogoMark from "./primitives/LogoMark";
 
+/* Why `absolute` (not `fixed` or `sticky`):
+   ──────────────────────────────────────────
+   The navbar lives inside the hero only — the user sees it on first
+   paint over the hero, and it scrolls away naturally with the rest of
+   the document as they scroll into Stats / Problem / etc. With
+   `absolute inset-x-0 top-0`, the header sits at the top of its
+   containing block (the body, since Navbar is rendered above <main> in
+   page.tsx) and participates in document scroll: as the user scrolls
+   down, the navbar's box translates up off-screen with the page and is
+   no longer in viewport once we're past hero-height (~95 px navbar +
+   hero height).
+
+   Knock-on simplifications now that nav is hero-scoped:
+     • No more `scrolled` state / scroll listener — there is no
+       "navbar overlapping content past the hero" condition to drive a
+       background blur swap. Background stays transparent so the hero
+       art reads through.
+     • No more transform/hide-on-scroll plumbing — the navbar simply
+       leaves the viewport via document scroll, no separate animation
+       needed.
+     • `header-slide` keyframe (small -14 px arrival slide-down) is
+       still played once on mount to soften the initial paint. */
+
+
 interface NavLink {
   readonly label: string;
   readonly href: string;
 }
 
+/* Nav links MUST be ordered to match the DOM order of their target
+   sections in src/app/page.tsx. The order on the page is:
+       Hero → Stats → Problem → HowItWorks → Services → Capabilities
+       → Clients (anchor: #our-work) → CTA (anchor: #talk-to-us)
+   The nav surfaces the user-facing narrative sections; Hero/Stats are
+   the entry experience (logo links to #top), and CTA is the trailing
+   pill. If you add or reorder a section in page.tsx, mirror the change
+   here so the navbar reflects scroll order. */
 const NAV_LINKS: readonly NavLink[] = [
-  { label: "Capabilities", href: "#capabilities" },
+  { label: "Problem", href: "#problem" },
   { label: "How it Works", href: "#how-it-works" },
+  { label: "Services", href: "#services" },
+  { label: "Capabilities", href: "#capabilities" },
   { label: "Projects", href: "#our-work" },
 ] as const;
 
-/* Scroll thresholds for the hide-on-scroll behaviour.
-   ────────────────────────────────────────────────────
-   • SHOW_BELOW_Y — always show the navbar within the first N pixels of
-     the page so the hero never loads with an invisible header.
-   • DELTA_THRESHOLD — minimum scroll delta per frame before we consider
-     the user's input intentional. Below this, ignore (so trackpad jitter
-     and Lenis lerp tail-end don't trigger flickering hide/show toggles
-     during the smoothing settle). */
-const SHOW_BELOW_Y = 80;
-const DELTA_THRESHOLD = 4;
-
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
-  const [hidden, setHidden] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const burgerRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const wasOpenRef = useRef(false);
-
-  /* rAF-gated scroll listener — passive scroll events on 120 Hz devices
-     fire ~120×/sec; coalescing them into one read per frame keeps state
-     updates aligned to paint. Cleanup must cancel any pending rAF or it
-     can fire after unmount and assign to a stale state setter.
-
-     This single effect drives BOTH:
-       • `scrolled` — colour/blur transition once we're past the hero top
-       • `hidden`   — translateY(-100%) when the user scrolls DOWN past
-                      SHOW_BELOW_Y; back to translateY(0) on any UP scroll
-                      or when we're back near the top.
-     Direction is inferred from the delta between consecutive frames so
-     we don't have to listen for separate "scroll-end" events. */
-  useEffect(() => {
-    let raf = 0;
-    let lastY = window.scrollY;
-    const onScroll = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        const y = window.scrollY;
-        const delta = y - lastY;
-        setScrolled(y > 16);
-        if (y < SHOW_BELOW_Y) {
-          setHidden(false);
-        } else if (Math.abs(delta) > DELTA_THRESHOLD) {
-          setHidden(delta > 0);
-        }
-        lastY = y;
-        raf = 0;
-      });
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -111,19 +94,11 @@ export default function Navbar() {
 
   return (
     <header
-      /* `transform` is in the transition list so the hide/show slide
-         animates smoothly. The `header-slide` keyframe runs once on
-         mount (small -14px slide-down for arrival) and finishes before
-         any meaningful user scroll, so it doesn't fight the
-         class-based transform afterwards. The mobile drawer being open
-         also force-shows the navbar — otherwise scrolling the page
-         while the menu is open would leave a hovering drawer with no
-         visible parent header. */
-      className={`fixed inset-x-0 top-0 z-50 w-full transition-[background-color,backdrop-filter,border-color,box-shadow,transform] duration-300 ease-out ${
-        scrolled
-          ? "bg-white/80 backdrop-blur-md border-b border-border/60 shadow-[0_1px_0_rgba(12,10,31,0.04)]"
-          : "bg-transparent border-b border-transparent"
-      } ${hidden && !mobileOpen ? "-translate-y-full" : "translate-y-0"}`}
+      /* `absolute` (see top-of-file comment) so the navbar lives at the
+         top of the document, scrolls away with the hero, and never
+         overlaps later sections. Background stays transparent so the
+         hero art reads through; no scroll-driven swap. */
+      className="absolute inset-x-0 top-0 z-50 w-full bg-transparent"
       style={{
         animation: "header-slide 0.6s cubic-bezier(0.22,1,0.36,1) both",
       }}

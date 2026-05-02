@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Albert_Sans } from "next/font/google";
+import { Albert_Sans, Instrument_Serif } from "next/font/google";
 import MotionProvider from "@/components/primitives/MotionProvider";
 import SmoothScrollProvider from "@/components/primitives/SmoothScrollProvider";
 import "lenis/dist/lenis.css";
@@ -9,6 +9,19 @@ const albertSans = Albert_Sans({
   variable: "--font-albert-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+/* Editorial accent serif for the highlighted word in the hero
+   headline ("Friction"). Loaded only in italic — that's the only
+   variant we use; pulling in `normal` would add bytes the page never
+   exercises. Exposed as `--font-instrument-serif` so any future
+   accent text can opt-in via `font-family: var(--font-instrument-serif)`. */
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
+  subsets: ["latin"],
+  weight: "400",
+  style: "italic",
   display: "swap",
 });
 
@@ -40,7 +53,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${albertSans.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${albertSans.variable} ${instrumentSerif.variable} h-full antialiased`}
+    >
       <body
         id="top"
         className="min-h-full flex flex-col bg-background text-foreground font-sans"

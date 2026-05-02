@@ -310,6 +310,21 @@ body {
   }
 }
 
+/* Caret blink for the hero accent typewriter. `steps(2, jump-none)`
+   produces a hard on/off blink with no fade — feels mechanical, like
+   a real terminal cursor. The animation is suppressed in JS while the
+   typewriter is actively typing/deleting so the caret reads as
+   "moving with the cursor", and re-enables during the hold/idle
+   phases for the classic blink. */
+@keyframes caret-blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
+}
+
 /* ─── Utility animations ─── */
 .animate-fade-up {
   animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -364,9 +379,14 @@ body {
     font-weight: 400;
     line-height: 1;
     letter-spacing: -0.06em;
+    /* `transform` is in the transition list so the `:active` press
+       scale on `.pill-primary` eases in/out smoothly instead of
+       snapping. `.pill-magnetic` overrides this with its own 0.55s
+       transform spring (later in source order, equal specificity). */
     transition:
       background-color 0.2s ease,
       color 0.2s ease,
+      transform 0.18s ease,
       box-shadow 0.25s ease;
     white-space: nowrap;
   }
@@ -380,15 +400,56 @@ body {
     will-change: transform;
   }
 
+  /* `pill-primary` has THREE coupled animations baked in:
+       1. background-color + box-shadow lift on hover (original)
+       2. shimmer sweep — a white gradient strip slides L→R across the
+          button on hover, mirroring the CTA submit button. Implemented
+          via ::before so consumers don't need extra DOM. Requires
+          position:relative + overflow:hidden on the parent.
+       3. press-feedback scale on :active (mouse held / keyboard space)
+          so the pill registers a tactile click. Inline-style transforms
+          (e.g. MagneticPill's cursor-tracking translate3d) override
+          this rule by specificity, so the magnetic pill keeps its
+          tracking behaviour and quietly skips the scale — acceptable
+          because the magnetic motion already provides press feedback.
+     The shimmer plays both directions (L→R on hover, R→L on unhover)
+     because the same CSS transition runs both ways — reads as a soft
+     "glimmer reset" rather than a snap back. */
   .pill-primary {
     background: var(--color-primary);
     color: #ffffff;
     box-shadow: 0 10px 30px -12px rgba(75, 40, 255, 0.55);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pill-primary::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to right,
+      transparent 0%,
+      rgba(255, 255, 255, 0.28) 50%,
+      transparent 100%
+    );
+    transform: translateX(-120%);
+    transition: transform 0.7s ease-out;
+    pointer-events: none;
+  }
+
+  .pill-primary:hover::before,
+  .pill-primary:focus-visible::before {
+    transform: translateX(120%);
   }
 
   .pill-primary:hover {
     background: var(--color-primary-dark);
     box-shadow: 0 14px 36px -10px rgba(75, 40, 255, 0.65);
+  }
+
+  .pill-primary:active {
+    transform: scale(0.985);
   }
 
   .pill-soft {
