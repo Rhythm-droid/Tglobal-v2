@@ -411,6 +411,15 @@ export default function HowItWorks() {
        Higher number = earlier refresh. See the option's JSDoc in
        usePinnedHorizontalScroll for the full rationale. */
     refreshPriority: 2,
+    /* True cross-fade handover. Without this, only HowItWorks's viewport
+       fades during the dissolve and Services materialises by occlusion-
+       reveal (geometric translate-in at full opacity), which reads as a
+       "pop" once HowItWorks reaches autoAlpha 0. With this, Services's
+       pinned viewport fades IN simultaneously, distributing the rate of
+       visible change across the whole fade window. Selector resolves to
+       Services's `bg-white h-screen` lg:block viewport (nested inside
+       its pin-spacer wrapper, hence the descendant combinator). */
+    nextHandoverSelector: "#services div.h-screen.bg-white",
   });
 
   return (

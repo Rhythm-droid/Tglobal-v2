@@ -77,6 +77,38 @@ interface UsePinnedHorizontalScrollOptions {
   readonly refreshPriority: number;
   readonly mediaQuery?: string;
   readonly cardSelector?: string;
+  /**
+   * CSS selector for the NEXT section's pinned viewport that should fade
+   * IN as this section fades OUT — a true cross-fade handover.
+   *
+   * Without this option the previous section is the only thing whose
+   * opacity changes during the handover; the next section is already
+   * fully opaque underneath, geometrically rising into view. Users
+   * perceive that as "section pops in" once the dissolving section
+   * reaches autoAlpha 0, because the rate of visible change is
+   * monotonically increasing right up to the moment the previous
+   * section disappears, then stops abruptly.
+   *
+   * Setting both endpoints of the dissolve — previous fading out AND
+   * next fading in — distributes the visible change across the whole
+   * fade window, so the perceived motion is continuous instead of
+   * end-loaded.
+   *
+   * Implementation:
+   *   - At timeline position 0 we `set(autoAlpha: 0)` on the target.
+   *     Because the timeline is scrubbed, this state is held for the
+   *     entire pre-fade portion of the pin (translate phase). The
+   *     target is occluded by the current section anyway during that
+   *     phase (current viewport at `position: fixed; top: 0` paints
+   *     above), so users don't see the next section flash invisible.
+   *   - During the fade window we tween autoAlpha 0 → 1 in parallel
+   *     with the current section's 1 → 0 fade.
+   *   - After pin release the target stays at 1 (timeline final state).
+   *
+   * If omitted, only the current section's fade-out plays — original
+   * behaviour preserved.
+   */
+  readonly nextHandoverSelector?: string;
 }
 
 interface UsePinnedHorizontalScrollResult {
@@ -109,21 +141,29 @@ const DEFAULT_CARD_SELECTOR = "[data-step-card]";
  *   sharply, so the visible-overlap window is roughly the last 35 px
  *   of scroll instead of all 140 px.
  *
- * Why 0.15 specifically:
- *   - Long enough for the human eye to read it as a transition (>~80 ms
- *     at typical scroll speeds), not a flash.
- *   - Short enough that the fade starts AFTER all cards have translated,
- *     so the last card has a moment to register fully visible before
- *     dissolving.
- *   - Adds ~140 px to each pin's scroll range. Total document height
- *     grows by ~280 px across both pinned sections (HowItWorks +
- *     Services); acceptable.
+ * Why 0.25 specifically (was 0.15):
+ *   - At settleRatio 0.20, this leaves translateRatio = 0.55. Pin range
+ *     = distance / 0.55 ≈ 1.82×distance. The fade window thus occupies
+ *     0.25 × 1.82 = 0.455 of the cards' total horizontal travel in
+ *     scroll pixels — roughly 260–320 px of vertical scroll on a 900 px
+ *     viewport. That's enough scroll distance that even a fast wheel
+ *     flick (≈1500 px/s) takes >170 ms to traverse the fade — well into
+ *     "perceived as motion" territory rather than "perceived as flash".
+ *   - 0.15 (the previous value) gave only ~140 px of fade scroll; team
+ *     and stakeholder feedback flagged that as still snappy at zoom
+ *     levels where each scroll pixel maps to fewer visual pixels,
+ *     compressing the fade into one or two animation frames.
+ *   - Trade-off: each pinned section's docY span grows by ~18% relative
+ *     to the 0.15 ratio (pinRange grew from distance/0.65 to
+ *     distance/0.55). Across HowItWorks + Services that adds roughly
+ *     400–500 px to total document height — acceptable for the smoother
+ *     handover.
  *
  * Backward scroll: GSAP reverses the timeline, so the fade auto-plays
  * backward as the user scrolls back UP into the pin range — no manual
  * onEnterBack/onLeaveBack reset logic needed.
  */
-const FADE_OUT_RATIO = 0.15;
+const FADE_OUT_RATIO = 0.25;
 
 export function usePinnedHorizontalScroll({
   sectionRef,
@@ -136,6 +176,7 @@ export function usePinnedHorizontalScroll({
   pinSpacerRef,
   mediaQuery = DEFAULT_MEDIA_QUERY,
   cardSelector = DEFAULT_CARD_SELECTOR,
+  nextHandoverSelector,
 }: UsePinnedHorizontalScrollOptions): UsePinnedHorizontalScrollResult {
   const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
   const lastActiveRef = useRef(0);
@@ -361,31 +402,78 @@ export function usePinnedHorizontalScroll({
           duration: translateRatio,
         });
 
-        /* Phase 3: fade-out — cards stay at end position, the pinned
-           viewport's `autoAlpha` (opacity + visibility) tweens 1→0 so
-           the next section emerges through it. autoAlpha also flips
-           visibility:hidden at opacity 0 so the faded-out viewport
-           stops capturing pointer events. GSAP auto-reverses this on
-           backward scroll.
+        /* Phase 3: cross-fade — current viewport fades OUT while the
+           next section's pinned viewport fades IN over the same scroll
+           window. Both endpoints of the dissolve animate, so the rate
+           of visible change is distributed across the entire fade
+           window instead of end-loaded.
 
-           Why `expo.in` instead of `power3.in` (or linear):
-             Linear (`none`) at 50% progress = 50% opacity, so both
-             sections are clearly readable simultaneously through ~75%
-             of the fade window. `power3.in` at 50% progress ≈ 87.5%
-             opacity, ~57% at 75% progress — better, but the user can
-             still read the dissolving section's text clearly until the
-             final ~25% of the window. `expo.in` (2^(10*(p-1))) keeps
-             opacity ≥ 0.97 through 70% of the fade, ≥ 0.85 through 85%,
-             then plummets to 0 across the last 15% of progress. The
-             dissolving section reads as "solid until the very last
-             moment," then snaps cleanly to 0 — minimising the visible-
-             ghost window without the structural gap that a pure
-             slide-up produces. */
-        timeline.to(viewport, {
-          autoAlpha: 0,
-          ease: "expo.in",
-          duration: FADE_OUT_RATIO,
-        });
+           Why a true cross-fade (was: previous-only fade):
+             With only the dissolving section animating, the next
+             section sits at autoAlpha 1 underneath, geometrically
+             rising into view. Users perceive that as "next section
+             pops in" once the dissolving section reaches 0, because
+             nothing about the next section is changing — only its
+             reveal-by-occlusion. Adding a 0→1 tween on the next
+             section gives the user a second motion cue (the next
+             section materialising) that runs synchronously with the
+             first (the previous dissolving), so both halves of the
+             handover read as motion.
+
+           Why `none` (linear) for both halves:
+             For a true cross-fade, the smoothest perceptual result is
+             when the two opacities sum to exactly 1.0 throughout the
+             dissolve — no moment where total visible weight spikes
+             above 1 (over-bright/double-exposed) or dips below 1
+             (under-bright/dim flash). Only linear ease pairs achieve
+             this: out_opacity = 1 − p, in_opacity = p, sum = 1 always.
+             Curved eases like power2.in/power2.out cross at p≈0.5 with
+             out=0.75 and in=0.75, summing to 1.5 — visibly heavier in
+             the middle and noticed as a "ghosty" overlap.
+             Linear has a slight mechanical feel in isolation, but
+             paired with the geometric translate-in (Services rising
+             from below at full opacity weight) and the natural inertia
+             of Lenis-smoothed scroll, the user reads it as continuous
+             motion, not as a constant-velocity ramp.
+
+           autoAlpha (opacity + visibility) auto-flips visibility:hidden
+           at opacity 0 so the faded-out viewport stops capturing
+           pointer events. GSAP auto-reverses this on backward scroll. */
+        const fadePosition = settleRatio + translateRatio;
+
+        timeline.to(
+          viewport,
+          {
+            autoAlpha: 0,
+            ease: "none",
+            duration: FADE_OUT_RATIO,
+          },
+          fadePosition,
+        );
+
+        if (nextHandoverSelector) {
+          /* Look up at timeline-build time. matchMedia callback runs
+             after both sections have mounted on lg breakpoints, so the
+             query is reliable. If the selector resolves to nothing we
+             silently skip — the cross-fade is a progressive
+             enhancement, not a correctness requirement. */
+          const nextEl = document.querySelector<HTMLElement>(nextHandoverSelector);
+          if (nextEl) {
+            /* Hold the next section invisible from timeline start. With
+               scrub, this state is held throughout settle-in + translate
+               and the target only animates during the fade window. */
+            timeline.set(nextEl, { autoAlpha: 0 }, 0);
+            timeline.to(
+              nextEl,
+              {
+                autoAlpha: 1,
+                ease: "none",
+                duration: FADE_OUT_RATIO,
+              },
+              fadePosition,
+            );
+          }
+        }
 
         scrollTriggerRef.current = timeline.scrollTrigger ?? null;
 
