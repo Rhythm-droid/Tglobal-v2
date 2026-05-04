@@ -67,12 +67,8 @@ const TUNING = {
   /** Grid gaps (both axes). Figma: 20. */
   gridGap: 20,
 
-  /** Typography — eyebrow + heading. Matches Section 7 for consistency. */
-  eyebrow: {
-    size: "clamp(18px, 2.22vw, 32px)", // 32 / 1440 = 2.22vw
-    color: "#404040",
-    weight: 400,
-  },
+  /** Typography — eyebrow comes from the global `.eyebrow` utility
+      in globals.css. Heading is local. */
   heading: {
     size: "clamp(32px, 4.44vw, 64px)", // 64 / 1440 = 4.44vw
     color: "#000000",
@@ -132,7 +128,7 @@ const ROW_1: Row = {
       kind: "illustration",
       slot: "hex-ecosystem",
       label:
-        "Integration ecosystem — OpenAI, Angular, Node.js, AWS, and Google",
+        "Integration ecosystem: OpenAI, Angular, Node.js, AWS, and Google",
     },
     {
       kind: "text",
@@ -164,7 +160,7 @@ const ROW_2: Row = {
     {
       kind: "illustration",
       slot: "tg-logo",
-      label: "TGlobal — unified build platform",
+      label: "TGlobal: unified build platform",
     },
     {
       kind: "text",
@@ -346,18 +342,9 @@ function SectionHeader() {
   return (
     <AnimateIn>
       <div className="flex flex-col items-center gap-[var(--gap)] text-center" style={{ ["--gap" as string]: TUNING.eyebrowToHeadingGap } as React.CSSProperties}>
-        <p
-          className="m-0"
-          style={{
-              fontSize: TUNING.eyebrow.size,
-            color: TUNING.eyebrow.color,
-            fontWeight: TUNING.eyebrow.weight,
-            lineHeight: 1,
-            letterSpacing: "-0.06em",
-          }}
-        >
-          Our Capabilities
-        </p>
+        {/* Eyebrow uses the global `.eyebrow` utility — single source of
+            truth for every section pre-title. */}
+        <p className="eyebrow m-0">Our Capabilities</p>
         <h2
           id="capabilities-heading"
           className="m-0 max-w-[900px]"

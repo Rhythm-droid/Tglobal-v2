@@ -38,6 +38,8 @@
  *   Downloads/figma/Desktop - 6.svg                         (exact text position)
  */
 
+import Link from "next/link";
+
 /* ════════════════════════════════════════════════════════════════════════════
    TWEAK ZONES — all the common knobs, in one place. Everything else in this
    file is structural; if you only want to reposition or resize something,
@@ -101,8 +103,11 @@
    CONFIG — edit anything below to change footer content
    ──────────────────────────────────────────────────────────── */
 const FOOTER_CONTENT = {
-  tagline:
-    "This membership will help you plan and execute a variety of projects.",
+  /* Tagline mirrors the rest of the site's positioning — outcomes per
+     sprint, AI-native engineering, no membership / SaaS framing. The
+     previous "this membership will help you…" line was placeholder
+     copy and didn't match TGlobal's actual product. */
+  tagline: "AI-native engineering. Outcomes per sprint, not hours per week.",
   /* Quick Link columns — sourced from src/app/page.tsx section order +
      Navbar.tsx anchors. Split across two sub-columns purely for layout
      balance (4 / 3); the LOGICAL order across both columns must match
@@ -131,7 +136,11 @@ const FOOTER_CONTENT = {
   ],
   supportLinks: [
     { label: "FAQ'S", href: "#faq" },
-    { label: "Privacy Policy", href: "#privacy" },
+    /* Privacy is a real route (src/app/privacy/page.tsx), not an
+       in-page anchor — distinct from FAQ which lives in the page
+       body. The link helper below detects "/" prefixes and renders
+       a Next.js <Link> so navigation is client-side / SPA-fast. */
+    { label: "Privacy Policy", href: "/privacy" },
     /* Contact Us routes to the CTA section so the user is taken straight
        to the "talk to us" form. Same anchor as Quick Link → Contact Us
        and Navbar's trailing pill. */
@@ -146,8 +155,39 @@ const FOOTER_CONTENT = {
     linkedin: "https://www.linkedin.com/company/tglobal-digital/",
   },
   copyright: "Copyright © 2025. All Rights Reserved",
-  giantWordmark: "TGlobal", // Capital T + G per product name
+  giantWordmark: "TGlobal", // Capital T+G per latest direction; Figma path was lowercase
 } as const;
+
+/* ────────────────────────────────────────────────────────────
+   Smart link helper — picks Next.js Link for internal routes
+   ("/privacy", "/terms", etc.) and a plain <a> for in-page
+   anchors ("#talk-to-us", "#problem"). Anchors must stay as
+   plain <a> so Lenis (smooth scroll) intercepts the click and
+   animates; routing them through Next.js Link would trigger a
+   route change instead of a scroll.
+   ──────────────────────────────────────────────────────────── */
+function FooterLink({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className: string;
+  children: React.ReactNode;
+}) {
+  if (href.startsWith("/")) {
+    return (
+      <Link href={href} className={className}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <a href={href} className={className}>
+      {children}
+    </a>
+  );
+}
 
 /* ────────────────────────────────────────────────────────────
    Brand mark — "TC" glyph + lowercase "tglobal" wordmark
@@ -157,7 +197,7 @@ function BrandMark() {
   return (
     <a
       href="#top"
-      aria-label="TGlobal — home"
+      aria-label="TGlobal home"
       className="inline-flex items-center gap-[5.44px]"
     >
       <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden>
@@ -167,12 +207,27 @@ function BrandMark() {
         />
       </svg>
       <svg width="116" height="40" viewBox="0 0 116 40" fill="none" aria-hidden>
-        <path d="M3.26087 9.56522V3.47826H6.52174V9.56522H12.3043V12.6087H6.52174V24.3043C6.52174 25.6377 6.7971 26.6087 7.34783 27.2174C7.92754 27.8261 8.65217 28.1884 9.52174 28.3043C10.4203 28.4203 11.3478 28.4203 12.3043 28.3043V31.1304C11.1739 31.3913 10.058 31.4638 8.95652 31.3478C7.88406 31.2319 6.91304 30.913 6.04348 30.3913C5.2029 29.8406 4.52174 29.0725 4 28.087C3.50725 27.1014 3.26087 25.8406 3.26087 24.3043V12.6087H0V9.56522H3.26087Z" fill="#010101" />
-        <path d="M31.2418 9.56522H34.2418V27.3043C34.2418 29.971 33.6476 32.2464 32.4592 34.1304C31.2708 36.0435 29.5462 37.4928 27.2853 38.4783C25.0245 39.4928 22.2708 40 19.0245 40L18.5027 37C22.5897 36.942 25.6911 36.087 27.8071 34.4348C29.923 32.8116 30.981 30.4348 30.981 27.3043V26.8261L31.3288 26.913C30.6621 28.1884 29.6621 29.2899 28.3288 30.2174C26.9955 31.1159 25.2708 31.5797 23.1549 31.6087C21.1549 31.6087 19.4013 31.1594 17.894 30.2609C16.4158 29.3333 15.2563 28.029 14.4158 26.3478C13.6042 24.6667 13.1984 22.6957 13.1984 20.4348C13.1984 18.1739 13.6042 16.2174 14.4158 14.5652C15.2563 12.8841 16.4158 11.5797 17.894 10.6522C19.4013 9.72464 21.1549 9.26087 23.1549 9.26087C24.4592 9.26087 25.6187 9.46377 26.6332 9.86957C27.6476 10.2464 28.5172 10.7681 29.2418 11.4348C29.9665 12.0725 30.5607 12.7971 31.0245 13.6087L31.2418 9.56522ZM16.7201 20.4348C16.7201 22.9275 17.3578 24.913 18.6332 26.3913C19.9375 27.8406 21.6911 28.5652 23.894 28.5652C25.2274 28.5652 26.4303 28.2464 27.5027 27.6087C28.5752 26.971 29.4158 26.0435 30.0245 24.8261C30.6621 23.6087 30.981 22.1449 30.981 20.4348C30.981 18.7246 30.6621 17.2754 30.0245 16.087C29.4158 14.8696 28.5752 13.942 27.5027 13.3043C26.4303 12.6377 25.2274 12.3043 23.894 12.3043C21.7201 12.3043 19.981 13.0435 18.6766 14.5217C17.3723 16 16.7201 17.971 16.7201 20.4348Z" fill="#010101" />
+        <path
+          d="M3.26087 9.56522V3.47826H6.52174V9.56522H12.3043V12.6087H6.52174V24.3043C6.52174 25.6377 6.7971 26.6087 7.34783 27.2174C7.92754 27.8261 8.65217 28.1884 9.52174 28.3043C10.4203 28.4203 11.3478 28.4203 12.3043 28.3043V31.1304C11.1739 31.3913 10.058 31.4638 8.95652 31.3478C7.88406 31.2319 6.91304 30.913 6.04348 30.3913C5.2029 29.8406 4.52174 29.0725 4 28.087C3.50725 27.1014 3.26087 25.8406 3.26087 24.3043V12.6087H0V9.56522H3.26087Z"
+          fill="#010101"
+        />
+        <path
+          d="M31.2418 9.56522H34.2418V27.3043C34.2418 29.971 33.6476 32.2464 32.4592 34.1304C31.2708 36.0435 29.5462 37.4928 27.2853 38.4783C25.0245 39.4928 22.2708 40 19.0245 40L18.5027 37C22.5897 36.942 25.6911 36.087 27.8071 34.4348C29.923 32.8116 30.981 30.4348 30.981 27.3043V26.8261L31.3288 26.913C30.6621 28.1884 29.6621 29.2899 28.3288 30.2174C26.9955 31.1159 25.2708 31.5797 23.1549 31.6087C21.1549 31.6087 19.4013 31.1594 17.894 30.2609C16.4158 29.3333 15.2563 28.029 14.4158 26.3478C13.6042 24.6667 13.1984 22.6957 13.1984 20.4348C13.1984 18.1739 13.6042 16.2174 14.4158 14.5652C15.2563 12.8841 16.4158 11.5797 17.894 10.6522C19.4013 9.72464 21.1549 9.26087 23.1549 9.26087C24.4592 9.26087 25.6187 9.46377 26.6332 9.86957C27.6476 10.2464 28.5172 10.7681 29.2418 11.4348C29.9665 12.0725 30.5607 12.7971 31.0245 13.6087L31.2418 9.56522ZM16.7201 20.4348C16.7201 22.9275 17.3578 24.913 18.6332 26.3913C19.9375 27.8406 21.6911 28.5652 23.894 28.5652C25.2274 28.5652 26.4303 28.2464 27.5027 27.6087C28.5752 26.971 29.4158 26.0435 30.0245 24.8261C30.6621 23.6087 30.981 22.1449 30.981 20.4348C30.981 18.7246 30.6621 17.2754 30.0245 16.087C29.4158 14.8696 28.5752 13.942 27.5027 13.3043C26.4303 12.6377 25.2274 12.3043 23.894 12.3043C21.7201 12.3043 19.981 13.0435 18.6766 14.5217C17.3723 16 16.7201 17.971 16.7201 20.4348Z"
+          fill="#010101"
+        />
         <path d="M38.3047 0H41.5656V31.3043H38.3047V0Z" fill="#010101" />
-        <path d="M54.9803 31.6087C52.9223 31.6087 51.0817 31.1594 49.4586 30.2609C47.8354 29.3623 46.56 28.087 45.6325 26.4348C44.7049 24.7536 44.2412 22.7681 44.2412 20.4783C44.2412 18.1594 44.7049 16.1594 45.6325 14.4783C46.589 12.7971 47.8788 11.5072 49.502 10.6087C51.1542 9.71014 53.0093 9.26087 55.0673 9.26087C57.1252 9.26087 58.9658 9.71014 60.589 10.6087C62.2412 11.5072 63.531 12.7971 64.4586 14.4783C65.4151 16.1304 65.8933 18.1014 65.8933 20.3913C65.8933 22.7101 65.4151 24.7101 64.4586 26.3913C63.502 28.0725 62.1977 29.3623 60.5455 30.2609C58.8933 31.1594 57.0383 31.6087 54.9803 31.6087ZM54.9368 28.5217C56.2122 28.5217 57.4151 28.2464 58.5455 27.6957C59.676 27.1159 60.589 26.2319 61.2846 25.0435C62.0093 23.8261 62.3716 22.2899 62.3716 20.4348C62.3716 18.5507 62.0238 17.0145 61.3281 15.8261C60.6325 14.6377 59.7194 13.7681 58.589 13.2174C57.4875 12.6377 56.2991 12.3478 55.0238 12.3478C53.7484 12.3478 52.56 12.6377 51.4586 13.2174C50.3571 13.7681 49.4586 14.6522 48.7629 15.8696C48.0962 17.058 47.7629 18.5797 47.7629 20.4348C47.7629 22.3188 48.0962 23.8551 48.7629 25.0435C49.4296 26.2319 50.2991 27.1159 51.3716 27.6957C52.473 28.2464 53.6615 28.5217 54.9368 28.5217Z" fill="#010101" />
-        <path d="M71.5387 13.9565C72.1764 12.6232 73.1764 11.5072 74.5387 10.6087C75.901 9.71014 77.6257 9.26087 79.7126 9.26087C81.7126 9.26087 83.4518 9.72464 84.93 10.6522C86.4373 11.5797 87.5967 12.8841 88.4083 14.5652C89.2489 16.2174 89.6692 18.1739 89.6692 20.4348C89.6692 22.6957 89.2489 24.6667 88.4083 26.3478C87.5677 28.029 86.3938 29.3333 84.8866 30.2609C83.4083 31.1594 81.6836 31.6087 79.7126 31.6087C77.7416 31.6087 76.1039 31.1884 74.7996 30.3478C73.4952 29.5072 72.5097 28.4783 71.8431 27.2609L71.6257 31.3043H68.6257V0H71.8865V14L71.5387 13.9565ZM86.1474 20.4348C86.1474 17.942 85.4952 15.971 84.1909 14.5217C82.9155 13.0435 81.1909 12.3043 79.017 12.3043C77.6547 12.3043 76.4228 12.6377 75.3213 13.3043C74.2489 13.942 73.4083 14.8696 72.7996 16.087C72.1909 17.2754 71.8865 18.7246 71.8865 20.4348C71.8865 22.1449 72.1909 23.6087 72.7996 24.8261C73.4083 26.0435 74.2489 26.971 75.3213 27.6087C76.4228 28.2464 77.6547 28.5652 79.017 28.5652C81.1909 28.5652 82.9155 27.8406 84.1909 26.3913C85.4952 24.913 86.1474 22.9275 86.1474 20.4348Z" fill="#010101" />
-        <path d="M105.993 31.3043L105.732 27.3913C105.123 28.7246 104.225 29.7681 103.036 30.5217C101.848 31.2464 100.341 31.6087 98.5146 31.6087C96.9494 31.6087 95.6161 31.3623 94.5146 30.8696C93.4131 30.3768 92.5581 29.6812 91.9494 28.7826C91.3697 27.8551 91.0798 26.7681 91.0798 25.5217C91.0798 23.6957 91.761 22.2029 93.1233 21.0435C94.4856 19.8551 96.4566 19.1304 99.0363 18.8696L105.732 18.1304V16.3913C105.732 15.1739 105.283 14.2029 104.384 13.4783C103.486 12.7246 102.268 12.3478 100.732 12.3478C99.2247 12.3478 97.9639 12.6957 96.9494 13.3913C95.9639 14.087 95.2827 15.087 94.9059 16.3913L91.9494 15.3478C92.5291 13.4348 93.5871 11.942 95.1233 10.8696C96.6885 9.7971 98.5871 9.26087 100.819 9.26087C103.399 9.26087 105.399 9.92754 106.819 11.2609C108.268 12.5652 108.993 14.3478 108.993 16.6087V31.3043H105.993ZM105.732 20.913L98.9929 21.6957C97.5436 21.8696 96.4421 22.2754 95.6885 22.913C94.9349 23.5217 94.5581 24.3333 94.5581 25.3478C94.5581 26.3623 94.9204 27.1739 95.645 27.7826C96.3987 28.3913 97.4711 28.6957 98.8624 28.6957C100.457 28.6957 101.761 28.3768 102.775 27.7391C103.79 27.1014 104.529 26.2464 104.993 25.1739C105.486 24.0725 105.732 22.8841 105.732 21.6087V20.913Z" fill="#010101" />
+        <path
+          d="M54.9803 31.6087C52.9223 31.6087 51.0817 31.1594 49.4586 30.2609C47.8354 29.3623 46.56 28.087 45.6325 26.4348C44.7049 24.7536 44.2412 22.7681 44.2412 20.4783C44.2412 18.1594 44.7049 16.1594 45.6325 14.4783C46.589 12.7971 47.8788 11.5072 49.502 10.6087C51.1542 9.71014 53.0093 9.26087 55.0673 9.26087C57.1252 9.26087 58.9658 9.71014 60.589 10.6087C62.2412 11.5072 63.531 12.7971 64.4586 14.4783C65.4151 16.1304 65.8933 18.1014 65.8933 20.3913C65.8933 22.7101 65.4151 24.7101 64.4586 26.3913C63.502 28.0725 62.1977 29.3623 60.5455 30.2609C58.8933 31.1594 57.0383 31.6087 54.9803 31.6087ZM54.9368 28.5217C56.2122 28.5217 57.4151 28.2464 58.5455 27.6957C59.676 27.1159 60.589 26.2319 61.2846 25.0435C62.0093 23.8261 62.3716 22.2899 62.3716 20.4348C62.3716 18.5507 62.0238 17.0145 61.3281 15.8261C60.6325 14.6377 59.7194 13.7681 58.589 13.2174C57.4875 12.6377 56.2991 12.3478 55.0238 12.3478C53.7484 12.3478 52.56 12.6377 51.4586 13.2174C50.3571 13.7681 49.4586 14.6522 48.7629 15.8696C48.0962 17.058 47.7629 18.5797 47.7629 20.4348C47.7629 22.3188 48.0962 23.8551 48.7629 25.0435C49.4296 26.2319 50.2991 27.1159 51.3716 27.6957C52.473 28.2464 53.6615 28.5217 54.9368 28.5217Z"
+          fill="#010101"
+        />
+        <path
+          d="M71.5387 13.9565C72.1764 12.6232 73.1764 11.5072 74.5387 10.6087C75.901 9.71014 77.6257 9.26087 79.7126 9.26087C81.7126 9.26087 83.4518 9.72464 84.93 10.6522C86.4373 11.5797 87.5967 12.8841 88.4083 14.5652C89.2489 16.2174 89.6692 18.1739 89.6692 20.4348C89.6692 22.6957 89.2489 24.6667 88.4083 26.3478C87.5677 28.029 86.3938 29.3333 84.8866 30.2609C83.4083 31.1594 81.6836 31.6087 79.7126 31.6087C77.7416 31.6087 76.1039 31.1884 74.7996 30.3478C73.4952 29.5072 72.5097 28.4783 71.8431 27.2609L71.6257 31.3043H68.6257V0H71.8865V14L71.5387 13.9565ZM86.1474 20.4348C86.1474 17.942 85.4952 15.971 84.1909 14.5217C82.9155 13.0435 81.1909 12.3043 79.017 12.3043C77.6547 12.3043 76.4228 12.6377 75.3213 13.3043C74.2489 13.942 73.4083 14.8696 72.7996 16.087C72.1909 17.2754 71.8865 18.7246 71.8865 20.4348C71.8865 22.1449 72.1909 23.6087 72.7996 24.8261C73.4083 26.0435 74.2489 26.971 75.3213 27.6087C76.4228 28.2464 77.6547 28.5652 79.017 28.5652C81.1909 28.5652 82.9155 27.8406 84.1909 26.3913C85.4952 24.913 86.1474 22.9275 86.1474 20.4348Z"
+          fill="#010101"
+        />
+        <path
+          d="M105.993 31.3043L105.732 27.3913C105.123 28.7246 104.225 29.7681 103.036 30.5217C101.848 31.2464 100.341 31.6087 98.5146 31.6087C96.9494 31.6087 95.6161 31.3623 94.5146 30.8696C93.4131 30.3768 92.5581 29.6812 91.9494 28.7826C91.3697 27.8551 91.0798 26.7681 91.0798 25.5217C91.0798 23.6957 91.761 22.2029 93.1233 21.0435C94.4856 19.8551 96.4566 19.1304 99.0363 18.8696L105.732 18.1304V16.3913C105.732 15.1739 105.283 14.2029 104.384 13.4783C103.486 12.7246 102.268 12.3478 100.732 12.3478C99.2247 12.3478 97.9639 12.6957 96.9494 13.3913C95.9639 14.087 95.2827 15.087 94.9059 16.3913L91.9494 15.3478C92.5291 13.4348 93.5871 11.942 95.1233 10.8696C96.6885 9.7971 98.5871 9.26087 100.819 9.26087C103.399 9.26087 105.399 9.92754 106.819 11.2609C108.268 12.5652 108.993 14.3478 108.993 16.6087V31.3043H105.993ZM105.732 20.913L98.9929 21.6957C97.5436 21.8696 96.4421 22.2754 95.6885 22.913C94.9349 23.5217 94.5581 24.3333 94.5581 25.3478C94.5581 26.3623 94.9204 27.1739 95.645 27.7826C96.3987 28.3913 97.4711 28.6957 98.8624 28.6957C100.457 28.6957 101.761 28.3768 102.775 27.7391C103.79 27.1014 104.529 26.2464 104.993 25.1739C105.486 24.0725 105.732 22.8841 105.732 21.6087V20.913Z"
+          fill="#010101"
+        />
         <path d="M112.746 0H116.007V31.3043H112.746V0Z" fill="#010101" />
       </svg>
     </a>
@@ -208,7 +263,14 @@ function InstagramIcon({ href }: { href: string }) {
       aria-label="Instagram"
       className="group relative inline-flex h-10 w-10 items-center justify-center rounded-full text-[#4B28FF] transition-colors duration-200 hover:bg-[#4B28FF] hover:text-white focus-visible:bg-[#4B28FF] focus-visible:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4B28FF]"
     >
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden className="absolute inset-0">
+      <svg
+        width="40"
+        height="40"
+        viewBox="0 0 40 40"
+        fill="none"
+        aria-hidden
+        className="absolute inset-0"
+      >
         {/* Stroke ring — same pattern as LinkedIn: fades out on hover so
             the parent <a>'s purple background reads through cleanly. */}
         <rect
@@ -255,7 +317,14 @@ function LinkedInIcon({ href }: { href: string }) {
       aria-label="LinkedIn"
       className="group relative inline-flex h-10 w-10 items-center justify-center rounded-full text-[#4B28FF] transition-colors duration-200 hover:bg-[#4B28FF] hover:text-white focus-visible:bg-[#4B28FF] focus-visible:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4B28FF]"
     >
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden className="absolute inset-0">
+      <svg
+        width="40"
+        height="40"
+        viewBox="0 0 40 40"
+        fill="none"
+        aria-hidden
+        className="absolute inset-0"
+      >
         {/* Stroke ring — visible by default, transparent on hover (bg takes over) */}
         <rect
           x="0.5"
@@ -266,9 +335,18 @@ function LinkedInIcon({ href }: { href: string }) {
           stroke="currentColor"
           className="transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0"
         />
-        <path d="M15.4247 17.6575H12.2241V27.0307H15.4247V17.6575Z" fill="currentColor" />
-        <path d="M14.8867 13.2833C14.5816 13.0986 14.2231 13 13.8564 13C13.6117 13 13.3695 13.0439 13.1435 13.1292C12.9176 13.2144 12.7125 13.3394 12.54 13.4969C12.3674 13.6544 12.2309 13.8413 12.1383 14.0468C12.0456 14.2523 11.9986 14.4725 12 14.6945C12.0021 15.0273 12.1128 15.3521 12.3181 15.6279C12.5233 15.9037 12.814 16.1182 13.1534 16.2442C13.4928 16.3702 13.8657 16.4022 14.2251 16.3361C14.5845 16.27 14.9143 16.1088 15.1728 15.8728C15.4314 15.6368 15.6071 15.3366 15.6779 15.01C15.7486 14.6834 15.7113 14.3452 15.5705 14.0379C15.4296 13.7306 15.1917 13.468 14.8867 13.2833Z" fill="currentColor" />
-        <path d="M20.5624 17.6571H17.4791L17.4685 27.0496H20.6691V22.4114C20.6691 21.1914 20.9252 20.01 22.5895 20.01C24.2539 20.01 24.2539 21.4141 24.2539 22.4986V27.0302H27.4545V21.8885C27.4545 19.3613 26.8037 17.4247 23.6031 17.4247C22.993 17.403 22.388 17.5321 21.8525 17.7981C21.317 18.0641 20.8711 18.4572 20.5624 18.9352V17.6571Z" fill="currentColor" />
+        <path
+          d="M15.4247 17.6575H12.2241V27.0307H15.4247V17.6575Z"
+          fill="currentColor"
+        />
+        <path
+          d="M14.8867 13.2833C14.5816 13.0986 14.2231 13 13.8564 13C13.6117 13 13.3695 13.0439 13.1435 13.1292C12.9176 13.2144 12.7125 13.3394 12.54 13.4969C12.3674 13.6544 12.2309 13.8413 12.1383 14.0468C12.0456 14.2523 11.9986 14.4725 12 14.6945C12.0021 15.0273 12.1128 15.3521 12.3181 15.6279C12.5233 15.9037 12.814 16.1182 13.1534 16.2442C13.4928 16.3702 13.8657 16.4022 14.2251 16.3361C14.5845 16.27 14.9143 16.1088 15.1728 15.8728C15.4314 15.6368 15.6071 15.3366 15.6779 15.01C15.7486 14.6834 15.7113 14.3452 15.5705 14.0379C15.4296 13.7306 15.1917 13.468 14.8867 13.2833Z"
+          fill="currentColor"
+        />
+        <path
+          d="M20.5624 17.6571H17.4791L17.4685 27.0496H20.6691V22.4114C20.6691 21.1914 20.9252 20.01 22.5895 20.01C24.2539 20.01 24.2539 21.4141 24.2539 22.4986V27.0302H27.4545V21.8885C27.4545 19.3613 26.8037 17.4247 23.6031 17.4247C22.993 17.403 22.388 17.5321 21.8525 17.7981C21.317 18.0641 20.8711 18.4572 20.5624 18.9352V17.6571Z"
+          fill="currentColor"
+        />
       </svg>
     </a>
   );
@@ -317,40 +395,175 @@ function NoiseOverlay() {
 
 /* ────────────────────────────────────────────────────────────
    Giant wordmark at the bottom.
-   - fontSize uses clamp so it scales linearly from 64px (small mobile)
-     to Figma's 394px cap (at ≥1440 viewport).
-   - `top: calc(100% - 0.805em)` keeps the wordmark anchored the same
-     fraction of its own cap-height from the bottom — so the "word hangs
-     off the card" silhouette is consistent across every breakpoint.
-   - Inner-shadow approximation: background-clip:text gradient (bright
-     top edge) + text-shadow (outer glow from top).
+   ─────────────────────────────────────────────────────────────
+   Reproduces the "BG" group from the Figma export verbatim:
+
+     <g filter="url(#filter0_n)">          ← noise overlay (outer)
+       <g filter="url(#filter3_i)">         ← inner shadow (inner)
+         <text>TGlobal</text>
+       </g>
+     </g>
+
+   The text itself was a vector path in the Figma export (lowercase
+   "tglobal"). We swap the path for a <text> element so the casing
+   can be controlled from the FOOTER_CONTENT config — the visual
+   rendering is identical because the filters operate on the
+   resulting raster, not on path data.
+
+   Filter specs (verbatim from Figma's filter0_n_107_18576 and
+   filter3_i_107_18576, do not tweak):
+     • Noise:     fractalNoise baseFreq 0.7692, octaves 3, seed 5483,
+                  discrete 51% coverage, white @ 10% alpha, merged
+                  back over the source.
+     • Shadow:    inset, dy=-5, stdDeviation=15, white @ 40% alpha,
+                  blended `plus-lighter` over the source.
+
+   ViewBox 0 0 1193 368 matches the Figma `filter3_i` region
+   (1193.09 × 367.479) so the SVG box is the wordmark envelope.
    ──────────────────────────────────────────────────────────── */
 function GiantWordmark({ text }: { text: string }) {
   return (
-    <div
+    <svg
       aria-hidden
-      className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-center font-normal tracking-[0]"
+      /* `bottom: -clamp(20px, 3.5vw, 50px)` mirrors Figma's
+         intentional overflow — the wordmark extends past the card's
+         bottom edge so its lower portion is clipped by the card's
+         overflow:hidden, matching the Desktop-6 frame where the
+         text path runs from y=404 to y=735 in a 685-tall viewBox.
+         Tune this knob to taste — larger negative value = more
+         aggressive clipping. */
+      className="pointer-events-none absolute left-1/2 -translate-x-1/2"
       style={{
-        fontSize: "clamp(64px, 27.5vw, 394px)",
-        lineHeight: 1.1,
-        top: "calc(100% - 0.95em)",
-        color: "transparent",
-        backgroundImage:
-          "linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 6%, #4B28FF 12%)",
-        WebkitBackgroundClip: "text",
-        backgroundClip: "text",
-        // Reduced from 30px → 14px blur. At a 394px font size the larger
-        // blur radius required the GPU to paint a wide halo over the entire
-        // wordmark on every repaint (~1.5 MP region for the shadow alone).
-        // 14px keeps the soft-glow read while halving the paint area.
-        // willChange hints the browser to hoist this onto its own layer
-        // so neighbour repaints don't drag the wordmark with them.
-        textShadow: "0 -3px 14px rgba(255,255,255,0.4)",
+        bottom: "calc(-1 * clamp(20px, 3.5vw, 50px))",
+        width: "min(96%, 1394px)",
+        height: "auto",
         willChange: "transform",
       }}
+      /* Figma's filter3_i region is 1193 × 367 — sized for the
+         *lowercase* "tglobal" path. Capital "TGlobal" has a wider
+         glyph bbox (~1394 × 368), so we widen the viewBox to match
+         the measured bbox. The filter chain itself (noise + inner
+         shadow) is unchanged. */
+      viewBox="0 0 1394 368"
+      preserveAspectRatio="xMidYMax meet"
     >
-      {text}
-    </div>
+      <defs>
+        {/* filter0_n — fractal-noise overlay merged back over the
+           source. Verbatim from the Figma export. */}
+        <filter
+          id="footer-wordmark-noise"
+          x="-2%"
+          y="-2%"
+          width="104%"
+          height="104%"
+          colorInterpolationFilters="sRGB"
+        >
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
+          <feBlend
+            mode="normal"
+            in="SourceGraphic"
+            in2="BackgroundImageFix"
+            result="shape"
+          />
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.76923078298568726 0.76923078298568726"
+            stitchTiles="stitch"
+            numOctaves={3}
+            seed={5483}
+            result="noise"
+          />
+          <feColorMatrix
+            in="noise"
+            type="luminanceToAlpha"
+            result="alphaNoise"
+          />
+          <feComponentTransfer in="alphaNoise" result="coloredNoise1">
+            <feFuncA
+              type="discrete"
+              tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+            />
+          </feComponentTransfer>
+          <feComposite
+            operator="in"
+            in2="shape"
+            in="coloredNoise1"
+            result="noise1Clipped"
+          />
+          {/* floodOpacity is the grain-intensity knob.
+              Figma export = 0.1; that reads "gritty" at 1:1 desktop
+              + high-DPI rendering. 0.05 keeps the texture visible
+              but makes the letters feel cleaner / less staticy. */}
+          <feFlood
+            floodColor="#ffffff"
+            floodOpacity="0"
+            result="color1Flood"
+          />
+          <feComposite
+            operator="in"
+            in2="noise1Clipped"
+            in="color1Flood"
+            result="color1"
+          />
+          <feMerge>
+            <feMergeNode in="shape" />
+            <feMergeNode in="color1" />
+          </feMerge>
+        </filter>
+
+        {/* filter3_i — inner shadow. Verbatim from the Figma export. */}
+        <filter
+          id="footer-wordmark-shadow"
+          x="-2%"
+          y="-15%"
+          width="104%"
+          height="130%"
+          colorInterpolationFilters="sRGB"
+        >
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
+          <feBlend
+            mode="normal"
+            in="SourceGraphic"
+            in2="BackgroundImageFix"
+            result="shape"
+          />
+          <feColorMatrix
+            in="SourceAlpha"
+            type="matrix"
+            values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 127 0"
+            result="hardAlpha"
+          />
+          <feOffset dy="-5" />
+          <feGaussianBlur stdDeviation="15" />
+          <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
+          <feColorMatrix
+            type="matrix"
+            values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.4 0"
+          />
+          <feBlend mode="plus-lighter" in2="shape" />
+        </filter>
+      </defs>
+
+      {/* Outer group: noise → wraps the entire wordmark
+          Inner group: inner shadow → wraps the text fill
+          Order matters — Figma applies shadow first, then grain. */}
+      <g filter="url(#footer-wordmark-noise)">
+        <g filter="url(#footer-wordmark-shadow)">
+          <text
+            x="50%"
+            y="83%"
+            textAnchor="middle"
+            fill="#4B28FF"
+            fontFamily="var(--font-sans), system-ui, -apple-system, sans-serif"
+            fontWeight={400}
+            fontSize={394}
+            letterSpacing="0"
+          >
+            {text}
+          </text>
+        </g>
+      </g>
+    </svg>
   );
 }
 
@@ -383,7 +596,7 @@ export default function Footer() {
             {/* Brand + tagline (fixed 291px on desktop, fluid otherwise) */}
             <div className="flex flex-col gap-6 lg:w-[291px] lg:shrink-0">
               <BrandMark />
-              <p className="max-w-[291px] text-base font-normal leading-6 text-[#4B5563]">
+              <p className="max-w-[291px] text-base font-normal leading-6 text-muted">
                 {FOOTER_CONTENT.tagline}
               </p>
             </div>
@@ -411,12 +624,12 @@ export default function Footer() {
                     >
                       {column.map((link) => (
                         <li key={link.label}>
-                          <a
+                          <FooterLink
                             href={link.href}
-                            className="whitespace-nowrap text-base font-normal leading-6 text-[#4B5563] transition-colors hover:text-[#4B28FF] focus-visible:text-[#4B28FF]"
+                            className="whitespace-nowrap text-base font-normal leading-6 text-muted transition-colors hover:text-primary focus-visible:text-primary"
                           >
                             {link.label}
-                          </a>
+                          </FooterLink>
                         </li>
                       ))}
                     </ul>
@@ -432,12 +645,12 @@ export default function Footer() {
                 <ul className="flex list-none flex-col gap-3 p-0">
                   {FOOTER_CONTENT.supportLinks.map((link) => (
                     <li key={link.label}>
-                      <a
+                      <FooterLink
                         href={link.href}
-                        className="whitespace-nowrap text-base font-normal leading-6 text-[#4B5563] transition-colors hover:text-[#4B28FF] focus-visible:text-[#4B28FF]"
+                        className="whitespace-nowrap text-base font-normal leading-6 text-muted transition-colors hover:text-primary focus-visible:text-primary"
                       >
                         {link.label}
-                      </a>
+                      </FooterLink>
                     </li>
                   ))}
                 </ul>

@@ -50,7 +50,7 @@ const COPY = {
    *  exact at every viewport instead of relying on character-width guesses. */
   heading: ["Quickly Build", "Impactful Softwares."],
   description:
-    "This is Agile development driven by AI agents augmenting elite engineers to develop at super-fast speeds. Strategy no longer waits for execution — it becomes execution.",
+    "This is Agile development driven by AI agents augmenting elite engineers to develop at super-fast speeds. Strategy no longer waits for execution. It becomes execution.",
 } as const;
 
 /* ─── STEPS ────────────────────────────────────────────────── */
@@ -103,7 +103,7 @@ const STEPS = [
     n: "Step 4",
     title: "Task Creation",
     description:
-      "Granular tickets, owner mapping, and acceptance criteria — every task ready for engineering to pick up and run.",
+      "Granular tickets, owner mapping, and acceptance criteria. Every task ready for engineering to pick up and run.",
     footerLead: "Backlog cut and assigned within",
     footerHours: "24 hours",
     footerTrail: "",
@@ -115,7 +115,7 @@ const STEPS = [
     n: "Step 5",
     title: "AI-Assisted Engineering",
     description:
-      "Our engineers ship in tandem with AI accelerators — full features moving from blank repo to staging in days, not months.",
+      "Our engineers ship in tandem with AI accelerators. Full features moving from blank repo to staging in days, not months.",
     footerLead: "First feature live within",
     footerHours: "5 days",
     footerTrail: "",

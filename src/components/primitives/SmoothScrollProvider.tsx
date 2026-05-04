@@ -4,7 +4,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type Lenis from "lenis";
 import { ReactLenis, useLenis } from "lenis/react";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -46,15 +46,26 @@ if (typeof window !== "undefined") {
  *   detaches when it goes away.
  *
  * Reduced motion:
- *   We do NOT call `lenis.stop()` for `prefers-reduced-motion: reduce` —
- *   stop() doesn't degrade gracefully to native scroll, it freezes scroll
- *   entirely (Lenis still intercepts wheel events, just stops processing
- *   them). Reduced-motion concerns are about animation, not user-input
- *   smoothing; the framer-motion `MotionConfig reducedMotion="user"` at
- *   the root already strips animations for those users, and Lenis's
- *   default 100 ms lerp is mild input filtering rather than motion.
- *   If a future user reports that the smoothing itself is uncomfortable,
- *   the right knob is `smoothWheel: false` in the Lenis options.
+ *   When the user has `prefers-reduced-motion: reduce`, we configure
+ *   Lenis to behave as a passthrough rather than disabling it entirely.
+ *   Specifically:
+ *     • `smoothWheel: false` — wheel events use native scroll; no
+ *       interpolation between deltas.
+ *     • `lerp: 1` — no easing on Lenis's internal scroll target. Even
+ *       if `lenis.scrollTo()` is called programmatically, it teleports.
+ *     • `anchors: false` — anchor link clicks fall through to the
+ *       browser default (instant jump).
+ *   Lenis still mounts so `useLenis()` consumers and the GSAP sync
+ *   keep working without conditional handling. This avoids the
+ *   accessibility regression flagged in the WCAG audit (vestibular
+ *   sensitivity around scroll interpolation) while preserving the
+ *   pinned-scroll integration used by HowItWorks / Services.
+ *
+ *   Mid-session toggles of the `prefers-reduced-motion` setting fire
+ *   a state update and would re-render the provider; ReactLenis's
+ *   options aren't reactive after initial mount, so the practical
+ *   effect requires a page reload. Acceptable trade-off — toggling
+ *   the OS-level setting mid-page is rare.
  *
  * Programmatic scroll:
  *   Other components that want to jump scroll position should call
@@ -131,11 +142,35 @@ function GsapLenisSync() {
   return null;
 }
 
+/* Tracks the user's `prefers-reduced-motion` setting. Lazy-init reads
+ * the value synchronously on the client (so the very first Lenis
+ * mount uses the correct options); the effect listens for runtime
+ * changes for completeness, even though ReactLenis won't reactively
+ * apply the new options after construction. SSR-safe — `typeof
+ * window` guard returns false during server render. */
+function useReducedMotionPref(): boolean {
+  const [reduce, setReduce] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  });
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = (e: MediaQueryListEvent) => setReduce(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  return reduce;
+}
+
 export default function SmoothScrollProvider({
   children,
 }: {
   readonly children: ReactNode;
 }) {
+  const reduceMotion = useReducedMotionPref();
+
   return (
     <ReactLenis
       root
@@ -145,31 +180,38 @@ export default function SmoothScrollProvider({
         /* Linear interpolation factor between current and target scroll.
            ──────────────────────────────────────────────────────────────
            Lenis default is 0.1 (~150 ms catch-up). On a Windows wheel
-           mouse — where deltas arrive in discrete 100–120 px bursts —
+           mouse, where deltas arrive in discrete 100–120 px bursts,
            that catch-up reads as "page is trailing my input." 0.08
            (~120 ms) is the snappiest value where wheel-tick jitter is
            still smoothed but the input lag isn't perceptible. Going
            lower than ~0.07 starts to expose individual wheel ticks
            again on slow scrolls. Lerp wins over `duration` when both
-           are set, so we omit duration entirely. */
-        lerp: 0.08,
-        /* Multiplier applied to wheel deltas before Lenis processes them.
-           Default 1.0 leaves OS-reported deltas untouched, which on
-           Windows is conservative — a single wheel notch only travels
-           ~100 px so users feel they have to spin the wheel a lot to
-           cross the page. 1.2 amplifies each notch by 20% so scrolling
-           feels responsive without feeling "throw-y". Trackpad users
-           are already used to high-precision deltas; this multiplier
-           applies to both wheel and trackpad but the perceptual change
-           is dominated by the wheel case (where deltas are coarsest). */
-        wheelMultiplier: 1.2,
+           are set, so we omit duration entirely.
+
+           When `prefers-reduced-motion: reduce` is set, lerp jumps to
+           1 (no smoothing) so Lenis behaves as a synchronous wrapper
+           around native scroll. Vestibular-sensitive users get sharp,
+           immediate scroll response. */
+        lerp: reduceMotion ? 1 : 0.08,
+        /* Wheel-delta multiplier. Default 1 leaves OS-reported deltas
+           untouched (conservative on Windows where each notch is only
+           ~100 px). 1.2 amplifies each notch by 20% so scrolling feels
+           responsive without feeling "throw-y". Trackpad users already
+           have high-precision deltas; this multiplier applies to both
+           but the perceptual change is dominated by the wheel case.
+           Reduced-motion drops back to 1 so deltas match native scroll. */
+        wheelMultiplier: reduceMotion ? 1 : 1.2,
         /* Smooth wheel input (desktop) but not touch (mobile). Native
            inertia on touch already feels good; overriding it tends to
-           fight against the OS's gesture handling. */
-        smoothWheel: true,
-        /* Let in-page anchors route through Lenis so nav/footer jumps
-           stay in sync with the single page-level scroll owner. */
-        anchors: true,
+           fight against the OS's gesture handling. Disabled entirely
+           when reduce-motion is set — prevents Lenis from interpolating
+           between scroll positions (vestibular accessibility win). */
+        smoothWheel: !reduceMotion,
+        /* Anchor link routing. Default true so nav/footer jumps stay
+           in sync with the single page-level scroll owner. Disabled
+           under reduce-motion so anchor clicks teleport instantly via
+           native browser behaviour rather than animating. */
+        anchors: !reduceMotion,
       }}
     >
       <GsapLenisSync />

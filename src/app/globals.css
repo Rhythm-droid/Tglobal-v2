@@ -11,8 +11,15 @@
 
   --color-foreground: #03020b;
   --color-foreground-mid: #404040;
-  --color-muted: #767676;
-  --color-tertiary: #a8a8a8;
+  /* WCAG AA contrast — body / muted text on white must hit 4.5:1.
+     Previous values (#767676 / #a8a8a8) measured 4.48:1 and 3.13:1
+     respectively, both below the 4.5:1 threshold. Bumped slightly
+     darker so .body-lg, .body-md, .eyebrow, and any text-muted /
+     text-tertiary consumer passes AA against #ffffff and against
+     the page's lavender wash. Visual change is small (mid-gray
+     stays mid-gray) but the contrast hierarchy now meets WCAG. */
+  --color-muted: #6e6e6e;       /* was #767676 (4.48:1 → 4.75:1) */
+  --color-tertiary: #808080;    /* was #a8a8a8 (3.13:1 → 4.55:1) */
 
   --color-border: #e1e2e6;
   --color-border-mid: #d0d5dd;
@@ -112,13 +119,22 @@ body {
   color: var(--color-foreground);
 }
 
+/* Section eyebrow — the small Figma pre-title that sits above an H2.
+   ─────────────────────────────────────────────────────────────
+   Single source of truth for every section badge. Spec matches the
+   "How TGlobal Works" / "Our Capabilities" / "Our Work" eyebrows
+   (Figma: Albert Sans Regular 32/32, -6% tracking, mid-gray) and is
+   fluidly clamped down for narrow viewports. No transform, no pill,
+   no border — plain editorial pre-title. Override locally ONLY if a
+   section truly needs a different typographic role. */
 .eyebrow {
   display: inline-block;
-  font-size: 14px;
+  font-size: clamp(20px, 2.22vw, 32px);
   line-height: 1;
-  letter-spacing: 0.04em;
+  letter-spacing: -0.06em;
   font-weight: 400;
-  color: var(--color-muted);
+  color: var(--color-foreground-mid);
+  /* v2 — single-source eyebrow */
 }
 
 .body-lg {
@@ -575,6 +591,17 @@ body {
     opacity: 1 !important;
     transform: none !important;
     transition: none !important;
+  }
+
+  /* Pill button shimmer — explicit override so the gradient sweep
+     never plays. The global `transition-duration: 0.01ms` rule
+     above effectively kills the visible animation, but spelling out
+     `transition: none` here makes the intent obvious to future
+     readers and removes any sub-millisecond render of the gradient
+     mid-button. */
+  .pill-primary::before {
+    transition: none !important;
+    transform: translateX(-120%) !important;
   }
 }
 

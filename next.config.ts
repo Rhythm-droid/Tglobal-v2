@@ -44,7 +44,11 @@ const CSP = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  // `https://flagcdn.com` is whitelisted ONLY for img-src — it serves
+  // the SVG country flags shown in the phone-number picker (see
+  // src/components/primitives/CountryPicker.tsx and src/lib/countries.ts).
+  // Image-only allowlist; no script, frame, or connect access granted.
+  "img-src 'self' data: blob: https://flagcdn.com",
   "font-src 'self' data:",
   // Web3Forms is the form-to-email backend used by the #talk-to-us
   // section in CTA.tsx. Whitelist its API endpoint so the fetch call

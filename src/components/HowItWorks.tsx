@@ -54,7 +54,7 @@ const COPY = {
   eyebrow: "How TGlobal Works",
   /** Heading is 3 explicit lines per Figma — manual breaks keep the wrap
    *  exact at every viewport instead of relying on character-width guesses. */
-  heading: ["From Idea to", "Production —", "Instantly"],
+  heading: ["From Idea to", "Production,", "Instantly"],
   description:
     "We utilise AI models and combine them with your ideas to build scalable products.",
 } as const;
@@ -64,13 +64,13 @@ const STEPS = [
   {
     title: "Define Your Idea",
     description:
-      "Start with intent, not complexity. Describe what you want to build — from features to workflows — and Tglobal translates it into a structured product blueprint.",
+      "Start with intent, not complexity. Describe what you want to build (from features to workflows) and Tglobal translates it into a structured product blueprint.",
     illust: "/how-it-works/illust-1.svg",
   },
   {
     title: "Our team + AI Builds the System",
     description:
-      "Tglobal generates architecture, code, and core logic in one continuous flow — eliminating manual setup and reducing development time drastically.",
+      "Tglobal generates architecture, code, and core logic in one continuous flow, eliminating manual setup and reducing development time drastically.",
     illust: "/how-it-works/illust-2.svg",
   },
   {
@@ -365,17 +365,7 @@ function Header() {
       className="flex flex-col"
       style={{ gap: TUNING.desktop.headerGap }}
     >
-      <p
-        className="m-0"
-        style={{
-          fontSize: TUNING.type.eyebrow.size,
-          lineHeight: TUNING.type.eyebrow.lineHeight,
-          letterSpacing: TUNING.type.eyebrow.tracking,
-          color: TUNING.type.eyebrow.color,
-        }}
-      >
-        {COPY.eyebrow}
-      </p>
+      <p className="eyebrow m-0">{COPY.eyebrow}</p>
       <h2
         id="how-it-works-heading"
         className="m-0 font-medium"

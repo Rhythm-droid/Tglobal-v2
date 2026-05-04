@@ -197,7 +197,7 @@ function SatisfactionCard({ className = "" }: { className?: string }) {
       className={className}
       stat="98%"
       title="Client Satisfaction"
-      description="Rated 5-stars across all platforms — we deliver exactly what your business needs."
+      description="Rated 5-stars across all platforms. We deliver exactly what your business needs."
       background="#F9FBFE"
     >
       {/* ── LAYER 1 — Ellipse 9: purple bloom ───────────────────────────

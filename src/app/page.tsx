@@ -31,6 +31,7 @@ const Problem = dynamic(() => import("@/components/Problem"));
 const HowItWorks = dynamic(() => import("@/components/HowItWorks"));
 const Services = dynamic(() => import("@/components/Services"));
 const Capabilities = dynamic(() => import("@/components/Capabilities"));
+const Faq = dynamic(() => import("@/components/Faq"));
 const CTA = dynamic(() => import("@/components/CTA"));
 
 export default function Home() {
@@ -45,6 +46,7 @@ export default function Home() {
         <Services />
         <Capabilities />
         <Clients />
+        <Faq />
         <CTA />
       </main>
       <Footer />

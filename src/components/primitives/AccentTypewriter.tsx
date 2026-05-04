@@ -47,13 +47,23 @@ const HOLD_EMPTY_MS = 320;
    earlier `background-clip: text` approach which only painted a
    pre-mixed gradient inside the glyph shape (no actual transparency,
    no real bg show-through). */
-const ACCENT_HIGHLIGHT_COLOUR = "#03020b";
+/* Highlight fill — pushed darker per the latest pass. The previous
+   #2f2c3a felt too light for proper readable contrast; this is
+   one step closer to ink while still keeping a warm violet
+   undertone so the highlight harmonises with the page's purple
+   wash rather than reading as an off-brand pure black chip. */
+const ACCENT_HIGHLIGHT_COLOUR = "#15131e";
 const ACCENT_HIGHLIGHT_RADIUS_EM = 0.10;
+/* Near-full opacity. A touch of transparency (0.96) lets a hint
+   of the bg blend up through the rectangle so the fill doesn't
+   read as a hard opaque chip, but the contrast is now strong
+   enough that the highlight is unmistakably present. */
+const ACCENT_HIGHLIGHT_OPACITY = 0.96;
 /* Bottom-fade applied to the rectangle so its lower edge dissolves
-   into the page bg with no visible cut-line (user-reported issue
-   from the prior iteration). The mask is layered ON TOP of the
-   knockout mask — using SVG `mask` element nesting via an additional
-   gradient mask. */
+   into the page bg with no visible cut-line. 55% start keeps most
+   of the rectangle opaque (so the contrast against the headline
+   reads cleanly) while still feathering the bottom edge into the
+   bg gradient. */
 const BOTTOM_FADE_START_PCT = 55;
 const BOTTOM_FADE_END_PCT = 100;
 
@@ -168,8 +178,37 @@ export default function AccentTypewriter({ delay }: { delay: number }) {
         be hidden behind the rectangle. */
   return (
     <>
+      {/* Layout-only span. `visibility: hidden` AND `aria-hidden` are
+          both required: visibility:hidden reserves the inline width
+          for the SVG to size against, but it also hides the text from
+          screen readers; aria-hidden makes that intent explicit. The
+          accessible-name span below carries the H1's actual word for
+          assistive tech. */}
       <span aria-hidden style={{ visibility: "hidden" }}>
         {text || " "}
+      </span>
+      {/* Accessible text layer. Renders the FIRST word from
+          ACCENT_WORDS as a static, screen-reader-only string so the
+          parent H1 reads as "Software, Without the Friction" without
+          attempting to announce every cycling change (which would be
+          chatty and unhelpful). The visible cycling is purely a
+          sighted-user effect; SR users get a clean, complete sentence.
+          clip-path positioning keeps it visible to AT while invisible
+          to sight. */}
+      <span
+        style={{
+          position: "absolute",
+          width: "1px",
+          height: "1px",
+          padding: 0,
+          margin: "-1px",
+          overflow: "hidden",
+          clip: "rect(0, 0, 0, 0)",
+          whiteSpace: "nowrap",
+          border: 0,
+        }}
+      >
+        {ACCENT_WORDS[0]}
       </span>
       <svg
         aria-hidden
@@ -223,6 +262,7 @@ export default function AccentTypewriter({ delay }: { delay: number }) {
           width="100%"
           height="100%"
           fill={ACCENT_HIGHLIGHT_COLOUR}
+          fillOpacity={ACCENT_HIGHLIGHT_OPACITY}
           rx={`${ACCENT_HIGHLIGHT_RADIUS_EM}em`}
           mask={`url(#${maskId})`}
         />

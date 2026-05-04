@@ -1,7 +1,15 @@
 "use client";
 
 import { AnimatePresence, motion, type Variants } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import CountryPicker from "@/components/primitives/CountryPicker";
+import {
+  DEFAULT_COUNTRY_ISO2,
+  digitsOnly,
+  findCountry,
+  formatPhone,
+  isValidPhoneForCountry,
+} from "@/lib/countries";
 
 /* ─── Web3Forms backend ──────────────────────────────────────────
  * Both modes (Project / Startup) POST to the same access key. The
@@ -12,59 +20,63 @@ import { useState } from "react";
 const ACCESS_KEY = "8ca5ba96-be53-4698-bbc8-89b92c007835";
 const ENDPOINT = "https://api.web3forms.com/submit";
 
-const DETAILS_MAX = 300;
+const NOTES_MAX = 200;
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 type FormMode = "project" | "startup";
 
-/* ─── Selects ────────────────────────────────────────────────── */
-const BUDGET_OPTIONS = [
-  { value: "", label: "Select a budget range" },
-  { value: "<25k", label: "Less than $25,000" },
-  { value: "25-100k", label: "$25,000 – $100,000" },
-  { value: "100k+", label: "$100,000+" },
-  { value: "exploring", label: "Just exploring" },
+/* ─── Selects ──────────────────────────────────────────────────
+ * Field schemas match the Heizen reference forms verbatim — labels,
+ * options, and option order have been transcribed from the design
+ * the boss circulated. Don't paraphrase; the wording is the brief.
+ *
+ * Project = "Not a startup" form.
+ *   Field: Company Revenue (₹ Cr)
+ *   Anchored in INR crore because the form is India-first.
+ *
+ * Startup = the sprint-plan form.
+ *   Field: Company Stage
+ *   Five canonical stages from "Just an idea" → "Scaling". Wording
+ *   is verbatim from the design — preserve the em dash and the
+ *   short clarifier after it ("Just an idea, no code yet" etc.). */
+const REVENUE_OPTIONS = [
+  { value: "", label: "Select" },
+  { value: "<100", label: "< 100 Cr" },
+  { value: "100-1000", label: "100–1,000 Cr" },
+  { value: "1000-10000", label: "1,000–10,000 Cr" },
+  { value: "10000+", label: "10,000+ Cr" },
 ] as const;
 
 const STAGE_OPTIONS = [
-  { value: "", label: "Select your stage" },
-  { value: "pre-seed", label: "Pre-seed / Idea" },
-  { value: "seed", label: "Seed" },
-  { value: "series-a", label: "Series A" },
-  { value: "series-b+", label: "Series B+" },
-  { value: "bootstrapped", label: "Bootstrapped / Profitable" },
+  { value: "", label: "Select Stage" },
+  { value: "idea", label: "Just an idea, no code yet" },
+  { value: "mvp", label: "Building MVP, currently in development" },
+  { value: "pilot", label: "In pilot or beta, testing with real users" },
+  { value: "live", label: "Product live, in production" },
+  { value: "scaling", label: "Scaling, post product-market fit" },
 ] as const;
 
-const COUNTRY_CODES = [
-  { value: "+91", label: "+91" },
-  { value: "+1", label: "+1" },
-  { value: "+44", label: "+44" },
-  { value: "+61", label: "+61" },
-  { value: "+971", label: "+971" },
-  { value: "+49", label: "+49" },
-  { value: "+33", label: "+33" },
-  { value: "+81", label: "+81" },
-  { value: "+86", label: "+86" },
-] as const;
-
-/* ─── Single state shape covers both modes.
- * Common fields (name, email, company, role) carry over when the
- * user toggles between modes so they don't retype if they change
- * their mind mid-fill. Mode-specific fields stay separate. */
+/* Single state shape covers both modes. Common fields (name, email,
+ * company, role, linkedin) carry over when the user toggles between
+ * modes so they don't retype if they change their mind mid-fill.
+ * Mode-specific fields stay separate and are simply not validated /
+ * not sent in payloads when the other mode is active. */
 interface FormState {
   // Shared
   name: string;
   email: string;
   company: string;
   role: string;
+  linkedin: string;
   // Project-only
-  budget: string;
-  details: string;
-  // Startup-only
-  countryCode: string;
+  revenue: string;
+  notes: string;
+  // Startup-only — phone stored as bare digits + ISO so we can
+  // re-format on country switch and validate length per-country
+  // without parsing back out of a display string.
+  countryIso: string;
   phone: string;
   stage: string;
-  linkedin: string;
 }
 
 const INITIAL_FORM: FormState = {
@@ -72,48 +84,48 @@ const INITIAL_FORM: FormState = {
   email: "",
   company: "",
   role: "",
-  budget: "",
-  details: "",
-  countryCode: "+91",
+  linkedin: "",
+  revenue: "",
+  notes: "",
+  countryIso: DEFAULT_COUNTRY_ISO2,
   phone: "",
   stage: "",
-  linkedin: "",
 };
 
 type FieldKey = keyof FormState;
 type SubmitStatus = "idle" | "submitting" | "success";
 
-const SUBTITLES: Record<FormMode, string> = {
-  project:
-    "Share what you're building and we'll come back with a focused next step — usually within a business day.",
-  startup:
-    "Tell us your stage and we'll route you to a sprint planner who's shipped MVPs in your space.",
-};
+const SUBTITLE = "This helps us prepare for a focused strategy call.";
 
 const SUBMIT_LABELS: Record<FormMode, string> = {
-  project: "Talk to our team",
-  startup: "Request my Sprint Plan",
+  project: "Talk to an expert",
+  startup: "Request My Sprint Plan",
 };
 
 const TOGGLE_PROMPT: Record<FormMode, { lead: string; cta: string }> = {
   project: {
-    lead: "Building an early-stage startup? ",
-    cta: "Try Sprint Planning",
+    lead: "Are you a StartUp? ",
+    cta: "Start here",
   },
   startup: {
-    lead: "Not a startup? ",
-    cta: "Talk to our team",
+    lead: "Not a StartUp? ",
+    cta: "Click Here",
   },
 };
 
+/* ─── Validators ─────────────────────────────────────────────── */
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-function isValidPhone(value: string): boolean {
-  // Permissive: 7+ digits, allows spaces/dashes/dots — server-side can normalise.
-  const digits = value.replace(/[^\d]/g, "");
-  return digits.length >= 7 && digits.length <= 15;
+function isValidLinkedIn(value: string): boolean {
+  /* Lenient — accept any URL-ish string that mentions linkedin.com,
+   * with or without a protocol or `www.` prefix. We don't try to
+   * validate the slug shape itself; the value goes to a human in
+   * the inbox who can sanity-check on their end. */
+  const v = value.trim().toLowerCase();
+  if (!v) return true;
+  return /(^|\/\/|www\.)linkedin\.com\//.test(v);
 }
 
 /* ─── Icons ──────────────────────────────────────────────────── */
@@ -267,6 +279,8 @@ export default function CTA() {
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [submitError, setSubmitError] = useState<string>("");
 
+  const country = useMemo(() => findCountry(form.countryIso), [form.countryIso]);
+
   const update = <K extends FieldKey>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (errors[key]) {
@@ -274,6 +288,31 @@ export default function CTA() {
         const next = { ...prev };
         delete next[key];
         return next;
+      });
+    }
+  };
+
+  /* Phone-specific updater: digits-only storage + length cap per
+   * country. Called both from the input's onChange (typing) and
+   * from CountryPicker.onChange (so digits exceeding the new
+   * country's max get trimmed instead of silently overflowing). */
+  const updatePhoneFromInput = (raw: string) => {
+    const digits = digitsOnly(raw).slice(0, country.maxDigits);
+    update("phone", digits);
+  };
+
+  const handleCountryChange = (iso2: string) => {
+    const next = findCountry(iso2);
+    setForm((prev) => ({
+      ...prev,
+      countryIso: iso2,
+      phone: prev.phone.slice(0, next.maxDigits),
+    }));
+    if (errors.phone) {
+      setErrors((prev) => {
+        const cleaned = { ...prev };
+        delete cleaned.phone;
+        return cleaned;
       });
     }
   };
@@ -286,7 +325,13 @@ export default function CTA() {
        a half-validated user doesn't lose feedback when toggling. */
     setErrors((prev) => {
       const carry: Partial<Record<FieldKey, string>> = {};
-      const sharedKeys: FieldKey[] = ["name", "email", "company", "role"];
+      const sharedKeys: FieldKey[] = [
+        "name",
+        "email",
+        "company",
+        "role",
+        "linkedin",
+      ];
       for (const k of sharedKeys) {
         if (prev[k]) carry[k] = prev[k];
       }
@@ -296,42 +341,72 @@ export default function CTA() {
     setMode(next);
   };
 
-  const validate = (): boolean => {
+  /* Build and apply validation errors. Returns the errors map so the
+   * caller can decide what to do (focus first invalid, abort submit,
+   * etc.) without waiting for setState to flush. */
+  const validate = (): Partial<Record<FieldKey, string>> => {
     const next: Partial<Record<FieldKey, string>> = {};
     if (!form.name.trim()) next.name = "Your name is required";
     if (!form.email.trim()) next.email = "Email is required";
     else if (!isValidEmail(form.email)) next.email = "Please enter a valid email";
     if (!form.company.trim()) next.company = "Company name is required";
+    if (!form.role.trim()) next.role = "Role / Title is required";
 
-    if (mode === "startup") {
-      if (!form.phone.trim()) next.phone = "Phone number is required";
-      else if (!isValidPhone(form.phone))
-        next.phone = "Please enter a valid phone number";
-      if (!form.stage.trim()) next.stage = "Please select your stage";
+    if (mode === "project") {
+      if (!form.revenue) next.revenue = "Please select a revenue range";
+    } else {
+      if (!form.phone) {
+        next.phone = "Phone number is required";
+      } else if (!isValidPhoneForCountry(country, form.phone)) {
+        next.phone =
+          country.minDigits === country.maxDigits
+            ? `Please enter a ${country.maxDigits}-digit ${country.name} number`
+            : `Please enter a valid ${country.name} number (${country.minDigits}–${country.maxDigits} digits)`;
+      }
+      if (!form.stage) next.stage = "Please select your stage";
+    }
+
+    if (form.linkedin.trim() && !isValidLinkedIn(form.linkedin)) {
+      next.linkedin = "Please enter a valid LinkedIn URL";
     }
 
     setErrors(next);
-    return Object.keys(next).length === 0;
+    return next;
+  };
+
+  /* On submit-failed-validation: focus the first invalid field so
+   * keyboard / screen-reader users land somewhere actionable rather
+   * than reading the error summary at the top and tabbing back. */
+  const focusFirstInvalid = (errs: Partial<Record<FieldKey, string>>) => {
+    const order: FieldKey[] =
+      mode === "project"
+        ? ["name", "email", "company", "revenue", "role", "linkedin", "notes"]
+        : ["name", "email", "phone", "company", "stage", "role", "linkedin"];
+    const idMap: Record<FieldKey, string> = {
+      name: "ct-name",
+      email: "ct-email",
+      company: "ct-company",
+      role: "ct-role",
+      linkedin: "ct-linkedin",
+      revenue: "ct-revenue",
+      notes: "ct-notes",
+      countryIso: "ct-phone",
+      phone: "ct-phone",
+      stage: "ct-stage",
+    };
+    const first = order.find((k) => errs[k]);
+    if (first) {
+      const id = idMap[first];
+      requestAnimationFrame(() => document.getElementById(id)?.focus());
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (status === "submitting") return;
-    if (!validate()) {
-      const firstInvalid = Object.keys(errors)[0] as FieldKey | undefined;
-      const idMap: Partial<Record<FieldKey, string>> = {
-        name: "ct-name",
-        email: "ct-email",
-        company: "ct-company",
-        role: "ct-role",
-        budget: "ct-budget",
-        details: "ct-details",
-        phone: "ct-phone",
-        stage: "ct-stage",
-        linkedin: "ct-linkedin",
-      };
-      const id = idMap[firstInvalid ?? "name"] ?? "ct-name";
-      document.getElementById(id)?.focus();
+    const errs = validate();
+    if (Object.keys(errs).length > 0) {
+      focusFirstInvalid(errs);
       return;
     }
 
@@ -341,8 +416,13 @@ export default function CTA() {
     const subjectPrefix = mode === "startup" ? "Startup" : "Project";
     const fullPhone =
       mode === "startup"
-        ? `${form.countryCode} ${form.phone}`.trim()
-        : "—";
+        ? `${country.dial} ${formatPhone(country, form.phone)}`.trim()
+        : "Not provided";
+    const stageLabel =
+      STAGE_OPTIONS.find((o) => o.value === form.stage)?.label ?? form.stage;
+    const revenueLabel =
+      REVENUE_OPTIONS.find((o) => o.value === form.revenue)?.label ??
+      form.revenue;
 
     const payload =
       mode === "project"
@@ -354,9 +434,10 @@ export default function CTA() {
             name: form.name,
             email: form.email,
             company: form.company,
-            role: form.role || "—",
-            budget: form.budget || "—",
-            details: form.details || "—",
+            revenue: revenueLabel,
+            role: form.role,
+            linkedin: form.linkedin || "Not provided",
+            notes: form.notes || "Not provided",
             botcheck: "",
           }
         : {
@@ -367,10 +448,11 @@ export default function CTA() {
             name: form.name,
             email: form.email,
             phone: fullPhone,
+            country: country.name,
             company: form.company,
-            stage: form.stage,
-            role: form.role || "—",
-            linkedin: form.linkedin || "—",
+            stage: stageLabel,
+            role: form.role,
+            linkedin: form.linkedin || "Not provided",
             botcheck: "",
           };
 
@@ -388,12 +470,7 @@ export default function CTA() {
     }
 
     try {
-      const res = await fetch(ENDPOINT, {
-        method: "POST",
-        body: fd,
-        // Intentionally NO Content-Type header — the browser sets
-        // multipart/form-data with the right boundary.
-      });
+      const res = await fetch(ENDPOINT, { method: "POST", body: fd });
       const data = (await res.json()) as { success?: boolean; message?: string };
       if (data.success) {
         setStatus("success");
@@ -412,6 +489,25 @@ export default function CTA() {
 
   const otherMode: FormMode = mode === "project" ? "startup" : "project";
   const togglePrompt = TOGGLE_PROMPT[mode];
+
+  /* Move focus to the success heading when the submission completes
+   * so screen-reader / keyboard users get a clear signal that their
+   * action succeeded — without this, focus stays on the (now-unmounted)
+   * submit button and SR users may not realise the form was sent.
+   * The h3 is given tabIndex={-1} so it can receive programmatic focus
+   * without becoming a tab stop in normal navigation. */
+  const successHeadingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (status !== "success") return;
+    /* requestAnimationFrame defers until after AnimatePresence mounts
+     * the success card (the framer-motion enter animation kicks off
+     * one frame later); without it, focus targets a not-yet-rendered
+     * heading. */
+    const handle = requestAnimationFrame(() => {
+      successHeadingRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(handle);
+  }, [status]);
 
   return (
     <section
@@ -460,22 +556,17 @@ export default function CTA() {
             Tell us about your project
           </motion.h2>
 
-          {/* Subtitle swaps with mode — heading stays stable so the
-              section's identity doesn't visibly shift. */}
-          <div className="mx-auto mt-5 max-w-[560px] min-h-[3.5rem]">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.p
-                key={mode}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.35, ease: EASE }}
-                className="body-lg"
-              >
-                {SUBTITLES[mode]}
-              </motion.p>
-            </AnimatePresence>
-          </div>
+          {/* Subtitle is now mode-agnostic — both forms ask for the
+              same focused-call scoping. */}
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 0.55, delay: 0.1, ease: EASE }}
+            className="body-lg mx-auto mt-5 max-w-[560px]"
+          >
+            {SUBTITLE}
+          </motion.p>
         </div>
 
         {/* ─── Form card ─── */}
@@ -498,6 +589,13 @@ export default function CTA() {
                 {status === "success" ? (
                   <motion.div
                     key="success"
+                    /* role + aria-live so screen readers announce the
+                     * success state automatically (in case focus
+                     * management hasn't landed yet on slower clients).
+                     * `tabIndex={-1}` on the heading inside lets us
+                     * programmatically focus it from useEffect above. */
+                    role="status"
+                    aria-live="polite"
                     initial={{ opacity: 0, y: 14 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -14 }}
@@ -517,8 +615,12 @@ export default function CTA() {
                     >
                       <AnimatedCheck size={32} />
                     </motion.span>
-                    <h3 className="mt-6 text-[24px] font-semibold tracking-[-0.02em] text-foreground">
-                      Thanks — we got it.
+                    <h3
+                      ref={successHeadingRef}
+                      tabIndex={-1}
+                      className="mt-6 text-[24px] font-semibold tracking-[-0.02em] text-foreground outline-none"
+                    >
+                      Thanks. We got it.
                     </h3>
                     <p className="mt-3 max-w-[420px] text-[15px] text-muted">
                       {form.name.trim().split(/\s+/)[0]
@@ -537,7 +639,15 @@ export default function CTA() {
                     exit={{ opacity: 0 }}
                     className="space-y-5"
                     noValidate
+                    /* aria-busy lets screen readers know the form is
+                     * mid-submission — combined with the disabled
+                     * submit button (line below) and the live region
+                     * on the success card, SR users get the full
+                     * "submitting → submitted" narration. */
+                    aria-busy={status === "submitting"}
                   >
+                    {/* Honeypot — hidden field a real user never fills.
+                        Web3Forms checks `botcheck` and rejects if non-empty. */}
                     <input
                       type="text"
                       name="botcheck"
@@ -547,249 +657,21 @@ export default function CTA() {
                       aria-hidden="true"
                     />
 
-                    {/* Shared row 1 — Name + Email */}
-                    <div className="grid gap-5 sm:grid-cols-2">
-                      <Field
-                        id="ct-name"
-                        label="Full name"
-                        required
-                        error={errors.name}
-                      >
-                        <input
-                          id="ct-name"
-                          name="name"
-                          type="text"
-                          autoComplete="name"
-                          value={form.name}
-                          onChange={(e) => update("name", e.target.value)}
-                          aria-invalid={!!errors.name}
-                          aria-describedby={errors.name ? "ct-name-error" : undefined}
-                          placeholder="Your full name"
-                          className={`${inputBase} ${errors.name ? inputErrorClass : ""}`}
-                        />
-                      </Field>
-                      <Field
-                        id="ct-email"
-                        label={mode === "startup" ? "Email" : "Work email"}
-                        required
-                        error={errors.email}
-                      >
-                        <input
-                          id="ct-email"
-                          name="email"
-                          type="email"
-                          autoComplete="email"
-                          inputMode="email"
-                          value={form.email}
-                          onChange={(e) => update("email", e.target.value)}
-                          aria-invalid={!!errors.email}
-                          aria-describedby={errors.email ? "ct-email-error" : undefined}
-                          placeholder={mode === "startup" ? "you@startup.com" : "you@company.com"}
-                          className={`${inputBase} ${errors.email ? inputErrorClass : ""}`}
-                        />
-                      </Field>
-                    </div>
-
-                    {/* Startup-only — Phone with country code (single visual
-                        field with shared border, internal divider). */}
-                    {mode === "startup" && (
-                      <Field
-                        id="ct-phone"
-                        label="Phone number"
-                        required
-                        error={errors.phone}
-                      >
-                        <div
-                          className={`flex items-stretch overflow-hidden rounded-2xl border bg-white/95 transition-[border-color,background-color,box-shadow] duration-200 focus-within:border-primary focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/10 ${
-                            errors.phone ? "border-red-400 focus-within:border-red-500 focus-within:ring-red-100" : "border-border"
-                          }`}
-                        >
-                          <div className="relative">
-                            <select
-                              aria-label="Country code"
-                              value={form.countryCode}
-                              onChange={(e) => update("countryCode", e.target.value)}
-                              className="h-full cursor-pointer appearance-none border-0 bg-transparent py-4 pl-5 pr-9 text-[16px] text-foreground focus:outline-none"
-                            >
-                              {COUNTRY_CODES.map((c) => (
-                                <option key={c.value} value={c.value}>
-                                  {c.label}
-                                </option>
-                              ))}
-                            </select>
-                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted">
-                              <ChevronDown size={14} />
-                            </span>
-                          </div>
-                          <span className="my-3 w-px bg-border" />
-                          <input
-                            id="ct-phone"
-                            name="phone"
-                            type="tel"
-                            autoComplete="tel-national"
-                            inputMode="tel"
-                            value={form.phone}
-                            onChange={(e) => update("phone", e.target.value)}
-                            aria-invalid={!!errors.phone}
-                            aria-describedby={errors.phone ? "ct-phone-error" : undefined}
-                            placeholder="98765 43210"
-                            className="flex-1 border-0 bg-transparent px-4 py-4 text-[16px] text-foreground placeholder:text-tertiary focus:outline-none"
-                          />
-                        </div>
-                      </Field>
-                    )}
-
-                    {/* Shared row 2 — Company + (Role | Stage) */}
-                    <div className="grid gap-5 sm:grid-cols-2">
-                      <Field
-                        id="ct-company"
-                        label="Company name"
-                        required
-                        error={errors.company}
-                      >
-                        <input
-                          id="ct-company"
-                          name="company"
-                          type="text"
-                          autoComplete="organization"
-                          value={form.company}
-                          onChange={(e) => update("company", e.target.value)}
-                          aria-invalid={!!errors.company}
-                          aria-describedby={errors.company ? "ct-company-error" : undefined}
-                          placeholder={mode === "startup" ? 'Even "Project X" works' : "Your company"}
-                          className={`${inputBase} ${errors.company ? inputErrorClass : ""}`}
-                        />
-                      </Field>
-
-                      {mode === "startup" ? (
-                        <Field
-                          id="ct-stage"
-                          label="Company stage"
-                          required
-                          error={errors.stage}
-                        >
-                          <div className="relative">
-                            <select
-                              id="ct-stage"
-                              name="stage"
-                              value={form.stage}
-                              onChange={(e) => update("stage", e.target.value)}
-                              aria-invalid={!!errors.stage}
-                              aria-describedby={errors.stage ? "ct-stage-error" : undefined}
-                              className={`${inputBase} cursor-pointer appearance-none pr-12 ${
-                                form.stage ? "" : "text-tertiary"
-                              } ${errors.stage ? inputErrorClass : ""}`}
-                            >
-                              {STAGE_OPTIONS.map((opt) => (
-                                <option
-                                  key={opt.value}
-                                  value={opt.value}
-                                  disabled={opt.value === ""}
-                                  className="text-foreground"
-                                >
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                            <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-muted">
-                              <ChevronDown size={16} />
-                            </span>
-                          </div>
-                        </Field>
-                      ) : (
-                        <Field id="ct-role" label="Role / Title">
-                          <input
-                            id="ct-role"
-                            name="role"
-                            type="text"
-                            autoComplete="organization-title"
-                            value={form.role}
-                            onChange={(e) => update("role", e.target.value)}
-                            placeholder="Founder, CTO, PM..."
-                            className={inputBase}
-                          />
-                        </Field>
-                      )}
-                    </div>
-
-                    {/* Mode-specific row(s) */}
                     {mode === "project" ? (
-                      <>
-                        <Field id="ct-budget" label="Project budget">
-                          <div className="relative">
-                            <select
-                              id="ct-budget"
-                              name="budget"
-                              value={form.budget}
-                              onChange={(e) => update("budget", e.target.value)}
-                              className={`${inputBase} cursor-pointer appearance-none pr-12 ${
-                                form.budget ? "" : "text-tertiary"
-                              }`}
-                            >
-                              {BUDGET_OPTIONS.map((opt) => (
-                                <option
-                                  key={opt.value}
-                                  value={opt.value}
-                                  disabled={opt.value === ""}
-                                  className="text-foreground"
-                                >
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                            <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-muted">
-                              <ChevronDown size={16} />
-                            </span>
-                          </div>
-                        </Field>
-
-                        <Field id="ct-details" label="Tell us about your project">
-                          <textarea
-                            id="ct-details"
-                            name="details"
-                            value={form.details}
-                            onChange={(e) =>
-                              update("details", e.target.value.slice(0, DETAILS_MAX))
-                            }
-                            placeholder="What are you building, and where are you stuck?"
-                            rows={4}
-                            maxLength={DETAILS_MAX}
-                            className={`${inputBase} resize-none`}
-                          />
-                          <div className="mt-1.5 flex justify-end text-[11px] text-tertiary">
-                            <span aria-live="polite">
-                              {form.details.length}/{DETAILS_MAX}
-                            </span>
-                          </div>
-                        </Field>
-                      </>
+                      <ProjectFields
+                        form={form}
+                        errors={errors}
+                        update={update}
+                      />
                     ) : (
-                      <div className="grid gap-5 sm:grid-cols-2">
-                        <Field id="ct-role" label="Role / Title">
-                          <input
-                            id="ct-role"
-                            name="role"
-                            type="text"
-                            autoComplete="organization-title"
-                            value={form.role}
-                            onChange={(e) => update("role", e.target.value)}
-                            placeholder="Founder, CTO, PM..."
-                            className={inputBase}
-                          />
-                        </Field>
-                        <Field id="ct-linkedin" label="LinkedIn profile">
-                          <input
-                            id="ct-linkedin"
-                            name="linkedin"
-                            type="url"
-                            autoComplete="url"
-                            value={form.linkedin}
-                            onChange={(e) => update("linkedin", e.target.value)}
-                            placeholder="linkedin.com/in/yourprofile"
-                            className={inputBase}
-                          />
-                        </Field>
-                      </div>
+                      <StartupFields
+                        form={form}
+                        errors={errors}
+                        update={update}
+                        country={country}
+                        onCountryChange={handleCountryChange}
+                        onPhoneInputChange={updatePhoneFromInput}
+                      />
                     )}
 
                     {submitError && (
@@ -841,11 +723,10 @@ export default function CTA() {
           </div>
 
           {/* ─── Cross-link toggle below card ───────────────────
-              Heizen-style "Are you a startup? Start here" prompt,
-              but instead of navigating to /startups it swaps the
-              form mode in place. Hidden when the user is already
-              in the success state — they're done; switching back
-              to a fresh empty form would be confusing. */}
+              Heizen-style "Are you a startup? Start here" prompt.
+              Swaps the form mode in place rather than navigating —
+              shared field values carry across so a half-filled user
+              doesn't lose their typing. Hidden in success state. */}
           {status !== "success" && (
             <div className="mt-6 text-center text-[13px] text-muted">
               {togglePrompt.lead}
@@ -864,5 +745,377 @@ export default function CTA() {
         </motion.div>
       </div>
     </section>
+  );
+}
+
+/* ─── Project (Not a Startup) field set ──────────────────────── */
+interface FieldSetProps {
+  form: FormState;
+  errors: Partial<Record<FieldKey, string>>;
+  update: <K extends FieldKey>(key: K, value: FormState[K]) => void;
+}
+
+function ProjectFields({ form, errors, update }: FieldSetProps) {
+  return (
+    <>
+      {/* Row 1 — Name + Email */}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field
+          id="ct-name"
+          label="Full Name"
+          required
+          error={errors.name}
+        >
+          <input
+            id="ct-name"
+            name="name"
+            type="text"
+            autoComplete="name"
+            value={form.name}
+            onChange={(e) => update("name", e.target.value)}
+            aria-invalid={!!errors.name}
+            aria-describedby={errors.name ? "ct-name-error" : undefined}
+            placeholder="Enter Full Name"
+            className={`${inputBase} ${errors.name ? inputErrorClass : ""}`}
+          />
+        </Field>
+        <Field
+          id="ct-email"
+          label="Work Email"
+          required
+          error={errors.email}
+        >
+          <input
+            id="ct-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            inputMode="email"
+            value={form.email}
+            onChange={(e) => update("email", e.target.value)}
+            aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? "ct-email-error" : undefined}
+            placeholder="Email id"
+            className={`${inputBase} ${errors.email ? inputErrorClass : ""}`}
+          />
+        </Field>
+      </div>
+
+      {/* Row 2 — Company + Revenue */}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field
+          id="ct-company"
+          label="Company Name"
+          required
+          error={errors.company}
+        >
+          <input
+            id="ct-company"
+            name="company"
+            type="text"
+            autoComplete="organization"
+            value={form.company}
+            onChange={(e) => update("company", e.target.value)}
+            aria-invalid={!!errors.company}
+            aria-describedby={errors.company ? "ct-company-error" : undefined}
+            placeholder="Your company name"
+            className={`${inputBase} ${errors.company ? inputErrorClass : ""}`}
+          />
+        </Field>
+        <Field
+          id="ct-revenue"
+          label="Company Revenue (₹ Cr)"
+          required
+          error={errors.revenue}
+        >
+          <div className="relative">
+            <select
+              id="ct-revenue"
+              name="revenue"
+              value={form.revenue}
+              onChange={(e) => update("revenue", e.target.value)}
+              aria-invalid={!!errors.revenue}
+              aria-describedby={errors.revenue ? "ct-revenue-error" : undefined}
+              className={`${inputBase} cursor-pointer appearance-none pr-12 ${
+                form.revenue ? "" : "text-tertiary"
+              } ${errors.revenue ? inputErrorClass : ""}`}
+            >
+              {REVENUE_OPTIONS.map((opt) => (
+                <option
+                  key={opt.value}
+                  value={opt.value}
+                  disabled={opt.value === ""}
+                  className="text-foreground"
+                >
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-muted">
+              <ChevronDown size={16} />
+            </span>
+          </div>
+        </Field>
+      </div>
+
+      {/* Row 3 — Role */}
+      <Field id="ct-role" label="Role / Title" required error={errors.role}>
+        <input
+          id="ct-role"
+          name="role"
+          type="text"
+          autoComplete="organization-title"
+          value={form.role}
+          onChange={(e) => update("role", e.target.value)}
+          aria-invalid={!!errors.role}
+          aria-describedby={errors.role ? "ct-role-error" : undefined}
+          placeholder="Founder, CTO, Product Manager…"
+          className={`${inputBase} ${errors.role ? inputErrorClass : ""}`}
+        />
+      </Field>
+
+      {/* Row 4 — LinkedIn */}
+      <Field id="ct-linkedin" label="LinkedIn profile" error={errors.linkedin}>
+        <input
+          id="ct-linkedin"
+          name="linkedin"
+          type="url"
+          autoComplete="url"
+          value={form.linkedin}
+          onChange={(e) => update("linkedin", e.target.value)}
+          aria-invalid={!!errors.linkedin}
+          aria-describedby={errors.linkedin ? "ct-linkedin-error" : undefined}
+          placeholder="e.g. linkedin.com/in/yourprofile"
+          className={`${inputBase} ${errors.linkedin ? inputErrorClass : ""}`}
+        />
+      </Field>
+
+      {/* Row 5 — Notes (free-form, max 200 chars) */}
+      <Field id="ct-notes" label="Anything we should know?">
+        <textarea
+          id="ct-notes"
+          name="notes"
+          value={form.notes}
+          onChange={(e) =>
+            update("notes", e.target.value.slice(0, NOTES_MAX))
+          }
+          placeholder="Share context that would make the call more useful"
+          rows={4}
+          maxLength={NOTES_MAX}
+          className={`${inputBase} resize-none`}
+        />
+        <div className="mt-1.5 flex justify-end text-[11px] text-tertiary">
+          <span aria-live="polite">
+            {form.notes.length}/{NOTES_MAX} characters
+          </span>
+        </div>
+      </Field>
+    </>
+  );
+}
+
+/* ─── Startup field set ──────────────────────────────────────── */
+interface StartupFieldSetProps extends FieldSetProps {
+  country: ReturnType<typeof findCountry>;
+  onCountryChange: (iso2: string) => void;
+  onPhoneInputChange: (raw: string) => void;
+}
+
+function StartupFields({
+  form,
+  errors,
+  update,
+  country,
+  onCountryChange,
+  onPhoneInputChange,
+}: StartupFieldSetProps) {
+  const phoneDisplay = formatPhone(country, form.phone);
+
+  return (
+    <>
+      {/* Row 1 — Full Name (full-width per reference) */}
+      <Field
+        id="ct-name"
+        label="Full Name"
+        required
+        error={errors.name}
+      >
+        <input
+          id="ct-name"
+          name="name"
+          type="text"
+          autoComplete="name"
+          value={form.name}
+          onChange={(e) => update("name", e.target.value)}
+          aria-invalid={!!errors.name}
+          aria-describedby={errors.name ? "ct-name-error" : undefined}
+          placeholder="Enter Full Name"
+          className={`${inputBase} ${errors.name ? inputErrorClass : ""}`}
+        />
+      </Field>
+
+      {/* Row 2 — Email + Phone */}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field
+          id="ct-email"
+          label="Email"
+          required
+          error={errors.email}
+          hint={errors.email ? undefined : "We don't spam."}
+        >
+          <input
+            id="ct-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            inputMode="email"
+            value={form.email}
+            onChange={(e) => update("email", e.target.value)}
+            aria-invalid={!!errors.email}
+            aria-describedby="ct-email-error"
+            placeholder="work@company.com"
+            className={`${inputBase} ${errors.email ? inputErrorClass : ""}`}
+          />
+        </Field>
+
+        <Field
+          id="ct-phone"
+          label="Phone Number"
+          required
+          error={errors.phone}
+        >
+          {/* NOTE: deliberately NO `overflow-hidden` on this wrapper.
+              The CountryPicker's listbox panel is positioned
+              absolute inside this row, and overflow-hidden would
+              clip it to the field's bounding box (which is exactly
+              the bug the boss flagged — only one option visible
+              with a vertical scrollbar). The wrapper background and
+              border alone produce the rounded pill look; no child
+              has a background that reaches the corners, so removing
+              overflow-hidden is visually identical without the
+              dropdown side-effect. */}
+          <div
+            className={`relative flex items-stretch rounded-2xl border bg-white/95 transition-[border-color,background-color,box-shadow] duration-200 focus-within:border-primary focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/10 ${
+              errors.phone
+                ? "border-red-400 focus-within:border-red-500 focus-within:ring-red-100"
+                : "border-border"
+            }`}
+          >
+            <CountryPicker
+              value={form.countryIso}
+              onChange={onCountryChange}
+              invalid={!!errors.phone}
+              ariaLabel="Phone country code"
+            />
+            <span className="my-3 w-px bg-border" />
+            <input
+              id="ct-phone"
+              name="phone"
+              type="tel"
+              autoComplete="tel-national"
+              inputMode="tel"
+              value={phoneDisplay}
+              onChange={(e) => onPhoneInputChange(e.target.value)}
+              aria-invalid={!!errors.phone}
+              aria-describedby={errors.phone ? "ct-phone-error" : undefined}
+              placeholder={country.placeholder}
+              className="flex-1 border-0 bg-transparent px-4 py-4 text-[16px] text-foreground placeholder:text-tertiary focus:outline-none"
+            />
+          </div>
+        </Field>
+      </div>
+
+      {/* Row 3 — Company + Stage */}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field
+          id="ct-company"
+          label="Company Name"
+          required
+          error={errors.company}
+          hint={errors.company ? undefined : 'Even "Project X" works.'}
+        >
+          <input
+            id="ct-company"
+            name="company"
+            type="text"
+            autoComplete="organization"
+            value={form.company}
+            onChange={(e) => update("company", e.target.value)}
+            aria-invalid={!!errors.company}
+            aria-describedby="ct-company-error"
+            placeholder="Your company name"
+            className={`${inputBase} ${errors.company ? inputErrorClass : ""}`}
+          />
+        </Field>
+
+        <Field
+          id="ct-stage"
+          label="Company Stage"
+          required
+          error={errors.stage}
+          hint={errors.stage ? undefined : "Helps us understand urgency."}
+        >
+          <div className="relative">
+            <select
+              id="ct-stage"
+              name="stage"
+              value={form.stage}
+              onChange={(e) => update("stage", e.target.value)}
+              aria-invalid={!!errors.stage}
+              aria-describedby="ct-stage-error"
+              className={`${inputBase} cursor-pointer appearance-none pr-12 ${
+                form.stage ? "" : "text-tertiary"
+              } ${errors.stage ? inputErrorClass : ""}`}
+            >
+              {STAGE_OPTIONS.map((opt) => (
+                <option
+                  key={opt.value}
+                  value={opt.value}
+                  disabled={opt.value === ""}
+                  className="text-foreground"
+                >
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-muted">
+              <ChevronDown size={16} />
+            </span>
+          </div>
+        </Field>
+      </div>
+
+      {/* Row 4 — Role */}
+      <Field id="ct-role" label="Role / Title" required error={errors.role}>
+        <input
+          id="ct-role"
+          name="role"
+          type="text"
+          autoComplete="organization-title"
+          value={form.role}
+          onChange={(e) => update("role", e.target.value)}
+          aria-invalid={!!errors.role}
+          aria-describedby={errors.role ? "ct-role-error" : undefined}
+          placeholder="Founder, CTO, Product Manager…"
+          className={`${inputBase} ${errors.role ? inputErrorClass : ""}`}
+        />
+      </Field>
+
+      {/* Row 5 — LinkedIn */}
+      <Field id="ct-linkedin" label="LinkedIn profile" error={errors.linkedin}>
+        <input
+          id="ct-linkedin"
+          name="linkedin"
+          type="url"
+          autoComplete="url"
+          value={form.linkedin}
+          onChange={(e) => update("linkedin", e.target.value)}
+          aria-invalid={!!errors.linkedin}
+          aria-describedby={errors.linkedin ? "ct-linkedin-error" : undefined}
+          placeholder="e.g. linkedin.com/in/yourprofile"
+          className={`${inputBase} ${errors.linkedin ? inputErrorClass : ""}`}
+        />
+      </Field>
+    </>
   );
 }

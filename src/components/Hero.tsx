@@ -326,7 +326,7 @@ export default function Hero() {
         {/* Headline block — Figma top 220/745 ≈ 29.5%, centered */}
         <div className="flex flex-1 flex-col justify-start pt-28 sm:pt-[24vh] lg:pt-[29.5vh]">
           <h1
-            className="mx-auto text-center text-black [font-family:var(--font-albert-sans),Helvetica] font-medium leading-[1]"
+            className="mx-auto text-center text-black font-medium leading-[1]"
             style={{
               fontSize: "clamp(48px, 8.4vw, 120px)",
               letterSpacing: "-0.06em",
@@ -373,7 +373,7 @@ export default function Hero() {
         {/* Bottom row — subtitle (left) + CTA (right), Figma top 560/745 ≈ 75.2% */}
         <div className="flex flex-col gap-6 pb-[8vh] lg:flex-row lg:items-end lg:justify-between lg:gap-10 lg:pb-[9vh]">
           <p
-            className="max-w-[908px] text-center lg:text-left [font-family:var(--font-albert-sans),Helvetica] font-normal text-neutral-700 leading-[1.15] opacity-0"
+            className="max-w-[908px] text-center lg:text-left font-normal text-neutral-700 leading-[1.15] opacity-0"
             style={{
               fontSize: "clamp(20px, 2.2vw, 32px)",
               letterSpacing: "-0.06em",

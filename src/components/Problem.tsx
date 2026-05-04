@@ -82,12 +82,11 @@ const TUNING = {
    * floor for ~375px viewports.
    */
   type: {
-    // Eyebrow + description share spec: Albert Sans Regular 20/28
-    eyebrow: {
-      size: "clamp(16px, 1.389vw, 20px)", // 20/1440 = 1.389vw
-      lineHeight: "1.4", // 28/20
-      color: "#2f2b43b2", // #2F2B43 @ 70%
-    },
+    // Eyebrow now uses the shared `.eyebrow` global utility (defined
+    // in globals.css) — single source of truth for every section
+    // badge so adjacent sections (e.g. FAQ → CTA) read as the same
+    // typographic register. No per-section tuning here on purpose.
+    //
     // Heading: Albert Sans Medium 54/68 / -2%
     heading: {
       size: "clamp(36px, 3.75vw, 54px)", // 54/1440 = 3.75vw
@@ -186,17 +185,8 @@ export default function Problem() {
             Column template uses Figma's 526 / 606 widths (instead of 50/50) so
             the heading wraps at the same break as the mock. */}
         <AnimateIn>
-          <header className="flex flex-col gap-4">
-            <p
-              className="m-0"
-              style={{
-                fontSize: TUNING.type.eyebrow.size,
-                lineHeight: TUNING.type.eyebrow.lineHeight,
-                color: TUNING.type.eyebrow.color,
-              }}
-            >
-              {COPY.eyebrow}
-            </p>
+          <header className="flex flex-col items-start gap-4">
+            <p className="eyebrow m-0">{COPY.eyebrow}</p>
             <div className="grid items-end gap-8 lg:grid-cols-[minmax(0,526px)_minmax(0,606px)] lg:gap-10">
               <h2
                 id="problem-heading"

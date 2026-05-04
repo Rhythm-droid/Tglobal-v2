@@ -74,12 +74,8 @@ const TUNING = {
   /** Tile square size. Figma: 300. min 140 keeps logos legible on phones. */
   tileSize: "clamp(140px, 20.83vw, 300px)", // 300/1440 = 20.83vw
 
-  /** Typography — all from Figma spec. */
-  eyebrow: {
-    size: "clamp(18px, 2.22vw, 32px)", // 32/1440 = 2.22vw
-    color: "#404040",
-    weight: 400,
-  },
+  /** Typography — eyebrow comes from the global `.eyebrow` utility
+      in globals.css. Heading is local. */
   heading: {
     size: "clamp(36px, 4.44vw, 64px)", // 64/1440 = 4.44vw
     color: "#000000",
@@ -107,7 +103,7 @@ type Brand = {
 };
 
 const BRANDS: readonly Brand[] = [
-  { id: "ast", name: "AST — All Stop Trading", src: "/brands/ast.webp", width: 300, height: 300 },
+  { id: "ast", name: "AST (All Stop Trading)", src: "/brands/ast.webp", width: 300, height: 300 },
   { id: "tamimi", name: "Tamimi Markets", src: "/brands/tamimi.webp", width: 300, height: 300 },
   { id: "ackermans", name: "Ackermans", src: "/brands/ackermans.webp", width: 300, height: 300 },
   { id: "dealshare", name: "Dealshare", src: "/brands/dealshare.webp", width: 300, height: 300 },
@@ -204,19 +200,9 @@ export default function Clients() {
         {/* Header block (eyebrow + heading) — aligned with x=80 on desktop */}
         <div className="lg:pl-[var(--ow-side-pad)]">
           <AnimateIn>
-            {/* fontFamily omitted — inherits from <body> via --font-sans */}
-            <p
-              className="m-0"
-              style={{
-                fontSize: TUNING.eyebrow.size,
-                color: TUNING.eyebrow.color,
-                fontWeight: TUNING.eyebrow.weight,
-                lineHeight: 1,
-                letterSpacing: "-0.06em",
-              }}
-            >
-              Our Work
-            </p>
+            {/* Eyebrow uses the global `.eyebrow` utility — single source
+                of truth for every section pre-title. */}
+            <p className="eyebrow m-0">Our Work</p>
             <h2
               id="our-work-heading"
               className="m-0"
