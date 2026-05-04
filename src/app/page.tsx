@@ -46,8 +46,8 @@ export default function Home() {
         <Services />
         <Capabilities />
         <Clients />
-        <Faq />
         <CTA />
+        <Faq />
       </main>
       <Footer />
     </>

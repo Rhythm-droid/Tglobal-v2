@@ -112,7 +112,7 @@ const FOOTER_CONTENT = {
      Navbar.tsx anchors. Split across two sub-columns purely for layout
      balance (4 / 3); the LOGICAL order across both columns must match
      scroll order so users mentally map "footer link → page position".
-     Anchors:
+     Anchors (in scroll order):
        #top          → Hero            (scroll to top)
        #problem      → Problem
        #how-it-works → HowItWorks
@@ -120,6 +120,7 @@ const FOOTER_CONTENT = {
        #capabilities → Capabilities
        #our-work     → Clients (Projects)
        #talk-to-us   → CTA (Contact Us)
+       #faq          → Faq             (now after CTA — see page.tsx)
      If a section is added/removed/renamed in page.tsx, mirror it here. */
   quickLinkColumns: [
     [

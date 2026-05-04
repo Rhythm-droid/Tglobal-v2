@@ -35,7 +35,7 @@ interface NavLink {
 /* Nav links MUST be ordered to match the DOM order of their target
    sections in src/app/page.tsx. The order on the page is:
        Hero → Stats → Problem → HowItWorks → Services → Capabilities
-       → Clients (anchor: #our-work) → CTA (anchor: #talk-to-us)
+       → Clients (#our-work) → CTA (#talk-to-us) → Faq (#faq)
    The nav surfaces the user-facing narrative sections; Hero/Stats are
    the entry experience (logo links to #top), and CTA is the trailing
    pill. If you add or reorder a section in page.tsx, mirror the change
