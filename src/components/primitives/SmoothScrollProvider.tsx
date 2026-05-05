@@ -75,6 +75,156 @@ if (typeof window !== "undefined") {
  * ────────────────────────────────────────────────────────────
  */
 
+/**
+ * Pin-aware anchor scroll handler.
+ * ────────────────────────────────────────────────────────────
+ *
+ * The problem this fixes:
+ *   `usePinnedHorizontalScroll` configures each pinned section's pin-spacer
+ *   to absorb only `pin_range × (1 − FADE_OUT_RATIO)` of scroll distance —
+ *   the remaining 25% of pin scroll runs PAST the spacer's end and into the
+ *   next section's document space. That's the cross-fade window (HowItWorks
+ *   fades out, Services fades in). It works perfectly while the user
+ *   wheel-scrolls because Lenis + ScrollTrigger track the smoothed position
+ *   continuously.
+ *
+ *   But for anchor links (`#services`), `el.offsetTop` for the target
+ *   section sits at the START of that 25% cross-fade window, not the end.
+ *   At 100% browser zoom + post-load timing the math works out fine. At
+ *   zoomed-out levels (90%, 75%) ScrollTrigger refresh measurements skew
+ *   and the user lands mid-fade or even before the fade — which reads as
+ *   "I clicked Services and ended up on HowItWorks."
+ *
+ * The fix:
+ *   When a hash link fires, look up every pinned ScrollTrigger and check if
+ *   the target's offsetTop falls inside one's [start, end] range. If yes,
+ *   scroll to `trigger.end + 1` instead — that lands user one pixel past
+ *   the pin (cross-fade fully complete, next section pinned and visible).
+ *   If no, fall back to plain offsetTop. We disable Lenis's built-in
+ *   `anchors: true` so this handler is the single source of truth for
+ *   hash navigation; otherwise Lenis would race with us and we'd see two
+ *   competing scrolls.
+ *
+ * Initial-load hash:
+ *   When the page loads with `#services` already in the URL, the browser's
+ *   default jump fires before GSAP/ScrollTrigger have built their pins.
+ *   We snapshot `location.hash` once on mount, then re-resolve via the
+ *   same handler after ScrollTrigger.refresh() completes — guaranteeing the
+ *   same correct landing as a click.
+ * ────────────────────────────────────────────────────────────
+ */
+function PinAwareAnchorScroll() {
+  const lenis = useLenis();
+
+  useEffect(() => {
+    if (!lenis) return;
+
+    const resolveTarget = (id: string): number | null => {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      const baseTop = el.getBoundingClientRect().top + window.scrollY;
+      let target = baseTop;
+
+      for (const t of ScrollTrigger.getAll()) {
+        if (!t.pin) continue;
+        // Only consider pins with valid measurements (start > 0; refresh has run)
+        if (t.start <= 0 || t.end <= t.start) continue;
+        /* Skip the destination's OWN pin. At the boundary between two
+           consecutive pinned sections (HowItWorks → Services), the
+           baseTop coincides with Services's pin start to within
+           sub-pixel rounding. Both pins technically "straddle" baseTop,
+           but only HowItWorks's pin is an obstacle to land past —
+           Services's pin IS the destination, and skipping past its
+           end would jump over the section we clicked into.
+
+           The trigger element check is exact: if the pin's trigger is
+           the target element itself, an ancestor of it, or a descendant
+           of it (the pin spacer wraps the actual pinned viewport
+           inside the section), this pin belongs to our target and is
+           NOT an obstacle. Floating-point `start` comparisons would
+           miss this; element identity does not. */
+        const trigger = t.trigger as HTMLElement | null;
+        if (trigger && (trigger === el || el.contains(trigger) || trigger.contains(el))) {
+          continue;
+        }
+        // Pin straddles baseTop → its scroll range is in the way; land past it
+        if (baseTop >= t.start && baseTop < t.end) {
+          target = Math.max(target, t.end + 1);
+          break;
+        }
+      }
+      return target;
+    };
+
+    const onClick = (e: MouseEvent) => {
+      // Ignore modified clicks (open in new tab, etc.) and non-primary buttons
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        return;
+      }
+      const link = (e.target as HTMLElement | null)?.closest?.("a[href]") as
+        | HTMLAnchorElement
+        | null;
+      if (!link) return;
+      const href = link.getAttribute("href");
+      if (!href) return;
+
+      // Same-page hash link only: "#xxx" or "/path#xxx" matching current pathname
+      let hash = "";
+      if (href.startsWith("#")) {
+        hash = href;
+      } else {
+        try {
+          const url = new URL(href, window.location.href);
+          if (url.pathname === window.location.pathname && url.search === window.location.search) {
+            hash = url.hash;
+          }
+        } catch {
+          return;
+        }
+      }
+      if (!hash || hash === "#") return;
+
+      const id = hash.slice(1);
+      // Special case: #top → scroll to absolute 0
+      if (id === "top") {
+        e.preventDefault();
+        lenis.scrollTo(0);
+        history.replaceState(null, "", hash);
+        return;
+      }
+
+      const target = resolveTarget(id);
+      if (target == null) return;
+
+      e.preventDefault();
+      lenis.scrollTo(target);
+      history.replaceState(null, "", hash);
+    };
+
+    document.addEventListener("click", onClick);
+
+    /* Initial-load hash correction. If the user landed with #services in
+       the URL, the browser's default jump fired before pins were built.
+       Wait for ScrollTrigger's first refresh, then re-resolve through the
+       same pin-aware path so the landing matches a click. */
+    const initialHash = window.location.hash;
+    let initialHandle: number | null = null;
+    if (initialHash && initialHash !== "#" && initialHash !== "#top") {
+      initialHandle = window.setTimeout(() => {
+        const target = resolveTarget(initialHash.slice(1));
+        if (target != null) lenis.scrollTo(target, { immediate: true });
+      }, 100);
+    }
+
+    return () => {
+      document.removeEventListener("click", onClick);
+      if (initialHandle != null) clearTimeout(initialHandle);
+    };
+  }, [lenis]);
+
+  return null;
+}
+
 function GsapLenisSync() {
   const lenis = useLenis();
 
@@ -207,14 +357,19 @@ export default function SmoothScrollProvider({
            when reduce-motion is set — prevents Lenis from interpolating
            between scroll positions (vestibular accessibility win). */
         smoothWheel: !reduceMotion,
-        /* Anchor link routing. Default true so nav/footer jumps stay
-           in sync with the single page-level scroll owner. Disabled
-           under reduce-motion so anchor clicks teleport instantly via
-           native browser behaviour rather than animating. */
-        anchors: !reduceMotion,
+        /* Lenis's built-in anchor routing is intentionally OFF: we own
+           hash navigation in <PinAwareAnchorScroll /> below so anchor
+           targets that fall inside an active pin range scroll past the
+           cross-fade window instead of into it. Leaving Lenis's handler
+           on would race with ours and produce a visible double-scroll
+           (Lenis to baseTop, then us to trigger.end). Reduce-motion case
+           still teleports correctly because PinAwareAnchorScroll uses
+           lenis.scrollTo() which respects the lerp:1 setting. */
+        anchors: false,
       }}
     >
       <GsapLenisSync />
+      <PinAwareAnchorScroll />
       {children}
     </ReactLenis>
   );
