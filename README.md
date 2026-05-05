@@ -33,3 +33,4 @@ npm run start       # run the built output
 ## Security
 
 Production CSP, HSTS, frame-ancestors deny, Permissions-Policy lockdown, and `X-Powered-By` stripping are all configured in `next.config.ts`.
+
