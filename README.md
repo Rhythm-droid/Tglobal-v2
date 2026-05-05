@@ -1,4 +1,4 @@
-# Tglobal — v2
+# Tglobal — v2.0.0
 
 Marketing site rebuild for Tglobal, built on Next.js 16 (App Router), React 19, TypeScript strict, and Tailwind v4.
 
