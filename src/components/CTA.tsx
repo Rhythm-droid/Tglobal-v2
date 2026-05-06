@@ -16,8 +16,16 @@ import {
  * `subject` field is prefixed differently so the inbox can filter
  * the two streams (e.g. a Gmail filter on "[Startup]"). Same
  * endpoint as the previous tglobal.in site, so submissions land in
- * the same inbox with no new wiring. */
-const ACCESS_KEY = "8ca5ba96-be53-4698-bbc8-89b92c007835";
+ * the same inbox with no new wiring.
+ *
+ * Key now lives in NEXT_PUBLIC_WEB3FORMS_KEY (.env.local). Web3Forms
+ * keys are public-by-design (anyone with the key can post to it), but
+ * env-driven means rotation is a one-line config change instead of a
+ * source edit + rebuild. The ?? fallback is the original key so the
+ * form keeps working if the env var is missing during a misconfigured
+ * deploy — preferable to a silent submit failure for end users. */
+const ACCESS_KEY =
+  process.env.NEXT_PUBLIC_WEB3FORMS_KEY ?? "8ca5ba96-be53-4698-bbc8-89b92c007835";
 const ENDPOINT = "https://api.web3forms.com/submit";
 
 const NOTES_MAX = 200;
