@@ -36,8 +36,8 @@ Every fact in this document carries one of these markers:
 
 ## Document structure
 
-- **Batch 1** (this document): C1 AI prompt marketplaces + C2 copy-paste libraries (10 entries)
-- **Batch 2** (pending): C3 NPM-installable React libraries (~10 entries)
+- **Batch 1**: C1 AI prompt marketplaces + C2 copy-paste libraries (10 entries) — fact-checked
+- **Batch 2**: C3 NPM-installable React libraries (10 entries) — fact-checked, 4 corrections applied
 - **Batch 3** (pending): C4 animation-specific libraries (~6 entries)
 - **Batch 4** (pending): C5 generators + C8 3D / WebGL (~6 entries)
 - **Batch 5** (pending): C6 icons + C7 typography + C9 pattern references (~6 entries)
@@ -45,9 +45,11 @@ Every fact in this document carries one of these markers:
 
 ---
 
-## Errata (Batch 1 corrections vs Browser Claude's first pass)
+## Errata (corrections vs Browser Claude's first pass)
 
-Three concrete corrections were applied below. Listed up here so we don't repeat them.
+Concrete corrections were applied to entries below. Listed up here so we don't repeat them.
+
+### Batch 1
 
 | Entry | Field | Original (incorrect) | Corrected |
 |---|---|---|---|
@@ -57,6 +59,18 @@ Three concrete corrections were applied below. Listed up here so we don't repeat
 | #7 Float UI | Tagline | "Best shadcn/ui blocks and components for your next project." | **"Build and ship fast with Tailwind CSS UI components"** is Float UI's actual tagline. The original quote was a sponsored banner running on Float UI's site, NOT Float UI's self-description. |
 | #7 Float UI | Built on shadcn? | "Built on shadcn/ui" | **Not built on shadcn**. Separate Tailwind library. The shadcn reference was the same sponsor banner. |
 | #9 Tailark | Pricing | "Pro paywall hides ~60%" (vague) | **Concrete: Essentials $249 / Complete $299 / Team $499.** Free tier is real but slim. For commercial use, plan on at least Essentials. |
+
+### Batch 2
+
+| Entry | Field | Original (incorrect) | Corrected |
+|---|---|---|---|
+| #12 Base UI | Package name | `@base-ui-components/react` | **`@base-ui/react`** is the current canonical npm package (per npm registry + Base UI release notes: "New `@base-ui/react` npm package"). The old name still works as an alias but the docs and npm primary all use the new path. Sub-path imports: `import { Menu } from "@base-ui/react/menu"`. |
+| #16 Origin UI | Existence at originui.com | Listed as "originui.com" | **Origin UI was acquired by Cal.com in October 2025 and rebranded.** `originui.com` 301-redirects to `coss.com/ui`. The legacy Radix-based components remain available at `coss.com/origin` with **limited support and maintenance**. The new library is **"coss ui"** at `coss.com/ui`, built on **Base UI + Tailwind** (no longer Radix-based). 484 components on the new library. See entry #16 below for the rewritten entry. |
+| #20 Untitled UI React | Install method | "Per-component code-copy" | **Has its own CLI**: `npx untitledui@latest init --nextjs`. **Both** copy-paste AND official npm packages are offered (free + Pro). |
+| #20 Untitled UI React | Component count | "600+" | **5,000+ components and sections** (per untitleduicom homepage). Far higher than originally listed. |
+| #20 Untitled UI React | Tailwind | "v4" | **v4.2 explicitly** stated on homepage. |
+| #14 Mantine | PostCSS dev deps | "`postcss-preset-mantine` required" | **Three deps required**: `postcss postcss-preset-mantine postcss-simple-vars`. The simple-vars plugin is part of Mantine's breakpoint variable system — non-optional. |
+| #14 Mantine | Tailwind compat | "Doesn't share Tailwind tokens — design system bifurcation" | Softer truth: **Mantine docs do NOT explicitly mark Tailwind as incompatible**. There IS a community `next-tailwind-template` that combines them. The "fight your design system" warning still stands but isn't an absolute bar. |
 
 ---
 
@@ -683,24 +697,673 @@ Date: 2026-05-06
 | Tailark | WebFetch homepage | Tagline confirmed; pricing confirmed concrete tiers ($249/$299/$499); shadcn dependency confirmed |
 | Kokonut UI | WebFetch homepage | Component count 100+ confirmed; install command exact form confirmed; Pro tier confirmed |
 
+### Batch 2 (Date: 2026-05-06)
+
+| Library | Verification method | Result |
+|---|---|---|
+| shadcn/ui | User pasted full Accordion docs page markdown | Install confirmed: `npx shadcn@latest add accordion`; manual fallback `npm install radix-ui`; component lands at `components/ui/accordion.tsx`; base = "radix" (also supports Base UI) |
+| Base UI | WebFetch /react/components/menu | Sub-path import confirmed: `import { Menu } from "@base-ui/react/menu"`; "use client" required; basic Menu structure verified |
+| Base UI (package name) | Tavily search npm registry + release notes | **Corrected**: package is `@base-ui/react` (NOT `@base-ui-components/react`). Release notes explicitly say "New `@base-ui/react` npm package" |
+| HeroUI v3 | WebFetch /docs/components/modal | Package `@heroui/react` confirmed via import; v3.0.3; "Previously NextUI" verified; built on React Aria Dialog pattern |
+| HeroUI v3 (install page) | WebFetch /docs/guide/installation | 404 — page not at this URL; install command not directly verified but consistent with import |
+| Mantine | WebFetch /getting-started | **Corrected**: requires `postcss postcss-preset-mantine postcss-simple-vars` (three deps, not one); v9.1.1 current; MantineProvider pattern verified; Tailwind not explicitly incompatible (community next-tailwind-template exists) |
+| Untitled UI React | WebFetch /react | **Corrected**: install command IS shown — `npx untitledui@latest init --nextjs`; 5,000+ components (not 600+); Tailwind v4.2; both copy-paste AND official npm packages; tagline "Tailwind CSS + React Aria" |
+| Origin UI | WebFetch originui.com | **Major correction**: 301-redirects to coss.com/ui. Acquired by Cal.com Oct 2025. Now split: legacy `coss.com/origin` (Radix, limited support) + new `coss.com/ui` (built on Base UI, 484 components) |
+| coss origin → coss ui | Tavily search | Confirmed acquisition timeline + new branding via Cal.com + Paco Vitiello announcements (x.com), GitHub `cosscom/coss` repo |
+| coss.com/ui | WebFetch homepage | "A new, modern UI component library built on top of Base UI"; install command not on homepage (per-component) |
+
+## Entry 11: shadcn/ui
+
+**URL**: https://ui.shadcn.com
+**Category**: C3 — CLI-add (copies code into your repo, treated as installable system because of the workflow)
+
+### How to use it
+
+1. **Initialize once per project** ✓
+   ```bash
+   pnpm dlx shadcn@latest init
+   ```
+2. **Add a component on demand** ✓ verified directly via the Accordion docs page paste
+   ```bash
+   pnpm dlx shadcn@latest add accordion
+   # or with manual fallback:
+   npm install radix-ui
+   # then copy components/ui/accordion.tsx from the docs
+   ```
+3. The CLI delivers the component code into `@/components/ui/<name>.tsx` — you own and edit it directly.
+
+### Facts
+
+| Field | Value | Status |
+|---|---|---|
+| License | MIT | ⚠ |
+| Base primitive layer | **Radix UI** by default (now stewarded by WorkOS) — ALSO supports **Base UI** as the underlying primitive (per shadcn/ui docs since 2025) | ✓ confirmed via Accordion docs page (`base: radix` frontmatter) |
+| Component count | 60+ in the official catalog | ⚠ |
+| Tailwind v4 | Yes — v4 is the default in current init flow | ⚠ |
+| RSC | Mixed — many primitives compose Radix and need `"use client"`; static ones (Card, Badge, Separator) stay server | ⚠ |
+| Charts | Yes — Recharts wrapper (added 2024) | ⚠ |
+| Toast | Sonner (their default since 2024) | ⚠ |
+| Manual install fallback | Documented per component | ✓ verified via Accordion docs |
+
+### Best for ◯
+- Form primitives + react-hook-form + Zod (Field, Input, Select, Combobox, RadioGroup, Checkbox, DatePicker, Calendar)
+- Data Table (TanStack Table-based)
+- Sidebar / Sheet / Drawer / Dialog patterns for app shells
+- Charts (Recharts wrapper with sensible defaults)
+- Sonner-based toast system
+
+### Weakest at ◯
+- Aesthetic differentiation — every shadcn site looks like every other shadcn site at first glance. Defaults must be actively rejected.
+- Animation — relies on Radix primitives' built-in transitions; nothing motion-rich
+- Marketing components (no pricing tables, no hero blocks — this is a *system*)
+
+### Standout examples ⚠
+- `https://ui.shadcn.com/blocks` — official block library; `dashboard-01` and `sidebar-07` are well-composed
+- `https://ui.shadcn.com/charts` — Recharts-based, theme-aware
+- `https://ui.shadcn.com/docs/components/data-table` — canonical TanStack Table integration
+
+### AI-generic risk: 7/10 default; 3/10 with custom theme ◯
+
+### Premium score: 6/10 out of the box; 9/10 with custom @theme ◯
+
+### Recommended for TGlobal ◯
+- **Sidebar** primitive for `/work` filter UI — handles mobile sheet collapse for free
+- **Data Table** for `/work` index ("things we shipped") — sortable, filterable, link-out per row
+- **Form + Field + Input + Combobox** for `/contact` — most reliable accessible form stack in 2026
+- **Avoid**: default `Card` with `border + rounded-lg + shadow-sm`. That combo IS the AI-generic look. Replace with hairline divider, no shadow.
+
+### Gotchas ⚠
+- CLI assumes `@/*` → `./*` path alias.
+- Tailwind v4 init will fail silently if leftover `tailwind.config.ts` from v3 is present — delete first.
+- Components hardcode `lucide-react` icons — swap during add or accept the dep.
+
+---
+
+## Entry 12: Base UI
+
+**URL**: https://base-ui.com
+**Category**: C3 — npm-install (headless primitives)
+
+### How to use it
+
+```bash
+npm install @base-ui/react
+```
+
+✏ **Correction**: package is `@base-ui/react`, NOT `@base-ui-components/react`. The `-components-` form is an alias from before the rename; current canonical per npm registry + release notes is the shorter form.
+
+Sub-path imports per primitive:
+```tsx
+"use client";
+import { Menu } from "@base-ui/react/menu";
+import { Dialog } from "@base-ui/react/dialog";
+import { Popover } from "@base-ui/react/popover";
+```
+
+Basic Menu structure (✓ verified from base-ui.com/react/components/menu):
+```tsx
+<Menu.Root>
+  <Menu.Trigger>Actions</Menu.Trigger>
+  <Menu.Portal>
+    <Menu.Positioner>
+      <Menu.Popup>
+        <Menu.Item>Edit</Menu.Item>
+        <Menu.Item>Share</Menu.Item>
+      </Menu.Popup>
+    </Menu.Portal>
+  </Menu.Portal>
+</Menu.Root>
+```
+
+### Facts
+
+| Field | Value | Status |
+|---|---|---|
+| Package | `@base-ui/react` | ✓ verified via npm registry |
+| License | MIT | ⚠ |
+| Backed by | Team behind Radix Primitives, Floating UI, Material UI | ✓ |
+| Tailwind v4 | Yes (unstyled, no CSS conflict) | ⚠ |
+| RSC | Client-only (interactive primitives) | ✓ verified |
+| Anchor positioning | Floating UI built in (Popover, Tooltip, Menu auto-position) | ⚠ |
+| Component status | v1 stable; some (Combobox, Autocomplete) released in v1.x range mid-2025 | ⚠ |
+| Used by | shadcn/ui as one of TWO supported base primitive layers (alongside Radix) | ✓ verified via shadcn docs |
+
+### Best for ◯
+- Headless accessibility-first primitives: Dialog, Popover, Menu, Select, Combobox, Tooltip, Tabs, Accordion, Slider, Switch, Toggle, Radio, Checkbox, Number Field, Toast, Tree, Progress, Drawer
+- Long-term maintenance — backed by the dream-team that built Radix + Floating UI + MUI
+- Building your own design system on top (no aesthetic baggage)
+
+### Weakest at ◯
+- Zero visual styling — you write every line of CSS / Tailwind yourself
+- No charts, no data table, no marketing blocks
+- Smaller community than Radix Primitives (newer release)
+
+### Standout examples ⚠
+- `https://base-ui.com/react/components/menu` — canonical accessible menu with submenus, type-ahead, keyboard nav
+- `https://base-ui.com/react/components/select` — better keyboard handling than shadcn-Radix select
+- `https://base-ui.com/react/components/dialog` — modern Dialog with built-in scroll-lock + focus management
+
+### AI-generic risk: 0/10 ◯
+There's literally no look to copy. Whatever you build with Base UI is yours.
+
+### Premium score: 9/10 ceiling ◯
+
+### Recommended for TGlobal ◯
+- **Dialog + Popover + Menu** as foundation for every overlay on tglobal.in — better behavior, avoids shadcn aesthetic fingerprint
+- **Tabs** for `/work/[slug]` view-switcher between Overview / Stack / Outcomes
+- **Number Field** for any quantity input (project scope estimator)
+
+### Gotchas ⚠
+- 100% styling time-cost — budget realistically.
+- Some primitives still labeled `rc` / late-stage in 1.x range; verify on the components index before committing.
+- The package is `@base-ui/react`, not `base-ui` — easy to mistype.
+
+---
+
+## Entry 13: HeroUI v3 (formerly NextUI)
+
+**URL**: https://heroui.com
+**Category**: C3 — npm-install
+
+### How to use it
+
+```bash
+npm install @heroui/react
+```
+
+✓ verified via the Modal docs page import (`import { Modal } from "@heroui/react"`).
+
+Wrap your app in the provider once at root:
+```tsx
+"use client";
+import { HeroUIProvider } from "@heroui/react";
+// in app/providers.tsx or root layout
+<HeroUIProvider>{children}</HeroUIProvider>
+```
+
+### Facts
+
+| Field | Value | Status |
+|---|---|---|
+| Package | `@heroui/react` | ✓ verified |
+| Current major | v3.0.3 (as of fetch) | ✓ verified |
+| Built on | **Tailwind CSS v4 + React Aria Components** | ✓ (per Browser Claude's claim, consistent with React Aria reference in modal docs) |
+| License | MIT for OSS; HeroUI Pro is paid (templates / blocks) | ⚠ |
+| RSC | Client-only for interactive components; provider must be client | ✓ |
+| Animation | Motion-based — modal has built-in motion + backdrop variants | ✓ verified |
+| Predecessor | NextUI (renamed mid-2024 after the NextUI / Vercel/Next.js naming overlap became a problem) | ⚠ |
+
+### Best for ◯
+- Themeable components with strong dark mode (built-in OKLAB-aware tokens)
+- Modal, Drawer, Autocomplete, Combobox — better keyboard UX than shadcn defaults
+- Avatar Group, Progress, Skeleton, Spinner — solid utility components
+- Built on React Aria — full ARIA semantics out of the box
+
+### Weakest at ◯
+- Slightly heavier bundle than shadcn (full library, not pick-what-you-need)
+- Default visual style (rounded, soft) is opinionated — you'll fight it
+- Less compositional than Base UI — components are higher-level
+
+### Standout examples ⚠
+- `https://www.heroui.com/docs/components` — full component browser
+- `https://www.heroui.com/docs/components/autocomplete` — best free autocomplete
+- `https://www.heroui.com/docs/components/modal` — modal with built-in motion + backdrop variants
+
+### AI-generic risk: 5/10 ◯
+Defaults are heavily styled but distinct enough not to blend with the shadcn crowd.
+
+### Premium score: 7/10 ◯
+The v3 + Tailwind v4 + React Aria foundation is the strongest of any "batteries included" library in 2026.
+
+### Recommended for TGlobal ◯
+- **Autocomplete** for any search affordance on homepage or `/work` filter
+- **Modal** for case-study deep-dive overlay on `/work` (alternative to separate `/work/[slug]` page)
+- **Skeleton** primitives for loading state on `/work` index when filters re-fetch
+- Don't adopt their default theme — disable, map their CSS variables to your own @theme tokens
+
+### Gotchas ⚠
+- `<HeroUIProvider>` must wrap your app — adds one provider boundary.
+- v3 is recent — old NextUI documentation is renamed in v3, always reference v3 docs.
+- React Aria is a peer dep — bundle adds non-trivial weight if you use HeroUI everywhere; tree-shake aggressively.
+
+---
+
+## Entry 14: Mantine
+
+**URL**: https://mantine.dev
+**Category**: C3 — npm-install
+
+### How to use it
+
+```bash
+# core packages (verified from getting-started page)
+yarn add @mantine/core @mantine/hooks
+# OR npm equivalent:
+npm install @mantine/core @mantine/hooks
+
+# postcss dev deps — ALL THREE required
+yarn add --dev postcss postcss-preset-mantine postcss-simple-vars
+```
+
+✏ **Correction**: `postcss-simple-vars` is required alongside `postcss-preset-mantine`. Browser Claude's entry only listed the preset.
+
+Provider wrap (✓ verified):
+```tsx
+"use client";
+import { createTheme, MantineProvider } from "@mantine/core";
+
+const theme = createTheme({ /* overrides */ });
+
+<MantineProvider theme={theme}>
+  {/* your app */}
+</MantineProvider>
+```
+
+For Next.js SSR: also import and use `ColorSchemeScript` and `mantineHtmlProps` to avoid hydration warnings.
+
+### Facts
+
+| Field | Value | Status |
+|---|---|---|
+| Current version | v9.1.1 | ✓ verified |
+| Components | 120+ | ⚠ |
+| Hooks | 70+ in `@mantine/hooks` | ⚠ |
+| License | MIT | ⚠ |
+| Tailwind compatibility | **Not explicitly incompatible.** Community `next-tailwind-template` exists combining them. Tokens still don't bridge automatically — manual mapping required. | ✏ corrected (was: "design system bifurcation if you mix") |
+| Styling system | CSS Modules + PostCSS | ✓ |
+| RSC | Mixed; provider must be client | ✓ |
+
+### Best for ◯
+- **120+ components** — largest comprehensive library in this batch
+- **70 hooks** — `useDisclosure`, `useDebouncedValue`, `useElementSize`, `useScrollIntoView`, `useHotkeys`, `useLocalStorage`. The hooks alone are worth installing.
+- Forms with `@mantine/form` — best non-react-hook-form alternative
+- Date/time pickers, rich text editor (`@mantine/tiptap`), notifications, modals manager
+
+### Weakest at ◯
+- Bigger surface area than headless alternatives
+- Visual style is its own opinion — feels distinct from Tailwind ecosystem; can clash with shadcn-built sections
+- PostCSS preset adds config files
+
+### Standout examples ⚠
+- `https://mantine.dev/core/spotlight` — Cmd-K spotlight, very polished
+- `https://mantine.dev/dates/date-picker` — most flexible free date picker in React
+- `https://mantine.dev/hooks/use-hotkeys` — single hook, useful even without the components
+
+### AI-generic risk: 3/10 ◯
+Mantine's aesthetic is its own; sites built on it look like Mantine, not AI-template SaaS.
+
+### Premium score: 7/10 ◯
+Well-engineered; visual default is corporate-clean rather than premium-distinctive.
+
+### Recommended for TGlobal ◯
+- Install **just `@mantine/hooks`** (zero CSS, no provider needed) — use `useDisclosure`, `useHotkeys`, `useLocalStorage` to replace ad-hoc implementations
+- **Spotlight** — TGlobal's homepage Cmd-K palette ("jump to /work / /process / /about") — would feel premium and link-checks site-wide
+- Don't adopt full Mantine component library — pick the hooks + Spotlight, leave the rest
+
+### Gotchas ⚠
+- PostCSS plugin chain required — adds config files.
+- CSS layers used heavily — make sure your `@layer` order in Tailwind v4 doesn't override Mantine defaults.
+- Provider boundary needed.
+
+---
+
+## Entry 15: Park UI
+
+**URL**: https://park-ui.com
+**Category**: C3 — npm-install (built on Ark UI primitives + Panda CSS)
+
+### How to use it
+
+```bash
+pnpm dlx @park-ui/cli@latest init
+```
+
+⚠ Park UI uses Panda CSS for styling — **NOT Tailwind**. To use it in a Tailwind project you'd run both styling systems side-by-side, or pick one.
+
+### Facts
+
+| Field | Value | Status |
+|---|---|---|
+| Built on | Ark UI primitives (multi-framework) | ⚠ |
+| Styling | **Panda CSS, not Tailwind** | ⚠ |
+| License | MIT | ⚠ |
+| Backed by | Chakra Systems (team behind Chakra UI v3) | ⚠ |
+| Multi-framework | React + Solid from same primitive library | ⚠ |
+
+### Recommended for TGlobal: **SKIP** ◯
+
+The Panda CSS dependency would force you to maintain two styling systems alongside Tailwind v4. The reason to pick Park UI is *if* you want Panda's recipe semantics. TGlobal does not need that complexity.
+
+### Standout examples ⚠
+- `https://park-ui.com/react/docs/overview/introduction`
+- `https://park-ui.com/react/docs/components/dialog`
+- `https://park-ui.com/react/docs/recipes`
+
+### AI-generic risk: 2/10 ◯
+Uncommon enough that nobody's saturated the look.
+
+### Premium score: 7/10 ◯ — but irrelevant since we're not adopting
+
+---
+
+## Entry 16: coss ui (formerly Origin UI) ✏ rewritten
+
+**URLs**:
+- Current: https://coss.com/ui
+- Legacy (limited maintenance): https://coss.com/origin
+- Old domain (redirects): https://originui.com → coss.com/ui
+
+**Category**: C3 — copy-paste-code (delivered shadcn-style)
+
+### Background ✏
+
+Origin UI was **acquired by Cal.com in October 2025** as Cal.com's first acquisition. Origin UI is now part of `coss.com`, the holding company of Cal.com. The legacy library (Radix + shadcn-style) remains at `coss.com/origin` with **limited support and maintenance**. A new sibling library — **coss ui** — launched at `coss.com/ui`, built on **Base UI** (not Radix anymore) + Tailwind CSS.
+
+Both URLs work; pick based on which underlying primitive layer you want.
+
+### How to use it
+
+For both versions, components are delivered shadcn-style:
+
+```bash
+# pattern (verify exact URL on the component's docs page)
+npx shadcn@latest add "https://coss.com/ui/r/<component>.json"
+```
+
+Or browse and copy code directly from the component docs.
+
+### Facts
+
+| Field | Value | Status |
+|---|---|---|
+| Package layer | None — copy-paste, lands in your `components/ui/` | ⚠ |
+| Underlying primitives (coss ui) | Base UI | ✓ verified |
+| Underlying primitives (coss origin) | Radix UI | ⚠ |
+| Components count (coss ui) | "484 particles" referenced via browse link on homepage | ⚠ |
+| Tailwind | Yes (consistent with both Base UI + Tailwind composition) | ⚠ |
+| License | MIT | ⚠ |
+| Acquirer | Cal.com (Oct 2025); coss.com is the new holding company | ✓ verified via x.com/calcom + x.com/pacovitiello announcements |
+
+### Best for ◯
+- Form variants (input, select, checkbox, radio, switch) — lots of variants per primitive
+- Buttons with icon-position variants
+- Numeric input + date input variants
+- File-upload patterns
+- Login/auth form blocks
+
+### Weakest at ◯
+- No motion / animation primitives
+- No marketing blocks (no hero, no pricing — pure component library)
+
+### Standout examples ⚠
+- `https://coss.com/ui/<components>` (browse from homepage)
+- Legacy: `https://coss.com/origin` for the Radix-based library
+
+### AI-generic risk: 4/10 ◯
+Extends shadcn-flavored aesthetic; amplifies whatever your shadcn theme already looks like.
+
+### Premium score: 6/10 ◯
+
+### Recommended for TGlobal ◯
+- **Input variants** for `/contact` form — floating-label and inline-prefix variants beat shadcn defaults
+- **Avatar group** for team strip on `/about`
+- Pull only the variants you need; catalog overlaps functionally
+
+### Gotchas ⚠
+- Components add into your shadcn `components/ui/` folder — may collide with same-name shadcn components. Namespace-prefix on import.
+- The acquisition is recent — expect URL/branding to settle over the next 6-12 months. Pin to specific component URLs you've verified.
+
+---
+
+## Entry 17: React Aria Components (Adobe)
+
+**URL**: https://react-spectrum.adobe.com/react-aria/
+**Category**: C3 — npm-install (headless primitives)
+
+### How to use it
+
+```bash
+npm install react-aria-components
+```
+
+```tsx
+"use client";
+import { Button, Dialog, Popover, ListBox, ListBoxItem } from "react-aria-components";
+```
+
+### Facts
+
+| Field | Value | Status |
+|---|---|---|
+| Package | `react-aria-components` | ⚠ |
+| License | Apache-2.0 | ⚠ |
+| Backed by | Adobe (maintained for Adobe products) | ⚠ |
+| Tailwind v4 | Yes — unstyled, no CSS conflict | ⚠ |
+| RSC | Client-only (interactive primitives) | ⚠ |
+| TypeScript | Excellent — strict-ok, ships-types | ⚠ |
+| Used by | HeroUI v3 internally — adopting HeroUI means you already get React Aria | ✓ verified |
+
+### Best for ◯
+- Industry-standard accessibility — Adobe-grade ARIA story
+- Internationalization — built-in RTL, locale-aware date/number/list components
+- Drag-and-drop primitives (`useDrag`, `useDrop`, `useDroppableCollection`)
+- Date picker / range picker / time field — best in class
+- Table with column resizing, sorting, selection, virtualization
+- Foundation for HeroUI v3 — if you adopt HeroUI you're already getting React Aria
+
+### Weakest at ◯
+- Zero visual styling
+- Verbose API — opt into every behavior explicitly
+- Steeper learning curve (render-prop pattern via composable children)
+
+### Standout examples ⚠
+- `https://react-spectrum.adobe.com/react-aria/Table.html`
+- `https://react-spectrum.adobe.com/react-aria/DatePicker.html`
+- `https://react-spectrum.adobe.com/react-aria/Tooltip.html`
+
+### AI-generic risk: 0/10 ◯
+Unstyled — you cannot look generic with React Aria.
+
+### Premium score: 9/10 ceiling ◯
+Capped only by your styling discipline.
+
+### Recommended for TGlobal ◯
+- Use **DatePicker / DateRangePicker** if `/contact` ever needs project-window selection
+- Use **Table** for `/work` index if you go data-table route
+- **Otherwise: don't double-install.** You're already getting React Aria via HeroUI v3 (if adopted).
+
+### Gotchas ⚠
+- API requires understanding the "render prop" pattern (`<Item>` children inside `<Listbox>`).
+- Bundle is modest but pay-for-what-you-import — tree-shake aggressively.
+
+---
+
+## Entry 18: Radix Themes
+
+**URL**: https://www.radix-ui.com/themes
+**Category**: C3 — npm-install
+
+### How to use it
+
+```bash
+npm install @radix-ui/themes
+```
+
+Themes is the *styled* layer over Radix Primitives. Wrap app in `<Theme>`:
+```tsx
+"use client";
+import { Theme } from "@radix-ui/themes";
+import "@radix-ui/themes/styles.css";
+
+<Theme accentColor="indigo" radius="medium">
+  {children}
+</Theme>
+```
+
+### Facts
+
+| Field | Value | Status |
+|---|---|---|
+| Package | `@radix-ui/themes` | ⚠ |
+| License | MIT | ⚠ |
+| Stewardship | WorkOS (acquired Radix in 2024) | ⚠ |
+| Companion package | `@radix-ui/colors` — 12-step color scales for 25+ accent colors | ⚠ |
+| Tailwind compatibility | **Partial** — ships its own CSS layer; runs alongside Tailwind, doesn't share tokens | ⚠ |
+| RSC | Client-only for interactive components; `<Theme>` provider is client | ⚠ |
+| Bundle | Default Themes CSS adds ~60KB before tree-shaking | ⚠ |
+
+### Best for ◯
+- Card, Box, Flex, Grid layout primitives with built-in spacing scale
+- Comprehensive Radix Colors palette — 12-step scales for 25+ accents
+- Theme switching (radius, scaling, panel background) at runtime
+- Strong dark mode handling
+
+### Weakest at ◯
+- CSS-in-package conflicts with Tailwind for layout — pick one mental model
+- Smaller community for Themes specifically (vs Primitives, which everyone uses)
+- Themes aesthetic is recognizable — Linear-adjacent but not identical
+
+### Standout examples ⚠
+- `https://www.radix-ui.com/themes/docs/components/card`
+- `https://www.radix-ui.com/colors` — color system, useful even if you don't use Themes
+- `https://www.radix-ui.com/themes/playground` — runtime theme tweaker
+
+### AI-generic risk: 4/10 ◯
+
+### Premium score: 7/10 ◯
+
+### Recommended for TGlobal ◯
+- **Don't adopt Themes** — too much overlap with shadcn / HeroUI
+- **DO adopt Radix Colors standalone**: `npm install @radix-ui/colors` — import 12-step scales directly into your Tailwind v4 `@theme` block. Accessibility-tested color ramps, used by Linear, Vercel, most premium SaaS
+- For quick admin demo: Themes ships fast. Production homepage stays shadcn / Base UI.
+
+### Gotchas ⚠
+- Provider must wrap app (`<Theme accentColor="indigo">…</Theme>`); changing variants at runtime is fine but config sprawl creeps.
+- Default CSS adds ~60KB — measurable on a marketing site.
+
+---
+
+## Entry 19: Tremor
+
+**URL**: https://www.tremor.so
+**Category**: C3 — copy-paste-code (since 2024 pivoted from packaged library to copy-paste blocks)
+
+### How to use it
+
+Per-component code-copy from `https://tremor.so/<components|charts|blocks>`. Underlying deps:
+
+```bash
+npm install recharts @radix-ui/react-* tailwind-variants
+# (Radix peer deps depend on which Tremor component you pick)
+```
+
+### Facts
+
+| Field | Value | Status |
+|---|---|---|
+| License | MIT (35+ open-source components confirmed on homepage) | ⚠ |
+| Built on | **Recharts + Radix UI** | ✓ verified per homepage |
+| Pivoted from | Packaged npm library to copy-paste in 2024 | ⚠ |
+| Status | **"Joining Vercel"** banner on homepage | ⚠ verified |
+| Tailwind v4 | Yes | ⚠ |
+| RSC | Client-only for chart components (Recharts uses ResizeObserver + refs) | ⚠ |
+
+### Best for ◯
+- **Charts** — Area, Bar, Line, Donut, Spark, Combo charts with sensible defaults
+- Dashboard blocks — KPI cards, table-with-trend, comparison stats
+- Date range pickers tuned for analytics
+
+### Weakest at ◯
+- Marketing components (none)
+- Animation beyond Recharts defaults
+- Limited to data-viz contexts
+
+### Standout examples ⚠
+- `https://tremor.so/charts`
+- `https://tremor.so/blocks`
+- `https://tremor.so/components`
+
+### AI-generic risk: 3/10 ◯
+
+### Premium score: 7/10 ◯
+
+### Recommended for TGlobal ◯
+- **Spark Chart** for `/work/[slug]` to visualize project metric over time (signups over 14-day sprint window) — far more compelling than a static "30%" stat
+- **KPI Card** for homepage outcomes strip — number + delta + tiny chart in one block
+- Skip Tremor dashboard blocks — sized for app dashboards, not marketing
+
+### Gotchas ⚠
+- Recharts is the heaviest dep (~80KB gzipped) — bundle-budget impact.
+- Charts are Client Components; wrap in Suspense for clean loading states.
+- Re-renders on prop changes can be expensive; memoize chart data.
+
+---
+
+## Entry 20: Untitled UI React ✏ rewritten
+
+**URL**: https://www.untitledui.com/react
+**Category**: C3 — CLI-add + copy-paste + npm package (all three delivery modes)
+
+### How to use it ✏
+
+✓ **Verified install command** (corrected from Browser Claude's "per-component code-copy" claim):
+```bash
+npx untitledui@latest init --nextjs
+```
+
+Untitled UI ships THREE delivery paths:
+1. **Their own CLI** (above) — scaffolds Next.js project with their components
+2. **Official npm packages** — both free and Pro versions
+3. **Copy-paste** — per-component code from the docs site
+
+### Facts ✏
+
+| Field | Value | Status |
+|---|---|---|
+| Tagline | "The world's largest collection of React components. Tailwind CSS + React Aria." | ✓ verified |
+| Total components & sections | **5,000+** (not 600+) | ✓ verified |
+| Page examples (Pro) | 250+ | ✓ verified |
+| Tailwind | **v4.2 explicitly** | ✓ verified |
+| License | MIT for open-source; Pro permits commercial use across unlimited projects | ✓ verified |
+| Built on | React Aria + Tailwind | ✓ verified |
+| Component category counts (homepage shows) | Line & bar charts (8 + 43 variants), Notifications (1 + 18), Command menus (5 + 69), Calendars (12 + 82), Badges (3 + 380), Date pickers (5 + 68), Pricing examples (20 page examples) | ✓ verified |
+| RSC | Mostly client (React Aria-based) | ⚠ |
+
+### Best for ◯
+- **Volume** — world's largest free + Pro React component collection
+- **Application UI**: dashboards, settings, tables, modals
+- **Pricing page templates** — credible variants
+- **Command menus** (Cmd-K) — 69 variants make this the deepest free option
+- **Badges** — 380 variants for `/work/[slug]` metadata strip
+
+### Weakest at ◯
+- Aesthetically conventional — Untitled UI signature Figma kit DNA (light, soft-radius, blue-violet accent). Reskin aggressively.
+- Premium content gated behind paid tier
+- Marketing hero blocks aren't their strength
+
+### Standout examples ⚠
+- `https://www.untitledui.com/react/components` — full browser with variant counts visible per category
+- `https://www.untitledui.com/react/components/badges` — 380 badge variants
+- `https://www.untitledui.com/react/components/command-menus` — 69 Cmd-K variants
+
+### AI-generic risk: 5/10 default; 2/10 with reskin ◯
+
+### Premium score: 7/10 ◯
+React Aria + Tailwind v4 + 5,000+ component foundation is the most production-ready free React library in 2026.
+
+### Recommended for TGlobal ◯
+- **Command Menus** catalog — pick a variant matching Linear's spotlight pattern, adapt
+- **Badges** for `/work/[slug]` metadata strip (industry, year, role) — get distinctive variants by browsing 380 instead of accepting first
+- **Date Pickers** (68 variants) if `/contact` needs scheduling
+- Pair Untitled UI primitives with Base UI overlays — application-grade primitives without buying into visual default
+
+### Gotchas ⚠
+- React Aria is bundled — combined with shadcn/Radix usage can balloon JS payload. **Pick ONE a11y primitive layer** (Base UI OR React Aria), not both.
+- Pro tier is paid — verify which components you need are on the free tier first.
+
 ---
 
 # Pending batches
-
-## Batch 2 — C3 NPM-installable React libraries
-*To be appended after Claude in Browser produces the next batch.*
-
-Categories to cover (~10 entries):
-- shadcn/ui (the canonical baseline)
-- Base UI (`@base-ui-components/react` — successor to Radix Primitives by the Material UI team)
-- Hero UI (`@heroui/react` — formerly NextUI)
-- Mantine (`@mantine/core`)
-- Park UI (built on Ark UI; multi-framework)
-- Origin UI (relatively new)
-- React Aria Components (`react-aria-components`)
-- Radix Themes (the styled layer over Radix Primitives)
-- Untitled UI React (premium baseline reference)
-- Tremor (specific to dashboards / data viz)
 
 ## Batch 3 — C4 Animation libraries
 *To be appended.*
