@@ -134,7 +134,10 @@ export default function WorkIndexPage() {
 
   return (
     <>
-      <Navbar />
+      {/* Dark hero on this page → tell Navbar to switch to white text
+          via CSS-variable theme tokens. The same Navbar component
+          renders correctly on light pages by default. */}
+      <Navbar theme="dark" />
       <main className="flex-1">
         {/* ─── Hero ─────────────────────────────────────────────
             Dark background + Spotlight cursor light. The Spotlight

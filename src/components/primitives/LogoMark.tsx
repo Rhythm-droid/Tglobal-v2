@@ -6,7 +6,14 @@ interface LogoMarkProps {
 
 /**
  * TGlobal brand mark — exact SVG glyph from Figma plus the "tglobal" wordmark.
- * `currentColor` lets it recolor in dark sections (set parent `color`).
+ *
+ * Color inheritance: this component is intentionally color-agnostic. The
+ * SVG `fill="currentColor"` and the wordmark `<span>` both inherit
+ * `color` from the nearest ancestor that sets one. The Navbar wrapper
+ * sets `text-foreground` (light theme) or `text-white` (dark theme), so
+ * the same LogoMark renders correctly on both lavender-wash and dark
+ * heroes without props.
+ *
  * Gap `5.44px` matches Figma's Frame 2147223617 auto-layout spacing.
  */
 export default function LogoMark({
@@ -20,7 +27,7 @@ export default function LogoMark({
   const wordSize = size;
   return (
     <span
-      className={`inline-flex items-end text-foreground leading-none ${className}`}
+      className={`inline-flex items-end leading-none ${className}`}
       style={{ gap: "5.44px" }}
     >
       <svg

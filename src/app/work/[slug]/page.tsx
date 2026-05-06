@@ -99,7 +99,10 @@ export default async function CaseStudyDetailPage({ params }: PageProps) {
   return (
     <>
       <ScrollProgress />
-      <Navbar />
+      {/* Gradient hero (accentColor → near-black) → dark theme so the
+          logo + nav links read on the brighter top of the gradient.
+          See Navbar.tsx for the CSS-variable cascade. */}
+      <Navbar theme="dark" />
       <main className="flex-1">
         {/* ─── HERO ─────────────────────────────────────────────
             Full-bleed gradient with the client's accent color. When a

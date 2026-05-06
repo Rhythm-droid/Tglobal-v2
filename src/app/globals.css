@@ -500,6 +500,11 @@ body {
 
 /* ─── Nav link with animated underline ─── */
 /* Figma spec: Albert Sans Regular 20px, letter-spacing -6% */
+/* Theming: --nav-fg / --nav-fg-hover / --nav-accent are inherited from
+   the <header> element. Default theme = light hero (dark text). On dark
+   heroes (/work, /work/[slug]), the Navbar component sets these vars to
+   white so the link text reads correctly without prop-drilling color
+   tokens through every NavLink instance. */
 @layer components {
   .nav-link {
     position: relative;
@@ -510,7 +515,7 @@ body {
     font-size: 20px;
     font-weight: 400;
     letter-spacing: -0.06em;
-    color: var(--color-foreground);
+    color: var(--nav-fg, var(--color-foreground));
     transition: color 0.2s ease;
   }
 }
@@ -522,14 +527,14 @@ body {
   right: 4px;
   bottom: 4px;
   height: 1.5px;
-  background: var(--color-primary);
+  background: var(--nav-accent, var(--color-primary));
   transform: scaleX(0);
   transform-origin: right center;
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .nav-link:hover {
-  color: var(--color-primary);
+  color: var(--nav-fg-hover, var(--color-primary));
 }
 
 .nav-link:hover::after {
@@ -538,7 +543,7 @@ body {
 }
 
 .nav-link:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--nav-accent, var(--color-primary));
   outline-offset: 4px;
   border-radius: 6px;
 }
@@ -547,6 +552,24 @@ body {
 .nav-link:focus-visible::after {
   transform: scaleX(1);
   transform-origin: left center;
+}
+
+/* Active route — persistent underline so users know where they are.
+   `aria-current="page"` is the a11y signal AND the styling hook. */
+.nav-link[aria-current="page"] {
+  color: var(--nav-fg-hover, var(--color-primary));
+}
+
+.nav-link[aria-current="page"]::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+
+/* Mobile burger hover — themed via --nav-burger-hover so the same
+   button works on light hero (subtle dark wash) and dark hero
+   (subtle white wash). Variable comes from the <header> element. */
+.nav-burger:hover {
+  background-color: var(--nav-burger-hover, rgba(21, 19, 30, 0.05));
 }
 
 /* ─── AnimateIn primitive (CSS-driven reveal) ───

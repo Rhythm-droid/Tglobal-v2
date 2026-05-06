@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import LogoMark from "./primitives/LogoMark";
 
@@ -13,31 +14,48 @@ import LogoMark from "./primitives/LogoMark";
      Next.js Link would trigger a full page change instead.
    • Cross-page anchors ("/#talk-to-us") → <Link>: Next routes to /
      and the browser's hash-scroll restoration takes over. Works from
-     any page so the CTA pill keeps its target reachable site-wide. */
+     any page so the CTA pill keeps its target reachable site-wide.
+   • aria-current — when the link's `href` matches the current pathname
+     we tag it `aria-current="page"`. Screen readers announce "current
+     page" and the .nav-link CSS shows a persistent underline. */
 function NavLink({
   href,
   className,
   onClick,
   children,
   ariaLabel,
+  ariaCurrent,
 }: {
   href: string;
   className?: string;
   onClick?: () => void;
   children: React.ReactNode;
   ariaLabel?: string;
+  ariaCurrent?: "page" | undefined;
 }) {
   /* Pure in-page anchor — keep as <a> for Lenis to intercept. */
   if (href.startsWith("#")) {
     return (
-      <a href={href} className={className} onClick={onClick} aria-label={ariaLabel}>
+      <a
+        href={href}
+        className={className}
+        onClick={onClick}
+        aria-label={ariaLabel}
+        aria-current={ariaCurrent}
+      >
         {children}
       </a>
     );
   }
   /* Route or cross-page anchor — Next.js Link handles both. */
   return (
-    <Link href={href} className={className} onClick={onClick} aria-label={ariaLabel}>
+    <Link
+      href={href}
+      className={className}
+      onClick={onClick}
+      aria-label={ariaLabel}
+      aria-current={ariaCurrent}
+    >
       {children}
     </Link>
   );
@@ -89,11 +107,69 @@ const NAV_LINKS: readonly NavLink[] = [
   { label: "About", href: "/about" },
 ] as const;
 
-export default function Navbar() {
+/* Theme — light vs dark hero.
+   ────────────────────────────────────────────────────────────
+   The Navbar lives over the hero (absolute positioning, scrolls away
+   with the document — see top-of-file comment). So the legible
+   text colour depends on what's behind it:
+     • light  → lavender wash / white  → dark text  (default)
+     • dark   → near-black / gradient  → white text
+   We expose the choice as a prop so each page declares its own
+   theme at the call site (no automatic pathname sniffing — easier
+   to grep, easier to override, no surprise behaviour for new
+   pages). The actual recolouring is done via CSS custom
+   properties scoped to the <header> element so .nav-link, the
+   LogoMark, and the burger all inherit the same value. */
+export type NavbarTheme = "light" | "dark";
+
+interface NavbarProps {
+  /** Theme based on the hero background. Defaults to "light". */
+  theme?: NavbarTheme;
+}
+
+/* Per-theme CSS variable bundles. The keys map to the variables
+   read by .nav-link in globals.css plus a few we use inline (logo
+   colour, burger hover background). Using `as const` keeps the
+   TypeScript narrowing intact and the bundle inlines cleanly into
+   the style attribute. */
+const THEME_TOKENS = {
+  light: {
+    "--nav-fg": "var(--color-foreground)",
+    "--nav-fg-hover": "var(--color-primary)",
+    "--nav-accent": "var(--color-primary)",
+    "--nav-burger-hover": "rgba(21, 19, 30, 0.05)",
+  },
+  dark: {
+    "--nav-fg": "#ffffff",
+    /* Stay white on hover — going purple-on-dark dims the contrast.
+       The animated underline (--nav-accent) keeps the brand colour. */
+    "--nav-fg-hover": "#ffffff",
+    "--nav-accent": "var(--color-primary)",
+    "--nav-burger-hover": "rgba(255, 255, 255, 0.08)",
+  },
+} as const;
+
+export default function Navbar({ theme = "light" }: NavbarProps = {}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const burgerRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const wasOpenRef = useRef(false);
+  const pathname = usePathname();
+
+  /* Active route detection.
+     ─────────────────────────────
+     A link is "current" when its href is the exact pathname (so
+     /work is active on /work but NOT on /work/skyline — the slug
+     page has its own breadcrumb-style "← All work" affordance).
+     Returns "page" for the current link, undefined otherwise so
+     React drops the attribute entirely (cleaner than empty
+     string). */
+  const isCurrent = (href: string): "page" | undefined =>
+    pathname === href ? "page" : undefined;
+
+  /* Resolve the theme token bundle once per render. Cast through
+     CSSProperties so TypeScript accepts the custom-property keys. */
+  const themeStyle = THEME_TOKENS[theme] as React.CSSProperties;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -138,20 +214,29 @@ export default function Navbar() {
       /* `absolute` (see top-of-file comment) so the navbar lives at the
          top of the document, scrolls away with the hero, and never
          overlaps later sections. Background stays transparent so the
-         hero art reads through; no scroll-driven swap. */
+         hero art reads through; no scroll-driven swap.
+
+         The `style` prop merges the entrance-animation keyframe with
+         the per-theme CSS variables. The variables cascade to .nav-link
+         (via globals.css), to LogoMark (via inherited `color`), and to
+         the burger button (via the inline var() lookup). */
       className="absolute inset-x-0 top-0 z-50 w-full bg-transparent"
       style={{
         animation: "header-slide 0.6s cubic-bezier(0.22,1,0.36,1) both",
+        color: "var(--nav-fg)",
+        ...themeStyle,
       }}
     >
       <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between px-6 py-5 sm:px-8 lg:px-14 xl:px-20">
         {/* Logo — always routes to home (/), not the in-page anchor.
             Convention: clicking the logo always takes you to the
-            homepage of the site, regardless of which page you're on. */}
+            homepage of the site, regardless of which page you're on.
+            Color is inherited from <header> via currentColor so the
+            same component reads on light AND dark heroes. */}
         <NavLink
           href="/"
           ariaLabel="TGlobal home"
-          className="focus-ring inline-flex items-center text-foreground transition-transform duration-300 hover:-translate-y-[1px]"
+          className="focus-ring inline-flex items-center transition-transform duration-300 hover:-translate-y-[1px]"
         >
           <LogoMark size={40} />
         </NavLink>
@@ -162,7 +247,12 @@ export default function Navbar() {
           className="hidden items-center gap-6 md:flex"
         >
           {NAV_LINKS.map((link) => (
-            <NavLink key={link.href} href={link.href} className="nav-link">
+            <NavLink
+              key={link.href}
+              href={link.href}
+              className="nav-link"
+              ariaCurrent={isCurrent(link.href)}
+            >
               {link.label}
             </NavLink>
           ))}
@@ -170,7 +260,9 @@ export default function Navbar() {
 
         {/* Desktop CTA — uses /#talk-to-us so it works from any route.
             On home (/) the hash scrolls to the section; from /work or
-            /about it routes home and the browser restores the hash. */}
+            /about it routes home and the browser restores the hash.
+            The brand-purple pill reads on every theme so it doesn't
+            need a dark-mode variant. */}
         <NavLink
           href="/#talk-to-us"
           className="pill pill-primary focus-ring hidden md:inline-flex"
@@ -178,7 +270,10 @@ export default function Navbar() {
           Start Building
         </NavLink>
 
-        {/* Mobile burger */}
+        {/* Mobile burger — color inherits from <header> (currentColor).
+            Hover background reads --nav-burger-hover via the
+            .nav-burger CSS class so the same element themes
+            automatically per-page (see globals.css). */}
         <button
           ref={burgerRef}
           type="button"
@@ -186,7 +281,7 @@ export default function Navbar() {
           aria-expanded={mobileOpen}
           aria-controls="mobile-menu"
           onClick={() => setMobileOpen((open) => !open)}
-          className="focus-ring inline-flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-foreground/5 md:hidden"
+          className="nav-burger focus-ring inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors md:hidden"
         >
           <BurgerIcon open={mobileOpen} />
         </button>
