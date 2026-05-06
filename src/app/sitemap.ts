@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { CASE_STUDIES } from "./work/data";
 
 /**
  * sitemap.xml — auto-generated from the route list below.
@@ -52,14 +53,16 @@ const ROUTES: readonly RouteEntry[] = [
   { path: "/careers", priority: 0.5, changeFrequency: "monthly" },
   { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
   { path: "/terms",   priority: 0.3, changeFrequency: "yearly" },
-  /* Case study detail pages — uncomment + rename slugs once confirmed.
-     Leaving the comment so the next dev knows where to add them.
-  { path: "/work/skyline",    priority: 0.6, changeFrequency: "yearly" },
-  { path: "/work/medcollect", priority: 0.6, changeFrequency: "yearly" },
-  { path: "/work/jijibai",    priority: 0.6, changeFrequency: "yearly" },
-  { path: "/work/turpai",     priority: 0.6, changeFrequency: "yearly" },
-  */
 ] as const;
+
+/* Case study detail routes — auto-generated from work/data.ts so adding
+   a new case study to that array automatically adds it to the sitemap.
+   Priority 0.6 (lower than top-level marketing pages, higher than legal). */
+const CASE_STUDY_ROUTES: readonly RouteEntry[] = CASE_STUDIES.map((cs) => ({
+  path: `/work/${cs.slug}`,
+  priority: 0.6,
+  changeFrequency: "yearly" as const,
+}));
 
 export default function sitemap(): MetadataRoute.Sitemap {
   /* `lastModified: new Date()` updates on every build. For SEO this is
@@ -67,7 +70,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
      site might want per-page modification dates from a CMS. */
   const lastModified = new Date();
 
-  return ROUTES.map((entry) => ({
+  /* Concat fixed top-level routes with auto-generated case study routes. */
+  const allRoutes: readonly RouteEntry[] = [...ROUTES, ...CASE_STUDY_ROUTES];
+
+  return allRoutes.map((entry) => ({
     url: `${BASE_URL}${entry.path}`,
     lastModified,
     changeFrequency: entry.changeFrequency,

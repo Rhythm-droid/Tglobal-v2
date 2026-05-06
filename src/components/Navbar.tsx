@@ -1,7 +1,47 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import LogoMark from "./primitives/LogoMark";
+
+/* ─── NavLink — picks Next.js Link for routes vs plain <a> for anchors.
+   ─────────────────────────────────────────────────────────────
+   • Routes ("/work", "/about", "/contact") → <Link>: SPA-fast,
+     PageTransition runs the fade animation between pages.
+   • In-page anchors ("#talk-to-us") → <a>: Lenis (smooth scroll)
+     intercepts the click and animates the scroll. Routing through
+     Next.js Link would trigger a full page change instead.
+   • Cross-page anchors ("/#talk-to-us") → <Link>: Next routes to /
+     and the browser's hash-scroll restoration takes over. Works from
+     any page so the CTA pill keeps its target reachable site-wide. */
+function NavLink({
+  href,
+  className,
+  onClick,
+  children,
+  ariaLabel,
+}: {
+  href: string;
+  className?: string;
+  onClick?: () => void;
+  children: React.ReactNode;
+  ariaLabel?: string;
+}) {
+  /* Pure in-page anchor — keep as <a> for Lenis to intercept. */
+  if (href.startsWith("#")) {
+    return (
+      <a href={href} className={className} onClick={onClick} aria-label={ariaLabel}>
+        {children}
+      </a>
+    );
+  }
+  /* Route or cross-page anchor — Next.js Link handles both. */
+  return (
+    <Link href={href} className={className} onClick={onClick} aria-label={ariaLabel}>
+      {children}
+    </Link>
+  );
+}
 
 /* Why `absolute` (not `fixed` or `sticky`):
    ──────────────────────────────────────────
@@ -32,20 +72,21 @@ interface NavLink {
   readonly href: string;
 }
 
-/* Nav links MUST be ordered to match the DOM order of their target
-   sections in src/app/page.tsx. The order on the page is:
-       Hero → Stats → Problem → HowItWorks → Services → Capabilities
-       → Clients (#our-work) → CTA (#talk-to-us) → Faq (#faq)
-   The nav surfaces the user-facing narrative sections; Hero/Stats are
-   the entry experience (logo links to #top), and CTA is the trailing
-   pill. If you add or reorder a section in page.tsx, mirror the change
-   here so the navbar reflects scroll order. */
+/* Nav links — multi-page architecture.
+   ────────────────────────────────────────────────────────────
+   Each link points to a top-level marketing route. Links to
+   in-page anchors on the home page (#problem, #how-it-works,
+   #capabilities, #faq) are reachable by scrolling on /, by
+   clicking through Footer's quick-links, or by deep-linking
+   (e.g. /#problem from any page).
+
+   Add a route here ONLY after its page.tsx exists, otherwise
+   visitors hit a 404. /services and /contact are pending and
+   will be added with the Friday commit. */
 const NAV_LINKS: readonly NavLink[] = [
-  { label: "Problem", href: "#problem" },
-  { label: "How it Works", href: "#how-it-works" },
-  { label: "Services", href: "#services" },
-  { label: "Capabilities", href: "#capabilities" },
-  { label: "Projects", href: "#our-work" },
+  { label: "Work", href: "/work" },
+  { label: "Process", href: "/process" },
+  { label: "About", href: "/about" },
 ] as const;
 
 export default function Navbar() {
@@ -104,14 +145,16 @@ export default function Navbar() {
       }}
     >
       <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between px-6 py-5 sm:px-8 lg:px-14 xl:px-20">
-        {/* Logo */}
-        <a
-          href="#top"
-          aria-label="TGlobal home"
+        {/* Logo — always routes to home (/), not the in-page anchor.
+            Convention: clicking the logo always takes you to the
+            homepage of the site, regardless of which page you're on. */}
+        <NavLink
+          href="/"
+          ariaLabel="TGlobal home"
           className="focus-ring inline-flex items-center text-foreground transition-transform duration-300 hover:-translate-y-[1px]"
         >
           <LogoMark size={40} />
-        </a>
+        </NavLink>
 
         {/* Desktop nav — Figma spec: gap 24px between items */}
         <nav
@@ -119,19 +162,21 @@ export default function Navbar() {
           className="hidden items-center gap-6 md:flex"
         >
           {NAV_LINKS.map((link) => (
-            <a key={link.href} href={link.href} className="nav-link">
+            <NavLink key={link.href} href={link.href} className="nav-link">
               {link.label}
-            </a>
+            </NavLink>
           ))}
         </nav>
 
-        {/* Desktop CTA */}
-        <a
-          href="#talk-to-us"
+        {/* Desktop CTA — uses /#talk-to-us so it works from any route.
+            On home (/) the hash scrolls to the section; from /work or
+            /about it routes home and the browser restores the hash. */}
+        <NavLink
+          href="/#talk-to-us"
           className="pill pill-primary focus-ring hidden md:inline-flex"
         >
           Start Building
-        </a>
+        </NavLink>
 
         {/* Mobile burger */}
         <button
@@ -166,22 +211,22 @@ export default function Navbar() {
         <div className="border-t border-border/60 bg-white/95 px-6 py-6 backdrop-blur-md">
           <nav aria-label="Mobile" className="flex flex-col gap-1">
             {NAV_LINKS.map((link) => (
-              <a
+              <NavLink
                 key={link.href}
                 href={link.href}
                 onClick={closeMobile}
                 className="py-3 text-lg font-medium tracking-[-0.02em] text-foreground"
               >
                 {link.label}
-              </a>
+              </NavLink>
             ))}
-            <a
-              href="#talk-to-us"
+            <NavLink
+              href="/#talk-to-us"
               onClick={closeMobile}
               className="pill pill-primary focus-ring mt-4 self-start"
             >
               Start Building
-            </a>
+            </NavLink>
           </nav>
         </div>
       </div>
