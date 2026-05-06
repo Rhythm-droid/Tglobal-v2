@@ -77,22 +77,28 @@ export default function BorderBeam({
       className={cn("relative", className)}
       style={{ borderRadius: `${borderRadius}px` }}
     >
+      {/* Children FIRST — the wrapped card paints normally underneath. */}
+      {children}
+
       {/*
-        Beam ring layer.
+        Beam ring layer — sits ON TOP of children (DOM-order paint),
+        but the mask strips out everything except the rim, so the card
+        content underneath is fully visible. Only the animated 1.5px
+        ring at the edge ever overlays the card.
         ─────────────────────────────────────────────────────────────
         How the mask trick works:
           1. The element is filled with a `conic-gradient` that fades
              from `colorStart` to transparent. This is the "beam".
           2. We then mask it so ONLY the border ring is visible:
-               • mask-image #1: a solid black rectangle (the full element).
-               • mask-image #2: a black rectangle inset by `size` pixels.
-               • mask-composite: subtract → result is the rim alone.
+               • Two layers — one painted into the content-box, one
+                 covering the full padding-box.
+               • mask-composite: exclude (xor) — keeps only the area
+                 covered by exactly ONE layer = the rim.
           3. A CSS keyframe rotates the element 360° over `duration`s,
              so the conic-gradient orbits around the border.
 
-        `pointer-events: none` so the beam doesn't intercept clicks.
-        `animate-spin-slow` is defined inline via `style.animation` to
-        keep the duration prop dynamic.
+        `pointer-events: none` so the beam doesn't intercept clicks
+        meant for the card content underneath.
       */}
       <div
         aria-hidden
@@ -121,8 +127,6 @@ export default function BorderBeam({
           to { transform: rotate(360deg); }
         }
       `}</style>
-
-      {children}
     </div>
   );
 }
