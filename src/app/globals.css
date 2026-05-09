@@ -213,6 +213,29 @@ body {
   animation-duration: 50s;
 }
 
+/* Pause when the user hovers the marquee container so they can read a
+   logo they recognise. Children inherit the pause via the cascade. */
+.brand-marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+/* Reduced-motion fallback — flatten the marquee to a wrapped grid and
+   hide the duplicate copy (the visually-hidden second pass that gives
+   the translate -50% loop its seamless seam). Users who opt out of
+   motion get the full brand list at a glance, no animation. */
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    row-gap: 32px;
+  }
+  .brand-marquee .marquee-track > li:nth-child(n + 14) {
+    display: none;
+  }
+}
+
 .horizontal-scroll {
   scrollbar-width: none;
   -ms-overflow-style: none;
