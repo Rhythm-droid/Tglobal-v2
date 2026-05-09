@@ -113,19 +113,22 @@ interface Brand {
 }
 
 const BRANDS: readonly Brand[] = [
-  { id: "skyline",     name: "Skyline Elevators",   src: "/brands/skyline.webp",     width: 1500, height: 1500 },
-  { id: "medcollect",  name: "MedCollect",          src: "/brands/medcollect.webp",  width: 1500, height: 1500 },
-  { id: "odd-pieces",  name: "Odd Pieces",          src: "/brands/odd-pieces.webp",  width: 1500, height: 1500 },
-  { id: "red-pocket",  name: "RedPocket Mobile",    src: "/brands/red-pocket.webp",  width: 1500, height: 1500 },
-  { id: "dell",        name: "Dell Technologies",   src: "/brands/dell.webp",        width: 1500, height: 1500 },
-  { id: "foot-locker", name: "Foot Locker",         src: "/brands/foot-locker.webp", width: 1500, height: 1500 },
-  { id: "jumbl",       name: "Jumbl",               src: "/brands/jumbl.webp",       width: 1500, height: 1500 },
-  { id: "jijibai",     name: "JIJIBAI",             src: "/brands/jijibai.webp",     width: 1500, height: 1500 },
-  { id: "puma",        name: "PUMA",                src: "/brands/puma.webp",        width: 1500, height: 1500 },
-  { id: "tamimi",      name: "Tamimi Markets",      src: "/brands/tamimi.webp",      width: 1500, height: 1500 },
-  { id: "ast",         name: "AST (All Stop Trading)", src: "/brands/ast.webp",      width: 1500, height: 1500 },
-  { id: "ackermans",   name: "Ackermans",           src: "/brands/ackermans.webp",   width: 1500, height: 1500 },
-  { id: "dealshare",   name: "Dealshare",           src: "/brands/dealshare.webp",   width: 1500, height: 1500 },
+  // Positions 1-10 follow the explicit ordering from the brand owner.
+  { id: "skyline",       name: "Skyline Elevators",   src: "/brands/skyline.webp",       width: 1500, height: 1500 },
+  { id: "medcollect",    name: "MedCollect",          src: "/brands/medcollect.webp",    width: 1500, height: 1500 },
+  { id: "odd-pieces",    name: "Odd Pieces",          src: "/brands/odd-pieces.webp",    width: 1500, height: 1500 },
+  { id: "red-pocket",    name: "RedPocket Mobile",    src: "/brands/red-pocket.webp",    width: 1500, height: 1500 },
+  { id: "dell",          name: "Dell Technologies",   src: "/brands/dell.webp",          width: 1500, height: 1500 },
+  { id: "aliste",        name: "Aliste Technologies", src: "/brands/aliste.webp",        width: 1500, height: 1500 },
+  { id: "jumbl",         name: "Jumbl",               src: "/brands/jumbl.webp",         width: 1500, height: 1500 },
+  { id: "jijibai",       name: "JIJIBAI",             src: "/brands/jijibai.webp",       width: 1500, height: 1500 },
+  { id: "turpai",        name: "Turpai",              src: "/brands/turpai.webp",        width: 1500, height: 1500 },
+  { id: "radhe-fashion", name: "Radhey Fashions",     src: "/brands/radhe-fashion.webp", width: 1500, height: 1500 },
+  // Positions 11-13 are kept from the prior carousel state — only Foot
+  // Locker, Ackermans, and Dealshare were called out for removal.
+  { id: "ast",           name: "AST (All Stop Trading)", src: "/brands/ast.webp",        width: 1500, height: 1500 },
+  { id: "tamimi",        name: "Tamimi Markets",      src: "/brands/tamimi.webp",        width: 1500, height: 1500 },
+  { id: "puma",          name: "PUMA",                src: "/brands/puma.webp",          width: 1500, height: 1500 },
 ] as const;
 
 /* ────────────────────────────────────────────────────────────
