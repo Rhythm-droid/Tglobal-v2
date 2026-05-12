@@ -114,7 +114,7 @@ export default function AccentTypewriter({ delay }: { delay: number }) {
           DELETE_SPEED_MS,
         );
       } else {
-        setPhase("hold-empty");
+        timer = setTimeout(() => setPhase("hold-empty"), 0);
       }
     } else if (phase === "hold-empty") {
       timer = setTimeout(() => {
@@ -128,7 +128,7 @@ export default function AccentTypewriter({ delay }: { delay: number }) {
           TYPE_SPEED_MS,
         );
       } else {
-        setPhase("hold-full");
+        timer = setTimeout(() => setPhase("hold-full"), 0);
       }
     }
 

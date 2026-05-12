@@ -26,6 +26,15 @@ export { default as PageTransition } from "./PageTransition";
 export { default as WordReveal } from "./WordReveal";
 export { default as NumberTicker } from "./NumberTicker";
 export { default as ScrambleText } from "./ScrambleText";
+export { default as ScrambleSwap } from "./ScrambleSwap";
+export { default as RotatingWord } from "./RotatingWord";
+
+// Premium text-effect primitives (used heavily on /about)
+export { default as MaskReveal } from "./MaskReveal";
+export { default as BlurUnblur } from "./BlurUnblur";
+export { default as CharSplit } from "./CharSplit";
+export { default as ColorSweep } from "./ColorSweep";
+export { default as ScrubScale } from "./ScrubScale";
 
 // Surface treatments
 export { default as MagicCard } from "./MagicCard";

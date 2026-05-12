@@ -41,6 +41,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import LogoMark from "@/components/primitives/LogoMark";
 import Footer from "@/components/Footer";
+import { useMounted } from "@/lib/useMounted";
 import {
   POLICY_LAST_UPDATED,
   POLICY_VERSION,
@@ -67,6 +68,14 @@ export default function PrivacyPage() {
   const [activeId, setActiveId] = useState<string>(SECTIONS[0]?.id ?? "");
   const observerRef = useRef<IntersectionObserver | null>(null);
   const reduceMotion = useReducedMotion();
+  const mounted = useMounted();
+  /* SSR + first client render must skip motion `initial` props entirely:
+     `useReducedMotion()` returns `null` on the server and the actual
+     preference on the client's first paint, so a naive
+     `initial={reduceMotion ? false : {...}}` produces different inline
+     styles between server and client → hydration mismatch. Gating
+     animations on `mounted` defers all motion to after hydration. */
+  const animate = mounted && !reduceMotion;
 
   /* IntersectionObserver scroll-spy. We pick the entry whose top is
    * closest to (but past) a 25%-from-top "trigger line" — that puts
@@ -119,7 +128,7 @@ export default function PrivacyPage() {
     <>
       <PageHeader />
 
-      <main className="relative isolate">
+      <main id="main-content" tabIndex={-1} className="relative isolate">
         {/* Lavender wash backdrop — matches Hero/CTA so the page
             visually belongs to the same site. Wash + ambient orbs
             sit behind everything via z-[-1]. */}
@@ -146,7 +155,7 @@ export default function PrivacyPage() {
           className="mx-auto w-full max-w-[1280px] px-6 pt-16 pb-10 sm:px-10 sm:pt-20 sm:pb-14 lg:px-14 lg:pt-28"
         >
           <motion.p
-            initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+            initial={animate ? { opacity: 0, y: 10 } : false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: EASE }}
             className="eyebrow"
@@ -155,7 +164,7 @@ export default function PrivacyPage() {
           </motion.p>
           <motion.h1
             id="privacy-title"
-            initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+            initial={animate ? { opacity: 0, y: 18 } : false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.05, ease: EASE }}
             className="display-lg mt-4 max-w-[18ch]"
@@ -175,7 +184,7 @@ export default function PrivacyPage() {
             .
           </motion.h1>
           <motion.div
-            initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+            initial={animate ? { opacity: 0, y: 10 } : false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.18, ease: EASE }}
             className="mt-7 flex flex-wrap items-center gap-3 text-[13px] text-muted"
@@ -204,7 +213,7 @@ export default function PrivacyPage() {
           className="mx-auto w-full max-w-[1280px] px-6 pb-14 sm:px-10 lg:px-14"
         >
           <motion.div
-            initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+            initial={animate ? { opacity: 0, y: 16 } : false}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.7, ease: EASE }}
@@ -303,7 +312,7 @@ export default function PrivacyPage() {
               {SECTIONS.map((section, idx) => (
                 <motion.article
                   key={section.id}
-                  initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+                  initial={animate ? { opacity: 0, y: 14 } : false}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.2 }}
                   transition={{ duration: 0.55, ease: EASE }}

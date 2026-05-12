@@ -103,7 +103,7 @@ export default async function CaseStudyDetailPage({ params }: PageProps) {
           logo + nav links read on the brighter top of the gradient.
           See Navbar.tsx for the CSS-variable cascade. */}
       <Navbar theme="dark" />
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1">
         {/* ─── HERO ─────────────────────────────────────────────
             Full-bleed gradient with the client's accent color. When a
             cover image is later added to data.ts, swap the gradient

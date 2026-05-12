@@ -138,7 +138,7 @@ export default function WorkIndexPage() {
           via CSS-variable theme tokens. The same Navbar component
           renders correctly on light pages by default. */}
       <Navbar theme="dark" />
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1">
         {/* ─── Hero ─────────────────────────────────────────────
             Dark background + Spotlight cursor light. The Spotlight
             primitive listens to mousemove and pipes coordinates into
@@ -292,7 +292,7 @@ export default function WorkIndexPage() {
               />
               <div className="relative max-w-3xl">
                 <p className="text-sm font-medium uppercase tracking-[0.18em] text-background/60">
-                  What's next
+                  What&apos;s next
                 </p>
                 <h2
                   className="mt-4 font-medium leading-[1.05] text-background"
@@ -314,8 +314,8 @@ export default function WorkIndexPage() {
                   case study?
                 </h2>
                 <p className="mt-6 text-lg sm:text-xl text-background/80 max-w-2xl leading-relaxed">
-                  We work in fixed-cost sprints. Tell us what you're trying to
-                  ship and we'll come back within 48 hours with a plan.
+                  We work in fixed-cost sprints. Tell us what you&apos;re trying to
+                  ship and we&apos;ll come back within 48 hours with a plan.
                 </p>
                 <div className="mt-10">
                   <Link

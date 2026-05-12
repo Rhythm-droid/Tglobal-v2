@@ -250,7 +250,7 @@ export default function Navbar({ theme = "light" }: NavbarProps = {}) {
             <NavLink
               key={link.href}
               href={link.href}
-              className="nav-link"
+              className={`nav-link ${theme === "dark" ? "!text-white" : ""}`}
               ariaCurrent={isCurrent(link.href)}
             >
               {link.label}

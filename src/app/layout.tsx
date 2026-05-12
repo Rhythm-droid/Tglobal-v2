@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { Albert_Sans, Instrument_Serif } from "next/font/google";
+import { Albert_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
+import CustomCursor from "@/components/primitives/CustomCursor";
 import MotionProvider from "@/components/primitives/MotionProvider";
 import PageTransition from "@/components/primitives/PageTransition";
 import SmoothScrollProvider from "@/components/primitives/SmoothScrollProvider";
@@ -24,6 +25,18 @@ const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   weight: "400",
   style: "italic",
+  display: "swap",
+});
+
+/* Editorial mono — used for tabular indices ("№ 01"), eyebrow labels,
+   and any micro-copy that wants the print/spec-sheet feel. JetBrains
+   Mono has the geometric-but-warm proportions that pair cleanly with
+   Albert Sans without competing for the headline role. Two weights so
+   we can vary label vs caption without loading more variants. */
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
   display: "swap",
 });
 
@@ -180,7 +193,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${albertSans.variable} ${instrumentSerif.variable} h-full antialiased`}
+      className={`${albertSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <head>
         {/* JSON-LD structured data. Two separate <script> tags rather
@@ -206,8 +219,54 @@ export default function RootLayout({
         id="top"
         className="min-h-full flex flex-col bg-background text-foreground font-sans"
       >
+        {/* Skip link — keyboard-first users press Tab on page load
+            and land here. Pressing Enter jumps focus into <main>,
+            bypassing the navbar. Visually hidden until focused;
+            on :focus it pops into the top-left at z-9999 with
+            brand-primary background. WCAG 2.4.1 (Bypass Blocks). */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[9999] focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-white focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2"
+        >
+          Skip to main content
+        </a>
+
+        {/* No-JS fallback — if the user has JavaScript disabled or
+            the bundle fails to load, give them a direct line to the
+            team instead of a blank page. Crawlers also see this as
+            part of the page's content surface. */}
+        <noscript>
+          <div
+            style={{
+              padding: "16px",
+              background: "#fbf8f1",
+              color: "#0e0a1e",
+              textAlign: "center",
+              fontFamily: "system-ui, -apple-system, sans-serif",
+              fontSize: "15px",
+              lineHeight: 1.5,
+            }}
+          >
+            This site is best experienced with JavaScript enabled. To
+            reach us directly, email{" "}
+            <a
+              href="mailto:growth@tglobal.in"
+              style={{ color: "#4b28ff", textDecoration: "underline" }}
+            >
+              growth@tglobal.in
+            </a>
+            .
+          </div>
+        </noscript>
+
         <SmoothScrollProvider>
           <MotionProvider>
+            {/* CustomCursor mounted at the root so it persists across
+                route transitions and appears on every page. The
+                component self-disables on touch / coarse-pointer
+                devices and under prefers-reduced-motion, so mounting
+                it globally is safe. */}
+            <CustomCursor />
             {/* PageTransition wraps every route in a fade+y-shift on
                 navigation. `initial={false}` inside the component
                 prevents an unwanted enter animation on first paint. */}

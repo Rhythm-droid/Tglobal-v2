@@ -43,6 +43,7 @@ import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { useMemo } from "react";
 import { cn } from "@/lib/cn";
 import { splitWords } from "@/lib/splitWords";
+import { useMounted } from "@/lib/useMounted";
 
 interface WordRevealProps {
   /** The paragraph or heading text to reveal. */
@@ -61,20 +62,6 @@ interface WordRevealProps {
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-/* `as const` on the variants prevents TS from widening the easing tuple
-   to `number[]`, which framer-motion's stricter types reject. */
-const containerVariants: Variants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.03 },
-  },
-};
-
-const wordVariants: Variants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: EASE } },
-};
-
 export default function WordReveal({
   text,
   as = "p",
@@ -84,6 +71,7 @@ export default function WordReveal({
   className,
 }: WordRevealProps) {
   const reduceMotion = useReducedMotion();
+  const mounted = useMounted();
   /* `useMemo` so re-renders don't re-tokenize a static string. Cheap
      for short paragraphs but adds up if the parent re-renders often
      (e.g. on every scroll tick from a scroll-driven parent). */
@@ -91,14 +79,17 @@ export default function WordReveal({
 
   const Tag = motion[as] as React.ElementType;
 
-  /* Reduced-motion path: skip the per-word stagger entirely. We still
-     fade the whole element in over 0.2s so content doesn't pop —
-     just the spatial choreography is removed. */
-  if (reduceMotion) {
+  /* Static fallback path. Two cases:
+       • SSR + first client render (mounted === false): renders plain
+         text so hydration is clean. See `useMounted` for rationale.
+       • Reduced-motion users (post-mount): renders plain text with a
+         soft 0.2s opacity fade — content still appears, no spatial
+         choreography. */
+  if (!mounted || reduceMotion) {
     return (
       <Tag
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
+        initial={mounted ? { opacity: 0 } : false}
+        whileInView={mounted ? { opacity: 1 } : undefined}
         viewport={{ once: true, amount: 0.2 }}
         transition={{ duration: 0.2 }}
         className={cn(className)}

@@ -4,10 +4,14 @@ import { useRef, type MouseEvent, type ReactNode } from "react";
 
 interface MagneticPillProps {
   href: string;
-  variant?: "primary" | "soft";
+  variant?: "primary" | "soft" | "ghost";
   children: ReactNode;
   ariaLabel?: string;
   strength?: number;
+  /** Label rendered inside the custom cursor's pill when this CTA
+   *  is hovered. When omitted, no pill label is shown (the cursor
+   *  uses its default ring expansion instead). Keep it short. */
+  cursorText?: string;
 }
 
 /**
@@ -21,6 +25,7 @@ export default function MagneticPill({
   children,
   ariaLabel,
   strength = 0.18,
+  cursorText,
 }: MagneticPillProps) {
   const ref = useRef<HTMLAnchorElement>(null);
   const rafRef = useRef<number | null>(null);
@@ -57,10 +62,11 @@ export default function MagneticPill({
       ref={ref}
       href={href}
       aria-label={ariaLabel}
+      data-cursor-text={cursorText}
       onMouseMove={handleMove}
       onMouseLeave={handleLeave}
       className={`pill pill-magnetic ${
-        variant === "primary" ? "pill-primary" : "pill-soft"
+        variant === "primary" ? "pill-primary" : variant === "ghost" ? "pill-ghost" : "pill-soft"
       } focus-ring`}
     >
       {children}

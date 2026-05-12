@@ -154,7 +154,7 @@ export default function ProcessPage() {
   return (
     <>
       <Navbar />
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1">
         {/* ─── HERO ─────────────────────────────────────────────
             Same lavender-wash treatment as /about so the two pages
             feel like sister chapters of the same book. */}

@@ -45,7 +45,7 @@
  *     trigger button so screen readers announce the question when
  *     focus enters the answer text. */
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -224,35 +224,57 @@ function FaqRow({ index, question, answer, isOpen, onToggle }: FaqRowProps) {
           </span>
         </button>
       </h3>
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            key="content"
-            id={panelId}
-            role="region"
-            aria-labelledby={triggerId}
-            initial="collapsed"
-            animate="open"
-            exit="collapsed"
-            variants={{
-              open: { opacity: 1, height: "auto" },
-              collapsed: { opacity: 0, height: 0 },
-            }}
-            transition={{
-              /* Discrete duration — content reveals in 360ms, exits
-               * in 220ms. Exit is faster than enter per the motion
-               * design rule (so dismissal feels responsive). */
-              duration: reduceMotion ? 0 : 0.36,
-              ease: EASE,
-            }}
-            style={{ overflow: "hidden" }}
-          >
-            <div className="pr-12 pb-7 text-[15.5px] leading-[1.65] text-muted sm:pb-8 sm:text-[16px]">
-              {answer}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* All panels are present in the SSR DOM at all times.
+          Visibility is controlled via the `hidden` attribute +
+          a height animation, NOT conditional mounting. Reasons:
+            • SEO: FAQPage rich-result eligibility requires answers
+              to be present at page load. Previously, only the
+              first panel was in SSR HTML — 5 of 6 answers were
+              missed by crawlers + AnswerEngines.
+            • A11y: dangling `aria-controls` references (pointing
+              at panel IDs that don't exist until expansion) become
+              valid as soon as the page loads.
+            • Search & in-page Cmd-F: users can find any answer by
+              keyword even before opening the panel.
+          The collapsed state still hides the panel visually via
+          height: 0 + the `hidden` attribute (which also removes
+          it from the accessibility tree when collapsed). */}
+      {/* Panel is ALWAYS rendered (was mounted conditionally via
+          AnimatePresence). Visual collapse is via height:0 + opacity:0
+          animation; semantic collapse is via aria-hidden + inert when
+          closed (so keyboard tab + screen reader skip the contents
+          while they're visually gone). This keeps every answer in the
+          SSR HTML for FAQPage rich-result eligibility and in-page
+          Cmd-F search. */}
+      <motion.div
+        id={panelId}
+        role="region"
+        aria-labelledby={triggerId}
+        aria-hidden={!isOpen}
+        // @ts-expect-error — `inert` is a valid HTML attribute as of
+        // React 19 but the local @types/react version may predate the
+        // typing. Passing it through is safe; React renders it as a
+        // boolean HTML attribute.
+        inert={!isOpen ? "" : undefined}
+        initial={false}
+        animate={isOpen ? "open" : "collapsed"}
+        variants={{
+          open: { opacity: 1, height: "auto" },
+          collapsed: { opacity: 0, height: 0 },
+        }}
+        transition={{
+          /* Discrete duration — content reveals in 360ms, exits
+           * in 220ms. Exit is faster than enter per the motion
+           * design rule (so dismissal feels responsive). */
+          duration: reduceMotion ? 0 : 0.36,
+          ease: EASE,
+        }}
+        style={{ overflow: "hidden" }}
+      >
+        <div className="pr-12 pb-7 text-[15.5px] leading-[1.65] text-muted sm:pb-8 sm:text-[16px]">
+          {answer}
+        </div>
+      </motion.div>
     </motion.li>
   );
 }
