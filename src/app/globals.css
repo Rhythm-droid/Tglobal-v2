@@ -84,6 +84,29 @@
   content: attr(data-rotator-spacer);
 }
 
+/* Team founder-name underline. A 1px hairline that draws from
+   left to right after the name mask-reveal lands, then holds. The
+   keyframe is scroll-agnostic — it fires once on mount of the
+   card (because the card itself is gated by AnimateIn / IntersectionObserver upstream),
+   so the draw happens exactly when the founder card enters the
+   viewport. Width pinned to 96px at rest — the "signature
+   flourish" mentioned in the team section comments. */
+@keyframes team-name-stroke-draw {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.team-name-stroke {
+  width: 96px;
+  transform-origin: left center;
+  animation: team-name-stroke-draw 800ms cubic-bezier(0.22, 1, 0.36, 1) 600ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-name-stroke {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
+
 /* ─── Reset / base ─── */
 * {
   box-sizing: border-box;

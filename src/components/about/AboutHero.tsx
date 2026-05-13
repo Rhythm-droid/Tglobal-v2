@@ -115,14 +115,31 @@ const MANIFESTO_ENTRIES: readonly ManifestoEntry[] = [
      • ENTRY_0_AT ≤ progress < ENTRY_1_AT → entry 0
      • ENTRY_1_AT ≤ progress < ENTRY_2_AT → entry 1
      • ENTRY_2_AT ≤ progress → entry 2
-   Tuned so each entry has roughly equal scroll real estate AND so
-   entry 2 (the last one) gets EXTRA distance before the exit wash
-   kicks in — its body has the longest scramble and we want it to
-   resolve before the user reaches the next section, even at fast
-   scroll speeds. */
-const ENTRY_0_AT = 0.32;
-const ENTRY_1_AT = 0.50;
-const ENTRY_2_AT = 0.65;
+   ─────────────────────────────────────────────────────────────
+   ALIGNMENT WITH TIMELINE PHASES
+   ─────────────────────────────────────────────────────────────
+   The GSAP timeline below has 6 phases over ~8.4 timeline units,
+   mapped to scroll progress 0 → 1:
+     Phase 1  t=0.0–1.0   hero copy dissolve
+     Phase 2  t=1.0–1.9   manifesto heading reveal
+     Phase 3  t=2.0–3.4   heading travel + eyebrow/subhead arrival
+     Phase 4  t=3.4–4.1   right-rail slot fades IN
+     Phase 5  t=4.1–7.5   slot fully visible (entry-display window)
+     Phase 6  t=7.5–8.4   slot fades OUT + lavender exit wash
+   The slot is only fully readable inside Phase 5 — t=[4.1, 7.5]
+   maps to progress=[0.488, 0.893]. We split that 0.405-wide
+   readable window into three equal sub-windows so each entry has
+   identical visible scroll distance:
+     entry 0   0.488 → 0.622  (visible, snap stop at 0.555)
+     entry 1   0.622 → 0.758  (visible, snap stop at 0.690)
+     entry 2   0.758 → 0.893  (visible, snap stop at 0.826)
+   Below 0.488 the slot is still fading in (Phase 4) so no entry
+   is mounted. Above 0.893 the exit wash is taking over (Phase 6)
+   so the slot is fading out — at progress=1.0 the pin releases
+   into Team. */
+const ENTRY_0_AT = 0.488;
+const ENTRY_1_AT = 0.622;
+const ENTRY_2_AT = 0.758;
 
 function entryIndexFromProgress(p: number): number {
   if (p < ENTRY_0_AT) return -1;
@@ -290,9 +307,31 @@ export default function AboutHero() {
              snapTo values mirror the entry thresholds + the pin
              start (0) and exit-wash end (1). */
           snap: {
-            snapTo: [0, ENTRY_0_AT, ENTRY_1_AT, ENTRY_2_AT, 1],
-            duration: { min: 0.2, max: 0.5 },
-            delay: 0.12,
+            /* Stops sit at the MIDPOINT of each entry's visible
+               window inside Phase 5 of the timeline (see the
+               ENTRY_*_AT comment above for the derivation).
+                 0       pin top, hero copy fully visible
+                 0.20    mid-intro — manifesto heading is materialising
+                         but no entry is in the right rail yet. Acts
+                         as a "soft landing" stop so a single wheel
+                         tick from the very top doesn't fling the
+                         user past the heading reveal straight into
+                         entry 0's scramble.
+                 0.555   entry 0 ("01 We compress…") fully read
+                 0.690   entry 1 ("02 AI multiplies judgment.")
+                 0.826   entry 2 ("03 Trust is built…")
+                 1       pin exit, lavender wash complete
+               directional:true tells ScrollTrigger to snap to the
+               NEXT stop in the wheel's direction, not the geometric
+               nearest. Without this a fast wheel-flick from p=0
+               overshoots midway between two stops and resolves
+               toward whichever is closer in raw distance — often
+               leapfrogging an entry. With directional, each wheel
+               tick advances exactly one stop forward or back. */
+            snapTo: [0, 0.20, 0.555, 0.690, 0.826, 1],
+            duration: { min: 0.15, max: 0.35 },
+            delay: 0.05,
+            directional: true,
             ease: "power2.inOut",
           },
           onUpdate: (self) => {
@@ -443,12 +482,12 @@ export default function AboutHero() {
       className="relative isolate w-full"
       /* Section height = pin distance (480vh) so when the pin
          completes the section ends precisely at that scroll
-         position — Work Strip is in viewport with zero gap.
-         Section bg = the next section's colour (lavender) so if
-         anything peeks through, it's invisible. */
+         position — Team section is now in viewport with zero gap.
+         Section bg = the next section's colour (#ffffff for Team)
+         so if anything peeks through, it's invisible. */
       style={{
         height: "calc(var(--100vh, 100svh) * 4.8)",
-        background: "var(--color-paper-alt, #f4eef9)",
+        background: "#ffffff",
       }}
     >
       {/* Pin element — viewport-filling stage, ABSOLUTELY positioned
@@ -489,7 +528,7 @@ export default function AboutHero() {
           className="pointer-events-none absolute inset-0 z-[1]"
           style={{
             background:
-              "linear-gradient(180deg, rgba(14,10,30,0.45) 0%, rgba(14,10,30,0) 26%, rgba(14,10,30,0) 50%, rgba(14,10,30,0.55) 72%, rgba(14,10,30,0.9) 88%, rgba(14,10,30,1) 100%)",
+              "linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 26%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.4) 72%, rgba(255,255,255,0.85) 88%, rgba(255,255,255,1) 100%)",
           }}
         />
 
@@ -504,7 +543,7 @@ export default function AboutHero() {
             <h1
               id="about-hero-heading"
               data-cursor="expand"
-              className="flex flex-wrap items-baseline justify-center gap-x-2 font-medium leading-[0.95] text-white sm:gap-x-3 lg:gap-x-4"
+              className="flex flex-wrap items-baseline justify-center gap-x-2 font-medium leading-[0.95] text-foreground sm:gap-x-3 lg:gap-x-4"
               style={{
                 fontSize: "clamp(44px, 7vw, 132px)",
                 letterSpacing: "-0.045em",
@@ -512,7 +551,7 @@ export default function AboutHero() {
             >
               <span>We outrun</span>
               <span
-                className="italic uppercase text-[#c5baff]"
+                className="italic uppercase text-[#6b5ce7]"
                 style={{
                   fontFamily:
                     "var(--font-instrument-serif), Georgia, serif",
@@ -527,6 +566,19 @@ export default function AboutHero() {
               </span>
             </h1>
 
+            {/* SEO fallback — the RotatingWord component renders only
+                the first word in the indexable DOM (the other 5
+                cycle in client-side via setState, so Googlebot's
+                renderer sees just "TIMELINES"). This visually-hidden
+                span exposes every rotating word so the page can
+                rank for "we outrun roadmaps", "we outrun backlogs",
+                etc. Visible to crawlers and screen readers, hidden
+                from sighted users. sr-only class via globals.css. */}
+            <span className="sr-only">
+              We outrun roadmaps, backlogs, sprints, quarters,
+              deadlines, and timelines.
+            </span>
+
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3 sm:mt-12 lg:mt-14">
               <MagneticPill
                 href="/#talk-to-us"
@@ -535,9 +587,15 @@ export default function AboutHero() {
               >
                 Start a sprint <ArrowRight aria-hidden size={18} />
               </MagneticPill>
+              {/* Was variant="ghost" (white-on-dark) when the hero
+                  background was dark ink. The hero is now a light
+                  lavender wash so ghost reads as invisible
+                  white-on-light. variant="soft" is the matching
+                  light-bg pill (lavender-tinted on lavender bg) and
+                  was built for exactly this case. */}
               <MagneticPill
                 href="/process"
-                variant="ghost"
+                variant="soft"
                 cursorText="explore"
               >
                 See the process <Workflow aria-hidden size={18} />
@@ -570,7 +628,7 @@ export default function AboutHero() {
                   GSAP catches up. */}
               <p
                 ref={eyebrowRef}
-                className="flex items-center gap-4 text-[11px] font-medium uppercase tracking-[0.22em] text-white/55"
+                className="flex items-center gap-4 text-[11px] font-medium uppercase tracking-[0.22em] text-foreground-mid"
                 style={{
                   fontFamily:
                     "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace",
@@ -578,13 +636,13 @@ export default function AboutHero() {
                 }}
               >
                 <span className="tabular-nums">№ 01</span>
-                <span aria-hidden className="h-px w-8 bg-white/30" />
+                <span aria-hidden className="h-px w-8 bg-foreground-mid/40" />
                 <span>The manifesto</span>
               </p>
 
               <h2
                 ref={manifestoHeadingRef}
-                className="mt-7 text-balance font-medium leading-[1.05] text-white"
+                className="mt-7 text-balance font-medium leading-[1.05] text-foreground"
                 style={{
                   fontSize: "clamp(34px, 4.4vw, 64px)",
                   letterSpacing: "-0.04em",
@@ -597,7 +655,7 @@ export default function AboutHero() {
               <p
                 ref={subheadRef}
                 style={{ opacity: 0 }}
-                className="mt-6 max-w-[44ch] text-base leading-[1.55] text-white/65 lg:text-lg"
+                className="mt-6 max-w-[44ch] text-base leading-[1.55] text-foreground-mid lg:text-lg"
               >
                 Three principles we keep on the wall. They drive every
                 sprint, every code review, every conversation with you.
@@ -618,7 +676,7 @@ export default function AboutHero() {
                   <div className="min-h-[320px] sm:min-h-[340px]">
                     <div className="flex items-baseline gap-5 sm:gap-7">
                       <span
-                        className="font-medium tabular-nums leading-none text-white/30"
+                        className="font-medium tabular-nums leading-none text-foreground/30"
                         style={{
                           fontSize: "clamp(34px, 4.6vw, 72px)",
                           letterSpacing: "-0.05em",
@@ -627,7 +685,7 @@ export default function AboutHero() {
                         <ScrambleSwap text={activeEntry.index} duration={1200} />
                       </span>
                       <h3
-                        className="font-medium leading-[1.05] text-white"
+                        className="font-medium leading-[1.05] text-foreground"
                         style={{
                           fontSize: "clamp(22px, 2.6vw, 38px)",
                           letterSpacing: "-0.04em",
@@ -636,11 +694,11 @@ export default function AboutHero() {
                         <ScrambleSwap text={activeEntry.title} duration={1900} />
                       </h3>
                     </div>
-                    <p className="mt-5 max-w-[58ch] text-sm leading-[1.55] text-white/72 sm:text-base lg:text-[17px]">
+                    <p className="mt-5 max-w-[58ch] text-sm leading-[1.55] text-foreground-mid sm:text-base lg:text-[17px]">
                       <ScrambleSwap text={activeEntry.body} duration={1800} />
                     </p>
                     <p
-                      className="mt-4 italic text-white/85"
+                      className="mt-4 italic text-foreground/85"
                       style={{
                         fontFamily:
                           "var(--font-instrument-serif), Georgia, serif",
@@ -675,7 +733,7 @@ export default function AboutHero() {
           className="pointer-events-none absolute bottom-8 left-1/2 z-[4] flex -translate-x-1/2 flex-col items-center gap-3 sm:bottom-10"
         >
           <span
-            className="text-[10px] font-medium uppercase text-white/55"
+            className="text-[10px] font-medium uppercase text-foreground-mid"
             style={{
               fontFamily:
                 "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace",
@@ -684,8 +742,8 @@ export default function AboutHero() {
           >
             Scroll
           </span>
-          <div className="relative h-14 w-px overflow-hidden bg-white/15">
-            <span className="scroll-cue-trail absolute left-0 top-0 block h-3 w-px bg-white/85" />
+          <div className="relative h-14 w-px overflow-hidden bg-foreground-mid/25">
+            <span className="scroll-cue-trail absolute left-0 top-0 block h-3 w-px bg-foreground/85" />
           </div>
         </div>
 
@@ -703,7 +761,7 @@ export default function AboutHero() {
           aria-hidden
           className="pointer-events-none absolute inset-0 z-[5]"
           style={{
-            background: "var(--color-paper-alt, #f4eef9)",
+            background: "#ffffff",
             opacity: 0,
           }}
         />

@@ -29,14 +29,17 @@ interface SectionDef {
    dots themselves stay visible on ANY background via
    `mix-blend-mode: difference` in globals.css — so missing this
    flag on a future dark section only affects the hover label, not
-   dot visibility. Both the triptych and the CTA share the hero's
-   ink palette and need the dark-context label colour. */
+   dot visibility. When the about page was reskinned to the light
+   lavender wash end-to-end, the Triptych and CTA flipped from
+   dark ink → light paper-alt, so neither needs the dark-context
+   label colour anymore. Order also reorders to match the new
+   page flow: Hero → Team → Work → Triptych → CTA. */
 const SECTIONS: readonly SectionDef[] = [
   { id: "about-hero", label: "Opening" },
-  { id: "about-work", label: "Work" },
-  { id: "about-triptych", label: "Triptych", dark: true },
   { id: "about-team", label: "Team" },
-  { id: "about-cta", label: "CTA", dark: true },
+  { id: "about-work", label: "Work" },
+  { id: "about-triptych", label: "Triptych" },
+  { id: "about-cta", label: "CTA" },
 ];
 
 export default function AboutSectionNav() {

@@ -40,19 +40,24 @@ interface RouteEntry {
   readonly changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"];
 }
 
-/* Phase 1 routes. Case study slugs ([client-1..4]) are placeholder
-   names; once the four featured clients are confirmed (Wed AM), update
-   each entry's path with the real slug, e.g. "/work/skyline". */
+/* Phase 1 routes — ONLY include routes that actually return 200 in
+   production. A sitemap that lists 404 URLs is an active SEO penalty
+   (Google flags it as a crawl error in Search Console and the bad
+   URLs eat crawl budget that should be spent on the real pages).
+   /services, /contact, /careers, /terms — uncomment each line once
+   the matching route exists at src/app/<slug>/page.tsx and returns
+   a 200. Until then, leave them off this list. */
 const ROUTES: readonly RouteEntry[] = [
   { path: "/",        priority: 1.0, changeFrequency: "monthly" },
   { path: "/work",    priority: 0.9, changeFrequency: "monthly" },
   { path: "/about",   priority: 0.8, changeFrequency: "monthly" },
-  { path: "/services", priority: 0.8, changeFrequency: "monthly" },
   { path: "/process", priority: 0.7, changeFrequency: "monthly" },
-  { path: "/contact", priority: 0.8, changeFrequency: "yearly" },
-  { path: "/careers", priority: 0.5, changeFrequency: "monthly" },
   { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
-  { path: "/terms",   priority: 0.3, changeFrequency: "yearly" },
+  // Pending route build — uncomment as each ships:
+  // { path: "/services", priority: 0.8, changeFrequency: "monthly" },
+  // { path: "/contact",  priority: 0.8, changeFrequency: "yearly"  },
+  // { path: "/careers",  priority: 0.5, changeFrequency: "monthly" },
+  // { path: "/terms",    priority: 0.3, changeFrequency: "yearly"  },
 ] as const;
 
 /* Case study detail routes — auto-generated from work/data.ts so adding

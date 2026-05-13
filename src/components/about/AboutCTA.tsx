@@ -82,7 +82,7 @@ function TypewriterAccent() {
 
   return (
     <span
-      className="italic text-[#c5baff]"
+      className="italic text-[#6b5ce7]"
       style={{
         fontFamily: "var(--font-instrument-serif), Georgia, serif",
         whiteSpace: "nowrap",
@@ -118,7 +118,7 @@ export default function AboutCTA() {
          flex still places everything mid-frame at typical
          viewports, so the billboard read is preserved. */
       className="relative isolate flex min-h-[100svh] w-full items-center justify-center overflow-hidden py-20 sm:py-24 lg:py-28"
-      style={{ background: "var(--color-ink)" }}
+      style={{ background: "var(--color-paper-alt, #f4eef9)" }}
     >
       {/* ── Layer 0: Hero-palette MeshGradient ─────────────────
           Same instrument as the hero so the page bookends on
@@ -137,30 +137,33 @@ export default function AboutCTA() {
       </div>
 
       {/* ── Layer 1: Vertical vignette ────────────────────────
-          Darker at top + bottom edges, lighter in the type
-          band. Mirrors the hero's scrim so the dark beats
-          read as the same composition logic. */}
+          Top: soft paper-tone scrim that blends into the Triptych
+          section above (paper-alt → paper-alt).
+          Bottom: ramps all the way to WHITE so the section's
+          bottom edge meets the bg-white footer with no visible
+          seam. This is wider than the top stop because the
+          footer transition needs a longer fade to reads as a
+          gradient rather than a hard line. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-[1]"
         style={{
           background:
-            "linear-gradient(180deg, rgba(14,10,30,0.55) 0%, rgba(14,10,30,0) 22%, rgba(14,10,30,0) 78%, rgba(14,10,30,0.6) 100%)",
+            "linear-gradient(180deg, rgba(244,238,249,0.6) 0%, rgba(244,238,249,0) 22%, rgba(244,238,249,0) 65%, rgba(255,255,255,0.7) 92%, rgba(255,255,255,1) 100%)",
         }}
       />
 
       {/* ── Layer 2: Centred focal bloom ──────────────────────
-          Strong lavender radial glow centred on the headline.
-          Pulls the eye to the type — the whole point of a
-          closing CTA. Larger and more saturated than the side-
-          biased bloom of the previous attempt because the
-          composition is now centred. */}
+          Lavender radial glow centred on the headline. Falls
+          off to transparent paper-tone now (was transparent
+          ink) so the bloom blends INTO the light wash rather
+          than into a dark void at the corners. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-[2]"
         style={{
           background:
-            "radial-gradient(ellipse 60% 45% at 50% 48%, rgba(189,112,246,0.32) 0%, rgba(107,92,231,0.14) 40%, rgba(14,10,30,0) 75%)",
+            "radial-gradient(ellipse 60% 45% at 50% 48%, rgba(189,112,246,0.28) 0%, rgba(107,92,231,0.12) 40%, rgba(244,238,249,0) 75%)",
         }}
       />
 
@@ -176,14 +179,14 @@ export default function AboutCTA() {
           3 lines as the typewriter cycled. */}
       <div className="relative z-[3] mx-auto flex w-full max-w-[1280px] flex-col items-center px-6 text-center sm:px-8 lg:px-14 xl:px-20">
         <p
-          className="flex items-center gap-4 text-[11px] font-medium uppercase tracking-[0.22em] text-white/55"
+          className="flex items-center gap-4 text-[11px] font-medium uppercase tracking-[0.22em] text-foreground-mid"
           style={{
             fontFamily:
               "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace",
           }}
         >
           <span className="tabular-nums">№ 05</span>
-          <span aria-hidden className="h-px w-8 bg-white/30" />
+          <span aria-hidden className="h-px w-8 bg-foreground-mid/40" />
           <span>Working together</span>
         </p>
 
@@ -195,7 +198,7 @@ export default function AboutCTA() {
             // longest line ("We will genuinely ship it." = 26
             // chars) fits the container width on a single line
             // at every viewport, locking the layout to 2 lines.
-            className="mt-6 font-medium leading-[1] text-white sm:mt-8"
+            className="mt-6 font-medium leading-[1] text-foreground sm:mt-8"
             style={{
               fontSize: "clamp(36px, 5vw, 86px)",
               letterSpacing: "-0.045em",
@@ -237,7 +240,7 @@ export default function AboutCTA() {
           </h2>
         </ScrubScale>
 
-        <p className="mt-7 max-w-[52ch] text-balance text-base leading-[1.55] text-white/65 sm:mt-10 sm:text-lg lg:text-xl">
+        <p className="mt-7 max-w-[52ch] text-balance text-base leading-[1.55] text-foreground-mid sm:mt-10 sm:text-lg lg:text-xl">
           Send the goal, the constraint, and what needs to be true after
           the first sprint. You will get a direct next step within 48 hours.
         </p>
@@ -255,7 +258,7 @@ export default function AboutCTA() {
             // data-cursor-text triggers the pill cursor with this label.
             // Same opt-in mechanism MagneticPill uses internally.
             data-cursor-text="see it"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-white/65 transition-colors hover:text-white"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground-mid transition-colors hover:text-foreground"
             style={{ letterSpacing: "-0.01em" }}
           >
             View work <ArrowUpRight aria-hidden size={14} />

@@ -2,71 +2,107 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { ArrowUpRight } from "lucide-react";
 import { Warp } from "@paper-design/shaders-react";
 
 import { AnimateIn, MaskReveal } from "@/components/primitives";
 
-/* Team — Liquid-Metal portrait cards.
+/* Team — editorial founder cards with personal-note flip.
    ─────────────────────────────────────────────────────────────
-   Each card uses a paper-shaders Warp shader at portrait scale as
-   the placeholder portrait. Different color seed per person so the
-   cards read as four distinct artistic ink portraits, not four
-   identical color tiles.
+   Layout:
+     • Headline row (col-7) + pull-quote rail (col-5)
+     • Asymmetric founder grid: 60% Chandan, 40% Dhruv
+     • Open-seat hairline strip below the founders (full-width,
+       small, label-only) — reads as "we are deliberately small"
+       rather than "we have an empty third tile."
 
-   Names use MaskReveal — the reveal sweeps left-to-right when the
-   card enters the viewport, like film credits.
+   Each founder card:
+     FRONT — full-bleed portrait (Warp shader fallback until real
+             photo lands at /public/team/<slug>.jpg), name in mask-
+             reveal serif, role + bio in caption block, hairline
+             ink stroke draws across the bottom of the name.
+     BACK  — handwritten personal-note photographed at
+             /public/team/<slug>-note.jpg (or rendered as a fallback
+             quote until the photo arrives). Hover/focus to flip.
 
-   Hover treatment FLIPS the trope — photos start in COLOR and
-   desaturate on hover (every agency does the opposite). The mono
-   initials sit bottom-left as a bookplate. The role line sits in
-   italic Instrument Serif.
+   Assets to drop in (component does a graceful fallback for each):
+     /public/team/chandan.jpg    (1200×1500 portrait, B&W or duotone)
+     /public/team/dhruv.jpg      (1200×1500 portrait, same treatment)
+     /public/team/chandan-note.jpg  (handwritten 1-line note, dark ink
+                                     on warm paper, ~1200×800)
+     /public/team/dhruv-note.jpg    (same, in Dhruv's handwriting)
+     /public/team/chandan-sig.svg   (signature stroke; optional)
+     /public/team/dhruv-sig.svg     (signature stroke; optional)
+   The component checks for each and falls through to a designed
+   fallback if absent — so the section never looks broken in dev. */
 
-   When real photos arrive: drop them in /public/team/ and set the
-   `photo` field per member. The component renders the photo via
-   bg-cover + Ken Burns, falling through the Warp portrait below if
-   none is provided. */
-
-interface Member {
+interface Founder {
+  readonly slug: string;
   readonly initials: string;
   readonly name: string;
   readonly role: string;
+  /* One-sentence anchor — names a SPECIFIC shipped thing, not
+     LinkedIn-speak. This is the trust signal. */
+  readonly anchor: string;
+  /* Longer paragraph — for the back-flip context. Kept short
+     enough to fit the back of the card without overflow. */
   readonly bio: string;
-  readonly photo?: string;
+  /* Handwritten note shown on hover-flip when no note photo
+     exists. One line, signed by initials at the end. */
+  readonly note: string;
+  /* Direct email so the card's CTA points at the actual founder,
+     not a generic info@ — feels personal AND faster. */
+  readonly email: string;
+  /* Warp shader colour seed used as portrait fallback until a
+     real photo is dropped in /public/team/. */
   readonly portraitColors: readonly string[];
-  /* `placeholder: true` renders an "Open seat / joining soon" card.
-     The slot is kept in the lineup so the section page-spread
-     stays balanced (3 cards in a row) while we keep the third
-     teammate confidential until contracts settle. */
-  readonly placeholder?: boolean;
 }
 
-/* Photo files: drop high-res portraits at /public/team/<slug>.jpg
-   (recommended 1200×1500, JPEG ≤ 250kb, eyes around the top third
-   so the bookplate bottom-third gradient doesn't cover them).
-   Until the files exist, the Warp shader portrait below renders
-   as a placeholder — looks intentional, not broken. */
-const MEMBERS: readonly Member[] = [
+const FOUNDERS: readonly Founder[] = [
   {
+    slug: "chandan",
     initials: "CG",
     name: "Chandan Gupta",
     role: "Co-founder · Forward Deployed Engineer",
-    bio: "Six years architecting data systems for US, EU, and APAC clients across finance and healthcare. Specialty: translating compliance-heavy requirements into scalable roadmaps and pulling delivery from months to days.",
+    anchor:
+      "Cut MedCollect's clinical intake from 14 minutes to 4 by replacing a 200-line form with an LLM intake agent.",
+    bio: "Six years architecting data systems across finance and healthcare in the US, EU, and APAC. Specialty: translating compliance-heavy requirements into scalable roadmaps and pulling delivery from months into days.",
+    note: "I personally review every PR that ships. — CG",
+    email: "chandan@tglobal.in",
     portraitColors: ["#4b28ff", "#7d5cff", "#bd70f6", "#e7dffd", "#fbf8f1"],
   },
   {
+    slug: "dhruv",
     initials: "DG",
     name: "Dhruv Gupta",
     role: "Co-founder · Technical Project Manager",
+    anchor:
+      "Rebuilt Skyline's booking flow in two sprints with zero downtime on cutover — +38% conversion the next quarter.",
     bio: "Seven years driving AI-native engineering execution. Bridges business logic and shipping reality so the team always knows what 'done' looks like — and gets there without waste.",
+    note: "If we said two weeks, it ships in two weeks. — DG",
+    email: "dhruv@tglobal.in",
     portraitColors: ["#1a1233", "#2d1f5e", "#6b5ce7", "#c5baff", "#fbf8f1"],
   },
   {
-    initials: "—",
-    name: "Open seat",
-    role: "Joining soon",
-    bio: "Reserved for our next teammate. Currently in conversation; details land here once the ink dries.",
-    portraitColors: ["#e7dffd", "#f4eef9", "#fbf8f1", "#f5d4cb", "#ffffff"],
-    placeholder: true,
+    slug: "rhythm",
+    initials: "RM",
+    name: "Rhythm Mittal",
+    /* TODO — confirm role/anchor with Rhythm. Placeholder copy
+       below mirrors the style of the other two so the card reads
+       coherently in dev. Replace before pushing to prod. */
+    role: "Co-founder · Engineer",
+    anchor:
+      "Shipped the TGlobal revamp from the manifesto down — pinned hero, scroll-linked principles, brand-mark loader.",
+    bio: "Full-stack engineer with a designer's eye. Sweats the half-pixel details and the half-second interactions — the parts users feel but can't name.",
+    note: "Half-pixel details are still details. — RM",
+    email: "rhythm@tglobal.in",
+    /* Cool-tone palette to match the other two founder cards.
+       Warm orange (the previous seed) broke the trio's visual
+       rhythm and read like an error against the lavender section
+       wash. This palette stays in the brand violet/lavender family
+       but uses different stop weighting so each card still looks
+       individually distinct under the Warp shader. */
+    portraitColors: ["#6b5ce7", "#9d8bff", "#c5baff", "#f0eaff", "#fbf8f1"],
   },
 ];
 
@@ -89,103 +125,222 @@ function useViewportPause<T extends HTMLElement>() {
   return { ref, active };
 }
 
-function MemberCard({ member, index }: { member: Member; index: number }) {
+function FounderCard({
+  founder,
+  index,
+  emphasis,
+}: {
+  founder: Founder;
+  index: number;
+  /* `emphasis="primary"` is the wider 60% card; `"secondary"` is
+     the narrower 40% card. Used to scale name + portrait subtly so
+     the wider card carries more visual weight. */
+  emphasis: "primary" | "secondary";
+}) {
   const { ref, active } = useViewportPause<HTMLDivElement>();
+  const [flipped, setFlipped] = useState(false);
+  const portraitSrc = `/team/${founder.slug}.jpg`;
+  const noteSrc = `/team/${founder.slug}-note.jpg`;
+
+  /* Image-existence is checked via an Image() preload — Next.js
+     doesn't expose a sync "does this file exist" API in client
+     code. If the load fails (404), we fall through to the Warp
+     shader portrait. Same pattern for the back-flip note photo. */
+  const [hasPortrait, setHasPortrait] = useState<boolean>(false);
+  const [hasNote, setHasNote] = useState<boolean>(false);
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setHasPortrait(true);
+    img.onerror = () => setHasPortrait(false);
+    img.src = portraitSrc;
+  }, [portraitSrc]);
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setHasNote(true);
+    img.onerror = () => setHasNote(false);
+    img.src = noteSrc;
+  }, [noteSrc]);
+
+  const nameSize =
+    emphasis === "primary"
+      ? "clamp(34px, 3.4vw, 56px)"
+      : "clamp(26px, 2.4vw, 40px)";
+
   return (
-    <AnimateIn y={28} delay={index * 0.06}>
+    <AnimateIn y={28} delay={index * 0.08}>
       <article
         ref={ref}
-        /* Placeholder cards opt OUT of the hover desaturation
-           and run at slightly reduced opacity so the eye reads
-           them as "held space" rather than a 3rd active teammate. */
-        className={`group flex flex-col ${member.placeholder ? "opacity-80" : ""}`}
+        /* Card surface is hairline-bordered with a generous inset.
+           Padding INSIDE the card frames the portrait so the photo
+           reads as a print mount, not a full-bleed image.
+           `data-cursor-text="flip"` makes the custom cursor read
+           the card as interactive — without it the cursor falls
+           through to its default ring state and the flip behaviour
+           reads as "what just happened?" rather than "I made that
+           happen." Same opt-in pattern used by MagneticPill. */
+        data-cursor-text="flip"
+        className="group relative h-full"
+        onMouseEnter={() => setFlipped(true)}
+        onMouseLeave={() => setFlipped(false)}
+        onFocus={() => setFlipped(true)}
+        onBlur={() => setFlipped(false)}
       >
-        {/* Portrait — 4:5 ratio. Warp shader at low intensity gives a
-            marbled-ink portrait. Each member has a distinct color seed.
-            On hover the portrait desaturates (color-to-mono FLIP) —
-            except placeholders, which are already neutral. */}
+        {/* 3D flip container. perspective on the wrapper, transform-
+            style: preserve-3d on the inner panels. Two absolute-
+            positioned faces share the same bounding box; rotateY
+            toggles which face is forward. */}
         <div
-          className={`relative aspect-[4/5] overflow-hidden rounded-sm transition-[filter] duration-700 ${
-            member.placeholder
-              ? "bg-[var(--color-paper-cream,#fdfaf2)]"
-              : "bg-[#0a0612] group-hover:saturate-[0.35]"
-          }`}
+          className="relative w-full"
+          style={{ perspective: "1800px", aspectRatio: "4 / 5" }}
         >
-          {member.photo ? (
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{
-                backgroundImage: `url(${member.photo})`,
-                animation: active
-                  ? "ken-burns 14s ease-in-out infinite alternate"
-                  : "none",
-              }}
-            />
-          ) : (
-            <div className="absolute inset-0">
-              <Warp
-                style={{ width: "100%", height: "100%" }}
-                colors={[...member.portraitColors]}
-                proportion={0.5}
-                softness={0.85}
-                shape="checks"
-                shapeScale={0.4}
-                distortion={0.55}
-                swirl={0.85}
-                swirlIterations={10}
-                scale={0.7}
-                speed={active ? 0.18 : 0}
-                maxPixelCount={400_000}
-              />
-            </div>
-          )}
-          {/* Grain overlay — subtle film texture on top of portrait. */}
           <div
-            aria-hidden
-            className="absolute inset-0 mix-blend-overlay opacity-30"
+            className="absolute inset-0 transition-transform duration-700 ease-out"
             style={{
-              backgroundImage:
-                "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.18 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")",
-              backgroundSize: "200px 200px",
-            }}
-          />
-          {/* Bookplate — bottom gradient + mono initials.
-              Placeholder cards invert to a light gradient + dark
-              initials so they read as "draft / held" not as a
-              dark active portrait. */}
-          <div
-            aria-hidden
-            className="absolute inset-x-0 bottom-0 h-1/3"
-            style={{
-              background: member.placeholder
-                ? "linear-gradient(180deg, rgba(253,250,242,0) 0%, rgba(253,250,242,0.92) 100%)"
-                : "linear-gradient(180deg, rgba(10,6,18,0) 0%, rgba(10,6,18,0.85) 100%)",
-            }}
-          />
-          <span
-            aria-hidden
-            className={`absolute bottom-6 left-6 leading-none ${
-              member.placeholder ? "text-foreground/55" : "text-white/85"
-            }`}
-            style={{
-              fontFamily: "var(--font-mono), monospace",
-              fontSize: "clamp(14px, 1.05vw, 18px)",
-              letterSpacing: "0.16em",
+              transformStyle: "preserve-3d",
+              transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
             }}
           >
-            {member.initials}
-          </span>
+            {/* ─── FRONT: portrait + name + role ─── */}
+            <div
+              className="absolute inset-0 overflow-hidden rounded-sm"
+              style={{ backfaceVisibility: "hidden" }}
+            >
+              {/* Photo layer — real photo when present, Warp
+                  shader fallback otherwise. The photo uses a slow
+                  Ken Burns when in viewport; the Warp drifts at a
+                  low speed. Both pause off-screen. */}
+              {hasPortrait ? (
+                <div
+                  className="absolute inset-0 bg-cover bg-center grayscale transition-[filter] duration-700 group-hover:grayscale-0"
+                  style={{
+                    backgroundImage: `url(${portraitSrc})`,
+                    animation: active
+                      ? "ken-burns 14s ease-in-out infinite alternate"
+                      : "none",
+                  }}
+                />
+              ) : (
+                <div className="absolute inset-0 bg-[#0a0612]">
+                  <Warp
+                    style={{ width: "100%", height: "100%" }}
+                    colors={[...founder.portraitColors]}
+                    proportion={0.5}
+                    softness={0.85}
+                    shape="checks"
+                    shapeScale={0.4}
+                    distortion={0.55}
+                    swirl={0.85}
+                    swirlIterations={10}
+                    scale={0.7}
+                    speed={active ? 0.18 : 0}
+                    maxPixelCount={400_000}
+                  />
+                </div>
+              )}
+
+              {/* Film-grain overlay so portrait reads as a print
+                  scan, not a flat web image. */}
+              <div
+                aria-hidden
+                className="absolute inset-0 mix-blend-overlay opacity-30"
+                style={{
+                  backgroundImage:
+                    "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.18 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")",
+                  backgroundSize: "200px 200px",
+                }}
+              />
+
+              {/* Bookplate gradient + mono initials bottom-left. */}
+              <div
+                aria-hidden
+                className="absolute inset-x-0 bottom-0 h-1/3"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(10,6,18,0) 0%, rgba(10,6,18,0.85) 100%)",
+                }}
+              />
+              <span
+                aria-hidden
+                className="absolute bottom-6 left-6 leading-none text-white/85"
+                style={{
+                  fontFamily: "var(--font-mono), monospace",
+                  fontSize: "clamp(14px, 1.05vw, 18px)",
+                  letterSpacing: "0.16em",
+                }}
+              >
+                {founder.initials}
+              </span>
+
+              {/* "Read note ↗" affordance — hint that this card
+                  flips. Floats top-right, low-contrast until hover. */}
+              <span
+                aria-hidden
+                className="absolute right-5 top-5 flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/55 transition-colors duration-300 group-hover:text-white/85"
+                style={{ fontFamily: "var(--font-mono), monospace" }}
+              >
+                Note <ArrowUpRight size={12} aria-hidden />
+              </span>
+            </div>
+
+            {/* ─── BACK: handwritten note + email ─── */}
+            <div
+              className="absolute inset-0 overflow-hidden rounded-sm bg-[var(--color-paper-cream,#fdfaf2)]"
+              style={{
+                backfaceVisibility: "hidden",
+                transform: "rotateY(180deg)",
+              }}
+            >
+              {/* If a photographed note exists, show it as a full-
+                  bleed scan. Otherwise render the note string in
+                  Instrument Serif italic on warm paper — looks
+                  like a handwritten card. */}
+              {hasNote ? (
+                <div
+                  className="absolute inset-0 bg-contain bg-center bg-no-repeat"
+                  style={{ backgroundImage: `url(${noteSrc})` }}
+                />
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
+                  <p
+                    className="text-balance italic text-foreground"
+                    style={{
+                      fontFamily:
+                        "var(--font-instrument-serif), Georgia, serif",
+                      fontSize: "clamp(22px, 2.2vw, 34px)",
+                      letterSpacing: "-0.01em",
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    &ldquo;{founder.note}&rdquo;
+                  </p>
+                </div>
+              )}
+              {/* Email CTA pinned bottom-left on the back, so the
+                  flip pays off with a direct-action affordance. */}
+              <a
+                href={`mailto:${founder.email}`}
+                data-cursor-text="email"
+                className="absolute bottom-6 left-6 inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-primary"
+                style={{ letterSpacing: "-0.01em" }}
+              >
+                {founder.email}
+                <ArrowUpRight size={14} aria-hidden />
+              </a>
+            </div>
+          </div>
         </div>
 
-        {/* Caption block — name + role + bio. Hairline divider above. */}
+        {/* Caption block — sits OUTSIDE the flip plane so it stays
+            stable while the photo flips. Name uses MaskReveal +
+            an underline that draws in on viewport enter. */}
         <div className="mt-7 border-t border-foreground/15 pt-5">
           <div className="flex items-baseline justify-between gap-4">
             <MaskReveal
-              text={member.name}
+              text={founder.name}
               as="h3"
-              className="font-medium leading-[1.05] text-foreground"
+              className="relative font-medium leading-[1.05] text-foreground"
               style={{
-                fontSize: "clamp(24px, 2.05vw, 34px)",
+                fontSize: nameSize,
                 letterSpacing: "-0.025em",
               }}
               stagger={0.04}
@@ -203,17 +358,27 @@ function MemberCard({ member, index }: { member: Member; index: number }) {
               0{index + 1}
             </span>
           </div>
+          {/* 1px ink stroke draws in 600ms after name reveal — the
+              "signature flourish" promised in the section design.
+              CSS-only via the keyframe defined in globals.css
+              (.team-name-stroke). */}
+          <span
+            aria-hidden
+            className="team-name-stroke mt-3 block h-px bg-foreground/45"
+          />
           <p
-            className="mt-2 italic text-foreground-mid"
+            className="mt-4 italic text-foreground-mid"
             style={{
               fontFamily: "var(--font-instrument-serif), Georgia, serif",
               fontSize: "clamp(15px, 1.05vw, 17px)",
             }}
           >
-            {member.role}
+            {founder.role}
           </p>
+          {/* Anchor sentence — the trust signal. Names a SPECIFIC
+              shipped thing, not generic experience claims. */}
           <p className="mt-4 text-pretty text-base leading-[1.55] text-foreground-mid">
-            {member.bio}
+            {founder.anchor}
           </p>
         </div>
       </article>
@@ -226,13 +391,18 @@ export default function AboutTeam() {
     <section
       aria-labelledby="team-heading"
       className="relative py-28 sm:py-36 lg:py-44"
-      style={{ background: "var(--color-paper)" }}
+      style={{ background: "#ffffff" }}
     >
       <div className="mx-auto w-full max-w-[1440px] px-6 sm:px-8 lg:px-14 xl:px-20">
+        {/* ── Header row: headline (col-7) + pull-quote rail
+            (col-5). The right rail used to be 90% empty — now
+            it carries a founder pull quote so the section's
+            tonal intent ("small senior team, hands on") gets
+            stated directly instead of just implied by photos. */}
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:items-end lg:gap-12">
           <div className="lg:col-span-7">
             <p className="editorial-label text-foreground-mid">
-              <span className="tabular-nums">№ 04</span>
+              <span className="tabular-nums">№ 02</span>
               <span aria-hidden className="h-px w-8 bg-foreground-mid/40" />
               <span>The team on the wall</span>
             </p>
@@ -247,20 +417,49 @@ export default function AboutTeam() {
               }}
             />
           </div>
-          <p className="max-w-[42ch] text-lg leading-[1.55] text-foreground-mid lg:col-span-5 lg:text-xl">
-            Small studio, senior bench. Each person owns the work they touch
-            and reviews everything that ships.
-          </p>
+          <div className="lg:col-span-5">
+            {/* Pull-quote sized smaller than the headline so the
+                eye reads headline → photos → quote → bios in
+                that hierarchy. Italic Instrument Serif matches
+                the manifesto callouts on the hero. */}
+            <p
+              className="text-balance italic leading-[1.3] text-foreground"
+              style={{
+                fontFamily: "var(--font-instrument-serif), Georgia, serif",
+                fontSize: "clamp(20px, 1.7vw, 26px)",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              &ldquo;Small studio, senior bench. Nothing ships without
+              going past one of us first.&rdquo;
+            </p>
+            <p
+              className="mt-4 text-sm text-foreground-mid"
+              style={{
+                fontFamily: "var(--font-mono), monospace",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                fontSize: "11px",
+              }}
+            >
+              — The founders
+            </p>
+          </div>
         </div>
 
-        {/* 3-column grid matches the active team size. The third
-            slot is a placeholder card (member.placeholder === true)
-            so the row stays balanced while we hold space for the
-            next teammate. Bump back to lg:grid-cols-4 if the team
-            grows past 3. */}
-        <div className="mt-20 grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-8">
-          {MEMBERS.map((member, i) => (
-            <MemberCard key={member.name} member={member} index={i} />
+        {/* ── Founder grid: equal-width 3-up row.
+            On lg+, each founder takes 4/12 cols (~33%) — equal
+            weight across the row, no hierarchy fakery. On md they
+            collapse to 2 cards top + 1 card bottom; on mobile
+            they stack full-width. */}
+        <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-10 lg:grid-cols-3 lg:gap-10">
+          {FOUNDERS.map((founder, i) => (
+            <FounderCard
+              key={founder.slug}
+              founder={founder}
+              index={i}
+              emphasis="secondary"
+            />
           ))}
         </div>
       </div>

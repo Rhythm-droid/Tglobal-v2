@@ -42,7 +42,13 @@ const isDev = process.env.NODE_ENV !== "production";
 
 const CSP = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  // `https://static.cloudflareinsights.com` hosts the Cloudflare Web
+  // Analytics beacon (loaded by layout.tsx <Script>). Without it on
+  // script-src, CSP blocks the beacon and Cloudflare's measurement
+  // never fires AND a real CSP violation gets logged to the console.
+  // Image/connect not needed — the beacon doesn't fetch additional
+  // resources from that origin.
+  `script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   // `https://flagcdn.com` is whitelisted ONLY for img-src — it serves
   // the SVG country flags shown in the phone-number picker (see
@@ -53,7 +59,9 @@ const CSP = [
   // Web3Forms is the form-to-email backend used by the #talk-to-us
   // section in CTA.tsx. Whitelist its API endpoint so the fetch call
   // isn't blocked by the connect-src directive.
-  "connect-src 'self' https://api.web3forms.com",
+  // Cloudflareinsights.com receives the beacon's pageview events;
+  // without it, CSP silently drops every measurement fetch.
+  "connect-src 'self' https://api.web3forms.com https://cloudflareinsights.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   // form-action governs where <form> can POST to. The form here uses

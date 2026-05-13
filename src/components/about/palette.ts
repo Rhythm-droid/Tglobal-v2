@@ -10,9 +10,9 @@
    stops, so the dark→light progression is what produces the deep-
    to-luminous gradient flow the hero is famous for. */
 export const HERO_COLORS = [
-  "#0e0a1e", // deep ink black
-  "#1a1233", // ink-soft
-  "#2d1f5e", // dark violet
-  "#6b5ce7", // lavender mid
-  "#c5baff", // lavender light
+  "#ffffff",  // white
+  "#f6f1ff",  // very pale lavender
+  "#ede4ff",  // soft lavender
+  "#dcd1ff",  // slightly deeper lavender (mid blend)
+  "#c5baff",  // lavender light (deepest in this palette)
 ] as const;

@@ -9,12 +9,13 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MeshGradient } from "@paper-design/shaders-react";
 
 import ImageParticleField from "./ImageParticleField";
+import { HERO_COLORS } from "./palette";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger, useGSAP);
 }
 
-/* Triptych — Speed · Judgment · Care, on one pinned dark stage.
+/* Triptych — Ship · Taste · Own, on one pinned light stage.
    ─────────────────────────────────────────────────────────────
    Mirrors the hero's pinning architecture: the section's intrinsic
    height = 300vh (one viewport of scroll per word). The pin element
@@ -54,16 +55,21 @@ const FRAMES = [
   },
 ] as const;
 
-/* Background shader palette — same ink family as the hero but
-   pulled darker and less saturated. The triptych is the page's
-   tonal inhale, so the shader should breathe at the edge of
-   perception, not compete with the particle word. */
-const TRIPTYCH_COLORS = [
-  "#06040f", // near-black ink
-  "#0e0a1e", // deep ink
-  "#1a1233", // ink-soft
-  "#2d1f5e", // dark violet
-  "#4b3a8a", // muted lavender
+/* Background shader palette — now reuses the same HERO_COLORS as
+   the hero MeshGradient so the entire page reads as one continuous
+   light-lavender wash. Was a deep-ink family; reskinned when the
+   hero went light to keep the page tonally coherent. */
+const TRIPTYCH_COLORS = HERO_COLORS;
+
+/* Particle palette — dark brand tones so the words read against
+   the now-light shader background. Defaults to brand violet +
+   ink with low-opacity soft variants so the particle cloud has
+   depth without going flat-monochrome. */
+const TRIPTYCH_PARTICLE_COLORS = [
+  "rgba(14, 10, 30, 0.85)",   // deep ink
+  "rgba(75, 40, 255, 0.75)",  // brand violet
+  "rgba(107, 92, 231, 0.7)",  // muted lavender
+  "rgba(45, 31, 94, 0.8)",    // dark violet
 ] as const;
 
 type FrameAlign = (typeof FRAMES)[number]["align"];
@@ -178,7 +184,7 @@ export default function AboutTriptych() {
         // the pin releases the section ends — Team is in viewport
         // with zero gap. Same pattern as the hero pin.
         height: "calc(var(--100vh, 100svh) * 4)",
-        background: "var(--color-ink)",
+        background: "var(--color-paper-alt, #f4eef9)",
       }}
     >
       {/* Pin element — viewport-filling stage, absolutely positioned
@@ -197,26 +203,26 @@ export default function AboutTriptych() {
           <MeshGradient
             style={{ width: "100%", height: "100%" }}
             colors={[...TRIPTYCH_COLORS]}
-            distortion={0.5}
-            swirl={0.6}
-            grainMixer={0.28}
-            grainOverlay={0.14}
+            distortion={0.6}
+            swirl={0.45}
+            grainMixer={0.32}
+            grainOverlay={0.16}
             speed={0.18}
             maxPixelCount={1_440_000}
           />
         </div>
 
         {/* ── Layer 1: Vignette ─────────────────────────────────
-            Slight lavender bloom at centre (where the word lives)
-            and ink darkening at corners. Frames the word
-            cinematically and keeps the shader from competing for
-            attention at the edges. */}
+            White scrim now (was dark-ink) — keeps the particle
+            word readable at frame edges without burning the light
+            lavender shader to black. Mirrors the hero's vignette
+            geometry inverted for the light theme. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 z-[1]"
           style={{
             background:
-              "radial-gradient(ellipse 75% 60% at 50% 50%, rgba(189,112,246,0.10) 0%, rgba(14,10,30,0) 32%, rgba(14,10,30,0.45) 72%, rgba(6,4,15,0.85) 100%)",
+              "radial-gradient(ellipse 75% 60% at 50% 50%, rgba(255,255,255,0) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0.3) 72%, rgba(255,255,255,0.55) 100%)",
           }}
         />
 
@@ -228,6 +234,7 @@ export default function AboutTriptych() {
         <ImageParticleField
           className="absolute inset-0 z-[2]"
           text={activeFrame.word.toUpperCase()}
+          colors={[...TRIPTYCH_PARTICLE_COLORS]}
         />
 
         {/* Captions — one per frame, fade in/out as the active word
@@ -242,13 +249,13 @@ export default function AboutTriptych() {
             className={`pointer-events-none absolute inset-0 z-[3] flex flex-col gap-3 px-6 py-12 sm:px-10 sm:py-16 lg:px-16 lg:py-24 xl:px-24 ${ALIGN_CLASSES[frame.align]}`}
             style={{ opacity: i === 0 ? 1 : 0 }}
           >
-            <p className="editorial-label text-white/65">
-              <span className="tabular-nums">№ 03 · {frame.index}</span>
-              <span aria-hidden className="h-px w-8 bg-white/30" />
+            <p className="editorial-label text-foreground-mid">
+              <span className="tabular-nums">№ 04 · {frame.index}</span>
+              <span aria-hidden className="h-px w-8 bg-foreground-mid/40" />
               <span>{frame.word}</span>
             </p>
             <p
-              className="max-w-[34ch] italic text-white/85"
+              className="max-w-[34ch] italic text-foreground/85"
               style={{
                 fontFamily: "var(--font-instrument-serif), Georgia, serif",
                 fontSize: "clamp(20px, 1.7vw, 28px)",

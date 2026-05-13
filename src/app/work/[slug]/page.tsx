@@ -60,8 +60,13 @@ export async function generateStaticParams() {
   return CASE_STUDIES.map((cs) => ({ slug: cs.slug }));
 }
 
-/* Per-slug metadata — title, description, canonical, og — so each
-   case study has its own social preview rather than the site default. */
+/* Per-slug metadata — title, description, canonical, og, twitter —
+   so each case study has its own social preview rather than the site
+   default. `openGraph.type: "article"` is the most truthful schema
+   here: case studies are written, dated, single-author works (not a
+   product listing or a brand homepage). Article-type cards show up
+   on LinkedIn/Twitter with a slightly different layout that signals
+   "this is a read" — better click-through for editorial content. */
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
@@ -73,14 +78,27 @@ export async function generateMetadata({
     return { title: "Case study not found" };
   }
   const url = `https://tglobal.in/work/${study.slug}`;
+  const title = `${study.client} · TGlobal case study`;
+  const description = study.outcome;
   return {
     title: `${study.client}`,
-    description: study.outcome,
+    description,
     alternates: { canonical: url },
     openGraph: {
-      title: `${study.client} · TGlobal case study`,
-      description: study.outcome,
+      type: "article",
       url,
+      title,
+      description,
+      siteName: "TGlobal",
+      /* OG image: per-slug images can be added later via a
+         src/app/work/[slug]/opengraph-image.tsx that pulls from
+         CASE_STUDIES. For now the site-level default OG image
+         renders as the preview, which is acceptable. */
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
     },
   };
 }
@@ -96,8 +114,41 @@ export default async function CaseStudyDetailPage({ params }: PageProps) {
   const next = getNextCaseStudy(study.slug);
   const accent = study.accentColor ?? "#4B28FF";
 
+  /* JSON-LD: BreadcrumbList (Home → Work → [Client]) so Google can
+     render a clickable breadcrumb trail in search results instead
+     of just a URL slug. Plus a minimal CreativeWork schema that
+     classifies this page as an editorial work attributed to the
+     Organization — helps Google's content classifier understand
+     it's a case study, not a product or company homepage. */
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://tglobal.in" },
+      { "@type": "ListItem", position: 2, name: "Work", item: "https://tglobal.in/work" },
+      { "@type": "ListItem", position: 3, name: study.client, item: `https://tglobal.in/work/${study.slug}` },
+    ],
+  } as const;
+  const creativeWork = {
+    "@context": "https://schema.org",
+    "@type": "CreativeWork",
+    name: `${study.client} · TGlobal case study`,
+    headline: study.outcome,
+    url: `https://tglobal.in/work/${study.slug}`,
+    author: { "@type": "Organization", name: "TGlobal", url: "https://tglobal.in" },
+    publisher: { "@type": "Organization", name: "TGlobal", url: "https://tglobal.in" },
+  } as const;
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(creativeWork) }}
+      />
       <ScrollProgress />
       {/* Gradient hero (accentColor → near-black) → dark theme so the
           logo + nav links read on the brighter top of the gradient.
