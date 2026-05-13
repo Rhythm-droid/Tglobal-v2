@@ -188,11 +188,11 @@ const DEMO_DOCK_ITEMS = [
 
 const DEMO_COMMAND_GROUPS = [
   {
-    heading: "Pages",
+    title: "Pages",
     items: [
-      { id: "home", label: "Home", shortcut: "⌘H" },
-      { id: "work", label: "Work", shortcut: "⌘W" },
-      { id: "about", label: "About", shortcut: "⌘A" },
+      { id: "home", title: "Home" },
+      { id: "work", title: "Work" },
+      { id: "about", title: "About" },
     ],
   },
 ];
@@ -206,7 +206,6 @@ function CardScaffold({ children }: { children: ReactNode }) {
 }
 
 export default function ComponentryPreviewPage() {
-  const [authOpen, setAuthOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const pointerRef = useRef<HTMLDivElement | null>(null);
 
@@ -408,14 +407,7 @@ export default function ComponentryPreviewPage() {
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <Tile name="Auth Modal" slug="auth-modal" tags={["modal"]} hint="Pre-styled auth modal. Open via button.">
           <div className="flex flex-col items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setAuthOpen(true)}
-              className="rounded-full bg-foreground px-5 py-2 text-sm text-background"
-            >
-              Open Auth Modal
-            </button>
-            <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+            <AuthModal triggerText="Open Auth Modal" />
           </div>
         </Tile>
         <Tile name="Command Menu" slug="command-menu" tags={["modal", "nav"]} hint="⌘K command palette. App-wide search/nav.">
@@ -436,7 +428,7 @@ export default function ComponentryPreviewPage() {
       <SectionHeading count={1}>Other</SectionHeading>
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <Tile name="Music Player" slug="music-player" tags={["widget"]} hint="Inline music player widget. Probably not for /about.">
-          <MusicPlayer />
+          <MusicPlayer src="" coverArt="" />
         </Tile>
       </div>
 
