@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CountryPicker from "@/components/primitives/CountryPicker";
+import LogoLoader from "@/components/primitives/LogoLoader";
 import {
   DEFAULT_COUNTRY_ISO2,
   digitsOnly,
@@ -732,7 +733,12 @@ export default function CTA() {
                         />
                         {status === "submitting" ? (
                           <>
-                            <Spinner size={16} />
+                            <LogoLoader
+                              size={22}
+                              colorActive="#0e0a1e"
+                              colorRest="#ffffff"
+                              ariaLabel="Sending"
+                            />
                             <span>Sending…</span>
                           </>
                         ) : (

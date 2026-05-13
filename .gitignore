@@ -45,3 +45,8 @@ next-env.d.ts
 /.claude/
 /CLAUDE.md
 /AGENTS.md
+
+# Playwright MCP session artifacts (browser snapshots, console logs,
+# debug screenshots) — generated during local agent-driven testing.
+/.playwright-mcp/
+*-loader-*.png
