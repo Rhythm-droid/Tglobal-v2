@@ -50,3 +50,4 @@ next-env.d.ts
 # debug screenshots) — generated during local agent-driven testing.
 /.playwright-mcp/
 *-loader-*.png
+componentry-preview-*.png

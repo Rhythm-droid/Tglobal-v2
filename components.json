@@ -17,5 +17,8 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
+  "registries": {
+    "@componentry": "https://componentry.fun/r/{name}.json"
+  },
   "iconLibrary": "lucide"
 }
