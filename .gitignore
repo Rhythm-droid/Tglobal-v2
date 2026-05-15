@@ -41,10 +41,25 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local tooling
-/.claude/
+# local tooling — share hooks/agents/commands/settings, hide local + state
+/.claude/*
+!/.claude/settings.json
+!/.claude/hooks/
+/.claude/hooks/*
+!/.claude/hooks/*.sh
+!/.claude/hooks/*.mjs
+!/.claude/agents/
+!/.claude/commands/
+!/.claude/README.md
+!/.claude/INSTALL.md
 /CLAUDE.md
 /AGENTS.md
+
+# Hook session state — per-session UI-dirty/verified flags, never commit.
+/.claude/.session-state/
+
+# Playwright responsive-sweep output — screenshots can be large, don't commit.
+/tests/screenshots/
 
 # Playwright MCP session artifacts (browser snapshots, console logs,
 # debug screenshots) — generated during local agent-driven testing.

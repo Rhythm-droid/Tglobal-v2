@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(./node_modules/**)",
+      "Read(./.next/**)",
+      "Read(./tests/screenshots/**/*.png)",
+      "Read(./*.jpeg)",
+      "Read(./*.jpg)",
+      "Read(./*.png)",
+      "Read(./public/**/*.jpeg)",
+      "Read(./public/**/*.jpg)",
+      "Read(./public/**/*.mp4)",
+      "Read(./public/**/*.webm)",
+      "Glob(./node_modules/**)",
+      "Glob(./.next/**)",
+      "Grep(./node_modules/**)",
+      "Grep(./.next/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-no-verify.sh",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-dangerous.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/post-edit-typecheck.sh",
+            "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/track-ui-edits.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-verify-ui.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
