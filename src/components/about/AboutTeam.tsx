@@ -75,7 +75,7 @@ const FOUNDERS: readonly Founder[] = [
       "Six years building compliance-grade data systems for finance and healthcare clients in the US, Europe, and APAC. Replaces manual fragmentation with a single source of truth, and compresses two-month delivery cycles into four days.",
     bio: "Six years building compliance-grade data systems for finance and healthcare clients in the US, Europe, and APAC. Replaces manual fragmentation with a single source of truth, and compresses two-month delivery cycles into four days.",
     note: "I review what I architect. — CG",
-    email: "chandan@tglobal.in",
+    email: "growth@tglobal.in",
     portraitColors: ["#4b28ff", "#7d5cff", "#bd70f6", "#e7dffd", "#fbf8f1"],
   },
   {
@@ -93,7 +93,7 @@ const FOUNDERS: readonly Founder[] = [
       "Seven years of AI-native engineering execution for enterprise teams. Bridges complex business logic with rapid deployment, and cuts lead times by 8% while raising quality by 10%.",
     bio: "Seven years of AI-native engineering execution for enterprise teams. Bridges complex business logic with rapid deployment, and cuts lead times by 8% while raising quality by 10%.",
     note: "If we said two weeks, it ships in two weeks. — DG",
-    email: "dhruv@tglobal.in",
+    email: "growth@tglobal.in",
     portraitColors: ["#1a1233", "#2d1f5e", "#6b5ce7", "#c5baff", "#fbf8f1"],
   },
   {
@@ -110,7 +110,7 @@ const FOUNDERS: readonly Founder[] = [
       "Full-stack engineer working across modern web stacks. Builds production systems end-to-end on MERN and Next.js, and ships them with the engineer's name attached.",
     bio: "Full-stack engineer working across modern web stacks. Builds production systems end-to-end on MERN and Next.js, and ships them with the engineer's name attached.",
     note: "If I shipped it, I'll debug it at 2am. — RM",
-    email: "rhythm@tglobal.in",
+    email: "rhythmmittal19@gmail.com",
     /* Cool-tone palette to match the other two founder cards.
        Warm orange (the previous seed) broke the trio's visual
        rhythm and read like an error against the lavender section
@@ -163,6 +163,7 @@ function useViewportPause<T extends HTMLElement>() {
    in prod long after real assets were in place. */
 const FOUNDERS_PORTRAIT_EXT: Readonly<Record<string, string>> = {
   chandan: "png",
+  dhruv: "png",
   // Add slug → ext here when the photo lands in /public/team/<slug>.<ext>
 };
 const FOUNDERS_NOTE_EXT: Readonly<Record<string, string>> = {
