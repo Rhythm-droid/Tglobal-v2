@@ -47,7 +47,6 @@ import {
   animate,
   useInView,
   useMotionValue,
-  useReducedMotion,
   useTransform,
   motion,
 } from "framer-motion";
@@ -85,7 +84,8 @@ export default function NumberTicker({
 }: NumberTickerProps) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "-15% 0px" });
-  const reduceMotion = useReducedMotion();
+  /* Tween runs unconditionally — no reduced-motion early-out.
+     Brand decision: counter animation is part of the identity. */
 
   /* `useMotionValue` gives us a "subscribable number" that updates
      without triggering React re-renders. Critical for performance:
@@ -107,12 +107,6 @@ export default function NumberTicker({
   useEffect(() => {
     if (!inView) return;
 
-    /* Reduced motion: jump to the final value instantly. No animation. */
-    if (reduceMotion) {
-      motionValue.set(value);
-      return;
-    }
-
     /* Tween from current → target. `animate()` returns a controls
        object; calling `.stop()` in cleanup cancels in-flight tweens
        so unmounting mid-animation doesn't leak. */
@@ -121,7 +115,7 @@ export default function NumberTicker({
       ease: EASE,
     });
     return () => controls.stop();
-  }, [inView, motionValue, value, duration, reduceMotion]);
+  }, [inView, motionValue, value, duration]);
 
   /* Static "final value" string for the aria-label. We compute this
      once here (not from the motion value) so it doesn't change as

@@ -39,6 +39,13 @@ import { useEffect, useState } from "react";
 export function useMounted(): boolean {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    /* Intentional: this is THE hydration-safe pattern. The whole
+       purpose of this hook is to flip false→true exactly once after
+       the first client paint, so SSR and the first client render
+       agree (mounted=false → static fallback) and only then upgrade
+       to the animated tree. Lint rule does not have a carve-out for
+       this canonical pattern. */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
   return mounted;

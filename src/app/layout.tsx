@@ -1,3 +1,9 @@
+/* IMPORTANT — ReactScan must be the FIRST app-level import.
+   react-scan instruments React's render path; it has to load before any
+   other client component so it can observe their first render too. The
+   official Next 14+ app-router docs require this ordering verbatim. */
+import { ReactScan } from "@/components/primitives/ReactScan";
+
 import type { Metadata } from "next";
 import { Albert_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
@@ -182,8 +188,19 @@ const WEBSITE_SCHEMA = {
 /* Cloudflare Web Analytics token — env-gated so analytics only fires
    when configured. Free, cookieless, no consent banner needed.
    Sign up at https://dash.cloudflare.com/?to=/:account/web-analytics
-   and paste the token into NEXT_PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN. */
-const CF_ANALYTICS_TOKEN = process.env.NEXT_PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN;
+   and paste the token into NEXT_PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN.
+
+   Skipped in `next dev` regardless of token presence: Cloudflare's
+   beacon validates that the request origin matches the domain
+   registered against the token, so any localhost request fails the
+   CORS preflight and dumps two red errors into the dev console on
+   every page load. Suppressing the script in development keeps the
+   console clean AND avoids burning a phantom pageview against the
+   prod analytics quota every time we hit refresh locally. */
+const isProdRuntime = process.env.NODE_ENV === "production";
+const CF_ANALYTICS_TOKEN = isProdRuntime
+  ? process.env.NEXT_PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN
+  : undefined;
 
 export default function RootLayout({
   children,
@@ -195,6 +212,13 @@ export default function RootLayout({
       lang="en"
       className={`${albertSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
+      {/* react-scan — dev-only render visualiser. Mounted ABOVE <head>/<body>
+          per the Next 14+ recommended pattern so it instruments React before
+          any client component hydrates. The component itself returns null in
+          production and dynamic-imports the runtime only in dev, so prod
+          bundles are unaffected. Replaces the previous unpkg <Script> tag
+          which was blocked by the project's strict CSP. */}
+      <ReactScan />
       <head>
         {/* JSON-LD structured data. Two separate <script> tags rather
             than one merged @graph — easier for Google to parse, easier

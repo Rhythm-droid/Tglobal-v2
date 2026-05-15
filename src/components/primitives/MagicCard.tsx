@@ -49,7 +49,6 @@ import {
   motion,
   useMotionTemplate,
   useMotionValue,
-  useReducedMotion,
 } from "framer-motion";
 import { useRef, type MouseEvent } from "react";
 import { cn } from "@/lib/cn";
@@ -74,7 +73,8 @@ export default function MagicCard({
   as = "div",
 }: MagicCardProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const reduceMotion = useReducedMotion();
+  /* Cursor-follow gradient runs unconditionally — no reduced-motion
+     early-out. Brand decision: glow is part of the card identity. */
 
   /* Mouse position relative to the card's bounding box. Init to -radius
      so the gradient sits offscreen at mount (no flash of a centered
@@ -83,7 +83,6 @@ export default function MagicCard({
   const mouseY = useMotionValue(-radius);
 
   function handleMouseMove(e: MouseEvent<HTMLDivElement>) {
-    if (reduceMotion) return;
     const el = ref.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -95,7 +94,6 @@ export default function MagicCard({
   }
 
   function handleMouseLeave() {
-    if (reduceMotion) return;
     /* Push offscreen so the radial fades out (the next render frame
        will move toward this value if any easing is configured; here
        it's instant). The opacity-on-hover CSS handles the visible fade. */

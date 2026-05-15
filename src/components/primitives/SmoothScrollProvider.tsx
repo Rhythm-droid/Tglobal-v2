@@ -4,7 +4,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type Lenis from "lenis";
 import { ReactLenis, useLenis } from "lenis/react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -292,35 +292,16 @@ function GsapLenisSync() {
   return null;
 }
 
-/* Tracks the user's `prefers-reduced-motion` setting. Lazy-init reads
- * the value synchronously on the client (so the very first Lenis
- * mount uses the correct options); the effect listens for runtime
- * changes for completeness, even though ReactLenis won't reactively
- * apply the new options after construction. SSR-safe — `typeof
- * window` guard returns false during server render. */
-function useReducedMotionPref(): boolean {
-  const [reduce, setReduce] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  });
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const onChange = (e: MediaQueryListEvent) => setReduce(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-
-  return reduce;
-}
-
 export default function SmoothScrollProvider({
   children,
 }: {
   readonly children: ReactNode;
 }) {
-  const reduceMotion = useReducedMotionPref();
-
+  /* Lenis smooth-scroll runs full motion for every visitor regardless
+     of `prefers-reduced-motion`. Brand decision: smooth scroll is part
+     of the identity. Previously the lerp/multiplier/smoothWheel knobs
+     all collapsed to native-scroll values under reduced-motion; that
+     branch is now removed. */
   return (
     <ReactLenis
       root
@@ -336,35 +317,25 @@ export default function SmoothScrollProvider({
            still smoothed but the input lag isn't perceptible. Going
            lower than ~0.07 starts to expose individual wheel ticks
            again on slow scrolls. Lerp wins over `duration` when both
-           are set, so we omit duration entirely.
-
-           When `prefers-reduced-motion: reduce` is set, lerp jumps to
-           1 (no smoothing) so Lenis behaves as a synchronous wrapper
-           around native scroll. Vestibular-sensitive users get sharp,
-           immediate scroll response. */
-        lerp: reduceMotion ? 1 : 0.08,
+           are set, so we omit duration entirely. */
+        lerp: 0.08,
         /* Wheel-delta multiplier. Default 1 leaves OS-reported deltas
            untouched (conservative on Windows where each notch is only
            ~100 px). 1.2 amplifies each notch by 20% so scrolling feels
            responsive without feeling "throw-y". Trackpad users already
            have high-precision deltas; this multiplier applies to both
-           but the perceptual change is dominated by the wheel case.
-           Reduced-motion drops back to 1 so deltas match native scroll. */
-        wheelMultiplier: reduceMotion ? 1 : 1.2,
+           but the perceptual change is dominated by the wheel case. */
+        wheelMultiplier: 1.2,
         /* Smooth wheel input (desktop) but not touch (mobile). Native
            inertia on touch already feels good; overriding it tends to
-           fight against the OS's gesture handling. Disabled entirely
-           when reduce-motion is set — prevents Lenis from interpolating
-           between scroll positions (vestibular accessibility win). */
-        smoothWheel: !reduceMotion,
+           fight against the OS's gesture handling. */
+        smoothWheel: true,
         /* Lenis's built-in anchor routing is intentionally OFF: we own
            hash navigation in <PinAwareAnchorScroll /> below so anchor
            targets that fall inside an active pin range scroll past the
            cross-fade window instead of into it. Leaving Lenis's handler
            on would race with ours and produce a visible double-scroll
-           (Lenis to baseTop, then us to trigger.end). Reduce-motion case
-           still teleports correctly because PinAwareAnchorScroll uses
-           lenis.scrollTo() which respects the lerp:1 setting. */
+           (Lenis to baseTop, then us to trigger.end). */
         anchors: false,
       }}
     >

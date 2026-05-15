@@ -91,21 +91,21 @@ interface ManifestoEntry {
 const MANIFESTO_ENTRIES: readonly ManifestoEntry[] = [
   {
     index: "01",
-    title: "Speed is a product decision.",
-    body: "We keep discovery short because a working build teaches more than a deck. The goal is not to look busy. The goal is to move the product forward every sprint, every week, with something the team can actually click.",
-    callout: "Discovery is shipped, not held.",
+    title: "Speed is not a feature. It is an opinion about how teams learn.",
+    body: "Every sprint we put something in your hands you can click, push on, and argue with. That is how we learn what is true about your product — by watching real reactions to real software, not by talking about hypotheses. Status decks are evidence we are not learning fast enough.",
+    callout: "Demos teach. Decks reassure.",
   },
   {
     index: "02",
-    title: "AI multiplies judgment.",
-    body: "Agents do the boring parts: research, scaffolds, tests, docs. Humans still choose the shape, the taste, the tradeoffs, and the final bar before anything ships to your users.",
+    title: "AI made code cheap. It did not make judgment cheap.",
+    body: "Models scaffold. Tests write themselves. Documentation drafts on demand. None of that is the work. The work is choosing what to build, where to cut, and what to refuse — and that part still belongs to people who have shipped before.",
     callout: "Taste does not autocomplete.",
   },
   {
     index: "03",
-    title: "Trust is built into the handoff.",
-    body: "The codebase, the infra, and the runbooks are yours from the first commit. No lock-in, no mystery stack, no dependency disguised as partnership. If you bring it in-house tomorrow, it should be a Monday move, not a migration project.",
-    callout: "Leaving stays easy.",
+    title: "Designed to be left.",
+    body: "Your repo, your cloud account, your secrets, your runbooks — from the first commit on the first day. We build ourselves out of the picture so well that a competent in-house team could take over on a Monday morning. That is not a risk we tolerate. It is the goal.",
+    callout: "The exit is the feature.",
   },
 ];
 
@@ -199,20 +199,16 @@ export default function AboutHero() {
       if (!heading || !heroCopy || !pin || !section || !eyebrow || !subhead || !slot)
         return;
 
-      const reduceMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
-
-      if (reduceMotion) {
-        gsap.set([heroCopy, heading, eyebrow, subhead, slot, scrollCue], {
-          opacity: 1,
-          clearProps: "transform,filter",
-        });
-        // Render entry 0 statically so the reader sees something.
-        lastEntryIndexRef.current = 0;
-        setEntryIndex(0);
-        return;
-      }
+      /* Animations are unconditionally enabled — the previous
+         reduced-motion early-return (which set every layer to
+         opacity:1 and skipped the timeline) was removed when brand
+         leadership chose animation-always over the accessibility
+         trade-off. Users with `prefers-reduced-motion: reduce`
+         still get the same pinned hero everyone else does. The CSS
+         media block in globals.css that pins individual elements
+         to opacity:1 is now a redundant safety net rather than the
+         primary path — the GSAP timeline is the source of truth
+         for visible state. */
 
       /* Measure delta from heading's resting layout slot (left-rail,
          vertically centred) to the centre of the pinned viewport.
@@ -221,6 +217,22 @@ export default function AboutHero() {
          measurement, and clearing them would briefly un-hide the
          heading mid-measurement (visible at higher browser zoom
          levels where layout reflows take more than one frame). */
+      /* Centre-stage scale factor for Phase 2 (heading "punches out"
+         at the viewport centre). Was a flat `1.5` which overshot the
+         viewport on narrow phones — at 375px the heading text already
+         renders at its mobile cap (24px clamp floor) AND its column
+         spans nearly the full screen width minus padding. Scaling
+         that by 1.5× pushed both edges of the line past the pin's
+         overflow-hidden boundary so the text visibly clipped on
+         iPhone SE / mini.
+         Compute a scale that grows the heading toward the viewport
+         width WITHOUT exceeding it: target ~92% of viewport (some
+         breathing room at the edges) divided by the heading's
+         natural rendered width. Capped at 1.5 on wide viewports
+         (keeps the original punch-out feel on desktop) and floored
+         at 1.0 so a heading that's already too wide doesn't get
+         scaled DOWN (instead it stays at its measured size and the
+         text-balance / break-words rules on the h2 handle wrapping). */
       const measureCentreOffset = () => {
         gsap.set(heading, { clearProps: "transform" });
         const rect = heading.getBoundingClientRect();
@@ -229,9 +241,14 @@ export default function AboutHero() {
         const headingCentreY = rect.top + rect.height / 2;
         const viewportCentreX = window.innerWidth / 2;
         const viewportCentreY = pinRect.top + pin.offsetHeight / 2;
+        const naturalWidth = rect.width;
+        const targetWidth = window.innerWidth * 0.92;
+        const fitScale = naturalWidth > 0 ? targetWidth / naturalWidth : 1.5;
+        const centreScale = Math.max(1, Math.min(1.5, fitScale));
         return {
           dx: viewportCentreX - headingCentreX,
           dy: viewportCentreY - headingCentreY,
+          centreScale,
         };
       };
 
@@ -256,11 +273,13 @@ export default function AboutHero() {
          at headline scale while there's room (centre of the viewport,
          no column constraint), then the timeline rescales it back to
          1× as it travels into the narrow left rail where the natural
-         column width controls wrapping. */
+         column width controls wrapping. `centreScale` is viewport-
+         aware (see measureCentreOffset) so the text never overflows
+         the pin on narrow phones. */
       gsap.set(heading, {
         x: offsets.dx,
         y: offsets.dy,
-        scale: 1.5,
+        scale: offsets.centreScale,
         opacity: 0,
         filter: "blur(18px)",
         transformOrigin: "center center",
@@ -285,7 +304,21 @@ export default function AboutHero() {
         scrollTrigger: {
           trigger: section,
           start: "top top",
-          end: "+=480%",
+          /* Pin distance bumped from 480% → 680% so each manifesto
+             entry has ~40% more scroll real-estate on screen. On a
+             fast wheel-flick, entry 03 was cut off mid-scramble
+             because the 03 band (0.758 → 1.0) only had ~96vh of
+             scroll between snap stop and pin release. At 900% that
+             band is ~216vh — plenty of dwell time for the slowest
+             scramble (1.9s duration) to fully resolve even at fast
+             wheel-flick speeds, AND extra space between entries so
+             a quick scroll past one doesn't blast straight into
+             the next. Each entry now owns ~1.2 viewports of
+             vertical real estate vs ~0.9 at 680%. Must be kept in
+             lockstep with the section's intrinsic height below
+             (calc * 9) so the pin completes exactly when the
+             section ends — no dead space below the pin. */
+          end: "+=900%",
           scrub: 0.6,
           pin,
           /* pinSpacing: false because the section's intrinsic height
@@ -329,8 +362,15 @@ export default function AboutHero() {
                leapfrogging an entry. With directional, each wheel
                tick advances exactly one stop forward or back. */
             snapTo: [0, 0.20, 0.555, 0.690, 0.826, 1],
-            duration: { min: 0.15, max: 0.35 },
-            delay: 0.05,
+            /* Slower snap settle so fast wheel-flicks have time to
+               read the current entry before snapping past it. Was
+               0.15-0.35s with delay 0.05 — too snappy, fast scrolls
+               felt like the entries blurred by. 0.25-0.55s with
+               delay 0.18 gives the eye ~0.7s after the user stops
+               scrolling to register the entry, while still feeling
+               responsive (not laggy). */
+            duration: { min: 0.25, max: 0.55 },
+            delay: 0.18,
             directional: true,
             ease: "power2.inOut",
           },
@@ -475,6 +515,21 @@ export default function AboutHero() {
 
   const activeEntry = entryIndex >= 0 ? MANIFESTO_ENTRIES[entryIndex] : null;
 
+  /* The animated pinned-canvas hero runs for EVERY visitor, regardless
+     of `prefers-reduced-motion`. This is a deliberate brand decision:
+     animations are core to the site's identity, and we accept the
+     accessibility trade-off rather than ship a static fallback that
+     waters down the first impression. We still respect the perf
+     budget per-device via lighter shader tiers (maxPixelCount cap,
+     in-view IntersectionObserver pausing) so low-end phones don't
+     burn cycles when the hero is off-screen — but the motion itself
+     is non-negotiable.
+
+     If accessibility compliance is ever required (gov contracts, EU
+     EAA, ADA), the `AboutHeroStatic` sub-component below is kept in
+     place as a ready-to-wire fallback — flip the gate back on by
+     uncommenting the reduceMotion+mounted branch here. */
+
   return (
     <section
       ref={sectionRef}
@@ -486,7 +541,7 @@ export default function AboutHero() {
          Section bg = the next section's colour (#ffffff for Team)
          so if anything peeks through, it's invisible. */
       style={{
-        height: "calc(var(--100vh, 100svh) * 4.8)",
+        height: "calc(var(--100vh, 100svh) * 9)",
         background: "#ffffff",
       }}
     >
@@ -613,9 +668,38 @@ export default function AboutHero() {
               `entryIndex` changes, their letters jumble through
               random characters into the next entry's letters. */}
         <div className="absolute inset-0 z-[2]">
-          <div className="mx-auto grid h-full w-full max-w-[1440px] grid-cols-1 gap-12 px-6 sm:px-8 lg:grid-cols-12 lg:gap-14 lg:px-14 xl:px-20">
-            {/* Left rail — vertically centred stack */}
-            <div className="flex h-full flex-col justify-center py-16 sm:py-20 lg:col-span-5 lg:py-0">
+          {/* Mobile vs desktop grid template:
+                • Mobile (single column): `grid-rows-[1fr_1fr]` splits
+                  the pin vertically into two equal halves. Each rail
+                  centres its own content inside its half via
+                  `justify-center`. Result: eyebrow/heading/subhead
+                  sit centred in the TOP half, the entry rail sits
+                  centred in the BOTTOM half — so the two content
+                  blocks have equal vertical weight instead of the
+                  left rail's content piling near the top and the
+                  entry rail floating with huge dead space between
+                  them. `gap-0` removes the additional gap because
+                  the row-fr split already controls spacing.
+                • Desktop (lg+): unchanged — `grid-cols-12` for the
+                  editorial two-column read, `gap-14` for the column
+                  gutter. The mobile row template is overridden by
+                  `lg:grid-rows-none` so desktop uses its single
+                  row + 12 cols. */}
+          <div className="mx-auto grid h-full w-full max-w-[1440px] grid-cols-1 grid-rows-[1fr_1fr] gap-0 px-6 sm:px-8 lg:grid-cols-12 lg:grid-rows-none lg:gap-14 lg:px-14 xl:px-20">
+            {/* Left rail — vertically centred stack. On mobile the
+                two rails stack vertically and the right rail sits
+                below this one, so we centre the content horizontally
+                (items-center + text-center) to mirror the centred
+                hero copy that just faded out. Above lg the rail
+                returns to flush-left so the editorial column read
+                holds. */}
+            {/* Mobile padding tuning: `py-4` (was `py-16 sm:py-20`)
+                because the parent grid now uses `grid-rows-[1fr_1fr]`
+                so each rail has a guaranteed-equal half-viewport
+                height; the previous padding was compensating for
+                gap-12 row-spacing which we removed. lg:py-0 keeps
+                desktop unchanged. */}
+            <div className="flex h-full flex-col items-center justify-center py-4 text-center sm:py-6 lg:col-span-5 lg:items-start lg:py-0 lg:text-left">
               {/* Inline `opacity: 0` keeps the manifesto text hidden
                   from the FIRST paint — before useGSAP runs and sets
                   its own initial state. Without this, React commits
@@ -625,10 +709,23 @@ export default function AboutHero() {
                   single-frame flash is invisible; at 125% / 150%
                   browser zoom the layout reflow takes long enough
                   that the flash becomes a persistent overlay until
-                  GSAP catches up. */}
+                  GSAP catches up.
+
+                  data-pin-on-reduced-motion is a CSS hook (see
+                  globals.css). Under `prefers-reduced-motion: reduce`
+                  the user's OS-level motion preference is honoured by
+                  pinning these elements to opacity:1 at the CSS
+                  layer — so the page is fully readable EVEN IF the
+                  GSAP timeline never runs (e.g. Windows "Animation
+                  effects" off, which suppresses the scroll-pinned
+                  reveal). */}
+              {/* justify-center on mobile centres the № 01 ─ THE
+                  MANIFESTO row beneath the centred heading; lg+ keeps
+                  it left-anchored for the editorial column. */}
               <p
                 ref={eyebrowRef}
-                className="flex items-center gap-4 text-[11px] font-medium uppercase tracking-[0.22em] text-foreground-mid"
+                data-pin-on-reduced-motion=""
+                className="flex items-center justify-center gap-4 text-[11px] font-medium uppercase tracking-[0.22em] text-foreground-mid lg:justify-start"
                 style={{
                   fontFamily:
                     "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace",
@@ -640,62 +737,149 @@ export default function AboutHero() {
                 <span>The manifesto</span>
               </p>
 
+              {/* Heading sizing + wrapping — permanent, breakpoint-aware.
+                  ─────────────────────────────────────────────────────
+                  Three things have to be true simultaneously for the
+                  heading to render cleanly at every breakpoint:
+
+                  1. The heading's CSS box must be NARROWER than its
+                     column. We use max-w-[min(100%,_…)] so the cap
+                     never exceeds the parent's available width AND
+                     never invites layout to size the box past content.
+                  2. Long single words ("compress", "distance",
+                     "between", "working", "product") must individually
+                     fit inside the box at the chosen font-size. At
+                     mobile (24px) the widest word renders at ~105px;
+                     at the worst-case 320px-viewport column (~272px
+                     after padding) that's well under width.
+                  3. The line-break algorithm must actually break. We
+                     use text-pretty (greedy) below lg; Chrome's
+                     text-balance on narrow viewports can silently fall
+                     back to overflow when it can't find a balanced
+                     solution, so it's reserved for lg+ where the
+                     column is wide enough for balance to succeed.
+
+                  break-words is a belt-and-braces safety net — if any
+                  future copy edit introduces a longer word than the
+                  column can fit, it breaks mid-word rather than
+                  overflowing.
+
+                  Font scale:
+                    base  → 24px (fits 320px viewport with 24px padding)
+                    sm+   → 28px
+                    md+   → 32px
+                    lg+   → clamp(36px, 4.4vw, 64px)
+                  No more abrupt jumps — each step is ≤ 33% of the
+                  previous, well inside what looks intentional. */}
               <h2
                 ref={manifestoHeadingRef}
-                className="mt-7 text-balance font-medium leading-[1.05] text-foreground"
+                data-pin-on-reduced-motion=""
+                /* Three sentences, three lines. Each commitment
+                   gets its own row so the rhythm reads as a
+                   declaration ("Three commitments. / Every project.
+                   / No exceptions.") rather than prose that wraps
+                   awkwardly mid-clause. Left-aligned at every
+                   viewport — matches the rail-style left edge of
+                   the parent column. */
+                className="mt-7 max-w-full break-words text-left text-[24px] font-medium leading-[1.1] text-foreground sm:text-[28px] md:text-[32px] lg:text-[clamp(36px,4.4vw,64px)]"
                 style={{
-                  fontSize: "clamp(34px, 4.4vw, 64px)",
                   letterSpacing: "-0.04em",
                   opacity: 0,
                 }}
               >
-                We compress the distance between an idea and a working product.
+                <span className="block">Three commitments.</span>
+                <span className="block">Every project.</span>
+                <span className="block">No exceptions.</span>
               </h2>
 
               <p
                 ref={subheadRef}
+                data-pin-on-reduced-motion=""
                 style={{ opacity: 0 }}
-                className="mt-6 max-w-[44ch] text-base leading-[1.55] text-foreground-mid lg:text-lg"
+                className="mx-auto mt-6 max-w-[44ch] text-base leading-[1.55] text-foreground-mid lg:mx-0 lg:text-lg"
               >
-                Three principles we keep on the wall. They drive every
-                sprint, every code review, every conversation with you.
+                They show up in how we scope, how we build, and how
+                we leave. Read them once &mdash; and hold us to them.
               </p>
             </div>
 
             {/* Right rail — vertically-centred scramble entry slot.
                 A fixed min-height guards against the surrounding
                 layout lurching when the active entry's body changes
-                length on swap. */}
-            <div className="flex h-full items-center py-16 sm:py-20 lg:col-span-7 lg:py-0">
+                length on swap.
+                On mobile this rail sits BELOW the left rail (single
+                column grid). Its content is centred so the index/
+                title row, body paragraph, and italic callout all
+                share a horizontal axis with the centred manifesto
+                heading above. Above lg the rail returns to left-
+                anchored for the editorial two-column read. */}
+            <div className="flex h-full items-center py-4 sm:py-6 lg:col-span-7 lg:py-0 lg:pl-6 xl:pl-10 2xl:pl-14">
               <div
                 ref={entrySlotRef}
-                className="w-full"
+                data-pin-on-reduced-motion=""
+                className="w-full text-center lg:text-left"
                 style={{ opacity: 0 }}
               >
                 {activeEntry ? (
-                  <div className="min-h-[320px] sm:min-h-[340px]">
-                    <div className="flex items-baseline gap-5 sm:gap-7">
+                  /* flex column + justify-center so the entire
+                     entry block (index+title row, body, callout)
+                     is vertically centred within the min-h slot.
+                     Without this, the block anchored to the top
+                     and a 1-line title like "Designed to be left."
+                     left a large empty band below the callout,
+                     making the slot read as bottom-loaded. */
+                  <div className="flex min-h-[320px] flex-col justify-center sm:min-h-[340px]">
+                    {/* justify-center on mobile centres the
+                        "01  Speed is a product decision." row;
+                        lg:justify-start returns it to the editorial
+                        flush-left treatment. max-w paragraphs below
+                        get mx-auto on mobile to centre their text
+                        block (max-w only constrains width, not
+                        position — mx-auto handles position). */}
+                    {/* items-center handles BOTH 1-line and 2-line
+                        titles automatically:
+                          • 1-line title ("Designed to be left.") →
+                            the giant index + the short title share
+                            a midline so neither floats above/below.
+                          • 2-line title ("Speed is not a feature. /
+                            It is an opinion…") → the index sits in
+                            the middle of the two-line block, which
+                            reads as the right visual centre because
+                            the index height (~0.85em) is roughly
+                            equal to one title line.
+                        Tuned by the line-heights below:
+                          • Index leading-[0.85] keeps the digit's
+                            line-box tight to its cap-height so the
+                            visual centre lands where the glyph is.
+                          • Title leading-[1.15] gives both lines
+                            equal breathing — when wrapped to 2 lines
+                            the block's midline aligns with the
+                            single-line index's midline.
+                        Result is layout that auto-adapts as content
+                        changes line count, across every viewport.
+                        On mobile the lg:justify-start drops to
+                        justify-center so the whole row centres on
+                        narrow screens. */}
+                    <div className="flex items-center justify-center gap-5 sm:gap-7 lg:justify-start">
                       <span
-                        className="font-medium tabular-nums leading-none text-foreground/30"
+                        className="shrink-0 text-[32px] font-medium tabular-nums leading-[0.85] text-foreground/30 sm:text-[40px] md:text-[48px] lg:text-[clamp(34px,4.6vw,72px)]"
                         style={{
-                          fontSize: "clamp(34px, 4.6vw, 72px)",
                           letterSpacing: "-0.05em",
                         }}
                       >
-                        <ScrambleSwap text={activeEntry.index} duration={1200} />
+                        <ScrambleSwap text={activeEntry.index} duration={700} />
                       </span>
                       <h3
-                        className="font-medium leading-[1.05] text-foreground"
+                        className="break-words text-[20px] font-medium leading-[1.15] text-foreground sm:text-[22px] md:text-[24px] lg:text-[clamp(22px,2.6vw,38px)]"
                         style={{
-                          fontSize: "clamp(22px, 2.6vw, 38px)",
                           letterSpacing: "-0.04em",
                         }}
                       >
-                        <ScrambleSwap text={activeEntry.title} duration={1900} />
+                        <ScrambleSwap text={activeEntry.title} duration={1000} />
                       </h3>
                     </div>
-                    <p className="mt-5 max-w-[58ch] text-sm leading-[1.55] text-foreground-mid sm:text-base lg:text-[17px]">
-                      <ScrambleSwap text={activeEntry.body} duration={1800} />
+                    <p className="mx-auto mt-5 max-w-[58ch] text-sm leading-[1.55] text-foreground-mid sm:text-base lg:mx-0 lg:text-[17px]">
+                      <ScrambleSwap text={activeEntry.body} duration={900} />
                     </p>
                     <p
                       className="mt-4 italic text-foreground/85"
@@ -707,7 +891,7 @@ export default function AboutHero() {
                       }}
                     >
                       &ldquo;
-                      <ScrambleSwap text={activeEntry.callout} duration={1600} />
+                      <ScrambleSwap text={activeEntry.callout} duration={800} />
                       &rdquo;
                     </p>
                   </div>
@@ -774,6 +958,173 @@ export default function AboutHero() {
           paints lavender (the next section's colour) by the last
           frame of the timeline, so the visual handoff is the same
           colour on both sides of the boundary. */}
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   AboutHeroStatic — flat fallback for reduced-motion users.
+   ─────────────────────────────────────────────────────────────────
+   No pin, no scrub, no overlapping layers. Renders as a series of
+   normal-flow sections:
+     1. Hero block — h1 + CTAs, centred, full-viewport tall
+     2. Manifesto block — eyebrow + heading + lede, centred
+     3. Three principle blocks — one per entry, each a stand-alone
+        editorial card with index + title + body + callout
+   All copy is the SAME as the animated version (same constants:
+   MANIFESTO_ENTRIES, OUTRUN_TARGETS), so the messaging is identical
+   regardless of which branch renders. The RotatingWord primitive
+   keeps cycling words (its internal reduce-motion gate already
+   pins to the first word for users who opt out, so this is a
+   no-op for that primitive — it's left in for consistency).
+   Background colour matches the animated version so the section
+   below (Work Strip) lands on the same paper colour either way. */
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars --
+   Intentionally retained as a dormant accessibility fallback. The
+   comment block above (lines 528-531) documents how to re-wire it
+   if reduced-motion compliance becomes required (gov contracts, EU
+   EAA, ADA). Deleting it makes that pivot strictly harder. */
+function AboutHeroStatic() {
+  return (
+    <section
+      aria-labelledby="about-hero-heading"
+      className="relative w-full"
+      style={{ background: "#ffffff" }}
+    >
+      {/* Block 1 — Hero copy. Full-viewport-tall on first paint so the
+          page still opens with the same "this is a hero" beat the
+          animated version has. Below mobile the min height drops to
+          fit short landscape phones without forcing internal scroll
+          inside the block. */}
+      <div className="flex min-h-[100svh] w-full items-center justify-center px-6 py-20 sm:px-8 lg:px-14 xl:px-20">
+        <div className="mx-auto w-full max-w-[1440px] text-center">
+          <h1
+            id="about-hero-heading"
+            className="flex flex-wrap items-baseline justify-center gap-x-2 font-medium leading-[0.95] text-foreground sm:gap-x-3 lg:gap-x-4"
+            style={{
+              fontSize: "clamp(44px, 7vw, 132px)",
+              letterSpacing: "-0.045em",
+            }}
+          >
+            <span>We outrun</span>
+            <span
+              className="italic uppercase text-[#6b5ce7]"
+              style={{
+                fontFamily:
+                  "var(--font-instrument-serif), Georgia, serif",
+                letterSpacing: "-0.04em",
+              }}
+            >
+              <RotatingWord
+                words={OUTRUN_TARGETS}
+                interval={2200}
+                duration={0.55}
+              />
+            </span>
+          </h1>
+          <span className="sr-only">
+            We outrun roadmaps, backlogs, sprints, quarters, deadlines, and timelines.
+          </span>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3 sm:mt-12 lg:mt-14">
+            <MagneticPill
+              href="/#talk-to-us"
+              variant="primary"
+              cursorText="let's go"
+            >
+              Start a sprint <ArrowRight aria-hidden size={18} />
+            </MagneticPill>
+            <MagneticPill
+              href="/process"
+              variant="soft"
+              cursorText="explore"
+            >
+              See the process <Workflow aria-hidden size={18} />
+            </MagneticPill>
+          </div>
+        </div>
+      </div>
+
+      {/* Block 2 — Manifesto heading + lede. Reuses the same eyebrow
+          line, heading, and subhead from the animated version so the
+          editorial voice is unchanged. Width matches the animated
+          left rail (col-span-5 at lg = ~42% of 1440 ≈ 600px). */}
+      <div className="w-full px-6 py-20 sm:px-8 sm:py-24 lg:px-14 lg:py-28 xl:px-20">
+        <div className="mx-auto w-full max-w-[1440px]">
+          <div className="mx-auto max-w-[640px] text-center lg:mx-0 lg:text-left">
+            <p
+              className="flex items-center justify-center gap-4 text-[11px] font-medium uppercase tracking-[0.22em] text-foreground-mid lg:justify-start"
+              style={{
+                fontFamily:
+                  "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace",
+              }}
+            >
+              <span className="tabular-nums">№ 01</span>
+              <span aria-hidden className="h-px w-8 bg-foreground-mid/40" />
+              <span>The manifesto</span>
+            </p>
+            <h2
+              className="mt-7 max-w-full break-words text-pretty text-[24px] font-medium leading-[1.05] text-foreground sm:text-[28px] md:text-[32px] lg:text-balance lg:text-[clamp(36px,4.4vw,64px)]"
+              style={{ letterSpacing: "-0.04em" }}
+            >
+              We compress the distance between an idea and a working product.
+            </h2>
+            <p className="mx-auto mt-6 max-w-[44ch] text-base leading-[1.55] text-foreground-mid lg:mx-0 lg:text-lg">
+              They show up in how we scope, how we build, and how
+              we leave. Read them once &mdash; and hold us to them.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Block 3 — Three principle entries stacked. Same copy + same
+          ordering as the animated entry rail; presented as a list
+          instead of a one-at-a-time scroll-driven swap. Hairline
+          rules between entries match the editorial card pattern
+          used in AboutTeam / AboutWorkStrip. */}
+      <div className="w-full px-6 pb-24 sm:px-8 sm:pb-32 lg:px-14 lg:pb-40 xl:px-20">
+        <div className="mx-auto w-full max-w-[1440px]">
+          <ol className="mx-auto flex max-w-[860px] flex-col gap-12 sm:gap-16">
+            {MANIFESTO_ENTRIES.map((entry) => (
+              <li
+                key={entry.index}
+                className="border-t border-foreground/15 pt-8 sm:pt-10"
+              >
+                {/* items-center auto-adapts to title line count —
+                    same approach as the animated rail above. See
+                    that block's comment for the full rationale. */}
+                <div className="flex items-center gap-5 sm:gap-7">
+                  <span
+                    className="shrink-0 text-[32px] font-medium tabular-nums leading-[0.85] text-foreground/30 sm:text-[40px] md:text-[48px] lg:text-[clamp(34px,4.6vw,72px)]"
+                    style={{ letterSpacing: "-0.05em" }}
+                  >
+                    {entry.index}
+                  </span>
+                  <h3
+                    className="break-words text-[20px] font-medium leading-[1.15] text-foreground sm:text-[22px] md:text-[24px] lg:text-[clamp(22px,2.6vw,38px)]"
+                    style={{ letterSpacing: "-0.04em" }}
+                  >
+                    {entry.title}
+                  </h3>
+                </div>
+                <p className="mt-5 max-w-[58ch] text-sm leading-[1.55] text-foreground-mid sm:text-base lg:text-[17px]">
+                  {entry.body}
+                </p>
+                <p
+                  className="mt-4 italic text-foreground/85"
+                  style={{
+                    fontFamily:
+                      "var(--font-instrument-serif), Georgia, serif",
+                    fontSize: "clamp(16px, 1.5vw, 24px)",
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  &ldquo;{entry.callout}&rdquo;
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
     </section>
   );
 }

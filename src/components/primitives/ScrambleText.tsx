@@ -39,7 +39,6 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/cn";
 
 interface ScrambleTextProps {
@@ -67,7 +66,8 @@ export default function ScrambleText({
   chars = DEFAULT_CHARS,
   className,
 }: ScrambleTextProps) {
-  const reduceMotion = useReducedMotion();
+  /* Scramble runs unconditionally. Brand decision: motion is part of
+     the identity, no reduced-motion early-out. */
   const [display, setDisplay] = useState(text);
   const rafRef = useRef<number | null>(null);
   const wrapperRef = useRef<HTMLSpanElement>(null);
@@ -79,10 +79,6 @@ export default function ScrambleText({
      component is small enough that React reconciliation cost is
      negligible — the simpler the code, the fewer the bugs. */
   function runScramble() {
-    if (reduceMotion) {
-      setDisplay(text);
-      return;
-    }
     const start = performance.now();
     const targetChars = Array.from(text);
 

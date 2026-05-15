@@ -1,6 +1,6 @@
 "use client";
 
-import { useScroll, useTransform, motion, useReducedMotion } from "framer-motion";
+import { useScroll, useTransform, motion } from "framer-motion";
 import { useRef, type ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
@@ -36,7 +36,8 @@ export default function ScrubScale({
   className,
   style,
 }: ScrubScaleProps) {
-  const reduceMotion = useReducedMotion();
+  /* Animation runs for every visitor regardless of
+     `prefers-reduced-motion` — brand decision. */
   const mounted = useMounted();
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -48,9 +49,9 @@ export default function ScrubScale({
   const scale = useTransform(scrollYProgress, [0, 1], [1, scaleTo]);
   const opacity = useTransform(scrollYProgress, [0, 0.6, 1], [1, 1, opacityTo]);
 
-  /* Static fallback: SSR + first client render + reduced-motion users.
-     Plain div, no scroll-tied transforms. See `useMounted`. */
-  if (!mounted || reduceMotion) {
+  /* SSR + first client render — static path. Plain div with no
+     scroll-tied transforms so server/client paint identically. */
+  if (!mounted) {
     return (
       <div ref={ref} className={cn(className)} style={style}>
         {children}

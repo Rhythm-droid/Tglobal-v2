@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion, type Variants } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { useMemo } from "react";
 
 import { cn } from "@/lib/cn";
@@ -58,17 +58,20 @@ export default function MaskReveal({
   style,
   id,
 }: MaskRevealProps) {
-  const reduceMotion = useReducedMotion();
+  /* Animation runs for every visitor regardless of
+     `prefers-reduced-motion` — brand decision. The mounted gate is
+     still required so SSR and the client's first paint emit the
+     same markup (avoids hydration mismatch on framer-motion's
+     variant tree). */
   const mounted = useMounted();
   const words = useMemo(() => splitWords(text), [text]);
   const Tag = motion[as] as React.ElementType;
 
-  /* Static fallback: SSR + first client render + reduced-motion users.
-     Gating on `mounted` ensures the server and the client's first
-     paint emit identical markup. See `useMounted` for the rationale. */
-  if (!mounted || reduceMotion) {
+  /* SSR + first client render — static path.
+     No aria-label: visible text already provides the accessible name. */
+  if (!mounted) {
     return (
-      <Tag id={id} className={cn(className)} style={style} aria-label={text}>
+      <Tag id={id} className={cn(className)} style={style}>
         {text}
       </Tag>
     );
@@ -92,8 +95,12 @@ export default function MaskReveal({
       viewport={{ once: true, amount }}
       className={cn(className)}
       style={style}
-      aria-label={text}
     >
+      {/* sr-only label — per-word spans below are aria-hidden so AT users
+          would otherwise hear nothing. aria-label is prohibited on
+          headings; an sr-only sibling satisfies axe-core while preserving
+          the mask-reveal animation. */}
+      <span className="sr-only">{text}</span>
       {words.map((w, i) => (
         <span
           key={`${i}-${w}`}

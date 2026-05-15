@@ -38,7 +38,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import LogoMark from "@/components/primitives/LogoMark";
 import Footer from "@/components/Footer";
 import { useMounted } from "@/lib/useMounted";
@@ -67,15 +67,12 @@ function formatLastUpdated(iso: string): string {
 export default function PrivacyPage() {
   const [activeId, setActiveId] = useState<string>(SECTIONS[0]?.id ?? "");
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const reduceMotion = useReducedMotion();
   const mounted = useMounted();
-  /* SSR + first client render must skip motion `initial` props entirely:
-     `useReducedMotion()` returns `null` on the server and the actual
-     preference on the client's first paint, so a naive
-     `initial={reduceMotion ? false : {...}}` produces different inline
-     styles between server and client → hydration mismatch. Gating
-     animations on `mounted` defers all motion to after hydration. */
-  const animate = mounted && !reduceMotion;
+  /* SSR + first client render must skip motion `initial` props entirely
+     to avoid a hydration mismatch on framer-motion's variant tree.
+     After mount, animations run unconditionally — no reduced-motion
+     gate (brand decision, see MotionProvider). */
+  const animate = mounted;
 
   /* IntersectionObserver scroll-spy. We pick the entry whose top is
    * closest to (but past) a 25%-from-top "trigger line" — that puts

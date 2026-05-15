@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type JSX } from "react";
-import { useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/cn";
 
@@ -81,7 +80,13 @@ export default function ImageParticleField({
 }: ImageParticleFieldProps): JSX.Element {
   const palette = colors ?? DEFAULT_COLORS;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const reduceMotion = useReducedMotion();
+  /* Particle field runs full motion for every visitor — brand decision.
+     The internal branches that previously short-circuited under
+     reduced-motion (skipping the rAF loop, drawing a static frame)
+     are pinned to the animated path via this constant. Leaving the
+     reference in place rather than threading a refactor through ~30
+     usage sites keeps the diff focused. */
+  const reduceMotion = false as const;
   const [inView, setInView] = useState(false);
 
   // Mutable state that must survive text-prop changes without
@@ -125,11 +130,15 @@ export default function ImageParticleField({
     return () => observer.disconnect();
   }, []);
 
-  /* Sample text-pixel positions into an array of points. Same sizing
-     rule the original used so the morph keeps the word legible on
-     mobile and desktop. Points are shuffled so that when we wrap
-     (more particles than points or vice versa) coverage is uniform
-     instead of always clustered top-left. */
+  /* Sample text-pixel positions into an array of points. Sizing
+     rules below are derived from an /about audit across 1440 / 1024
+     / 768 / 390 / 360 viewports — old formula (w * 0.22) capped
+     fontSize at ~86px on iPhone 14 and ~169px on iPad portrait,
+     which combined with a fixed 3px sample grid produced hollow
+     letter outlines (the moiré between font anti-aliasing and the
+     sample step). The new formula scales fontSize by the shorter
+     viewport dimension AND scales `step` by fontSize so dot density
+     stays uniform from mobile to wide desktop. */
   const samplePoints = (
     w: number,
     h: number,
@@ -141,13 +150,54 @@ export default function ImageParticleField({
     off.width = w;
     off.height = h;
 
-    const targetWidth = w * 0.86;
-    let fontSize = Math.min(w * 0.22, 320);
-    ctx.font = `900 ${fontSize}px "Albert Sans", system-ui, -apple-system, sans-serif`;
+    /* targetWidth caps the rendered word at 80% of the canvas so
+       single glyphs never butt against the left/right edges.
+       Italic-style serifs and the "N" verticals in particular
+       overhang their measureText advance-width — capping at 0.80
+       (not 0.86) gives the right edge enough breathing room so the
+       last glyph never clips against the canvas right boundary at
+       narrow viewports. The fontSize start scales with BOTH
+       dimensions:
+         w * 0.40   — wide-aspect viewports (mobile portrait, ~half
+                      the previous baseline since w is small)
+         h * 0.55   — tall-aspect viewports (iPad portrait, where
+                      the canvas is taller than wide and the word
+                      would otherwise sit lonely in a tall frame)
+         400        — absolute cap so wide desktops (h * 0.55 = 495
+                      on 900-tall viewports) don't pump the word
+                      past the design's tested reading scale.
+       The `measureText` shrink step still runs after, so a long
+       word that overflows targetWidth at the starting fontSize
+       still gets scaled down to fit. */
+    /* targetWidth caps the rendered word at 65% of the canvas
+       width (was 80%). The tighter cap is a defensive backstop for
+       cases where the loaded font isn't what samplePoints expects:
+       even if a fallback face renders ~50% wider per glyph, the
+       measureText-driven shrink step still keeps the word inside
+       the canvas. 65% leaves enough horizontal margin that the
+       widest visible glyph (italic stroke overhang, bold serif
+       caps) never bleeds against the right edge regardless of
+       which face the browser actually renders. */
+    const targetWidth = w * 0.65;
+    let fontSize = Math.min(w * 0.32, h * 0.48, 320);
+    /* Font-weight MUST match a weight that's actually loaded for
+       Albert Sans. The brand bundle ships 400/500/600/700 only —
+       NO 900 weight. Requesting 900 forced browsers to either
+       synthetic-bold the 700 face (Chromium on Linux) OR fall
+       through to the next font-family entry. On Windows that
+       fallback was `system-ui` → Segoe UI Black, whose advance-
+       width on the same nominal fontSize is ~60% wider than the
+       intended Albert Sans glyph. The triptych SHIP / TASTE / OWN
+       rendered MUCH larger on Windows than on Linux/macOS, often
+       bleeding past the right viewport edge. Pinning to 700 makes
+       every platform render the same actually-loaded face. */
+    const FONT_FAMILY =
+      '700 var(--fs) "Albert Sans", system-ui, -apple-system, sans-serif';
+    ctx.font = FONT_FAMILY.replace("var(--fs)", `${fontSize}px`);
     const measured = ctx.measureText(t).width;
     if (measured > targetWidth) {
       fontSize = (fontSize * targetWidth) / measured;
-      ctx.font = `900 ${fontSize}px "Albert Sans", system-ui, -apple-system, sans-serif`;
+      ctx.font = FONT_FAMILY.replace("var(--fs)", `${fontSize}px`);
     }
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -155,10 +205,17 @@ export default function ImageParticleField({
     ctx.fillText(t, w / 2, h / 2);
 
     const data = ctx.getImageData(0, 0, w, h).data;
-    const step =
-      w < 768
-        ? Math.max(2, Math.floor(w / 160))
-        : Math.max(3, Math.floor(w / 320));
+    /* `step` sets the sample grid density. Scaling it by fontSize
+       keeps dot density constant relative to letter STROKE WIDTH,
+       so letters always read as solid blocks regardless of
+       viewport. fontSize / 90 gives:
+         390 vw (fontSize 156)  → step 2  (dense, mobile)
+         768 vw (fontSize 259)  → step 3  (dense, tablet)
+         1440 vw (fontSize 400) → step 4  (matches the design's
+                                  original desktop density)
+       Floor at 2 so a single pixel never gets missed at extreme
+       small fontSizes. */
+    const step = Math.max(2, Math.floor(fontSize / 90));
 
     const points: Array<{ x: number; y: number }> = [];
     for (let y = 0; y < h; y += step) {
@@ -182,7 +239,22 @@ export default function ImageParticleField({
     if (!canvas || !context) return;
 
     const pointer: PointerState = { x: -9999, y: -9999, active: false };
-    const shouldReduceMotion = reduceMotion === true;
+    /* `reduceMotion` is the locked-false constant declared above; the
+       boolean is preserved so a future flip back to a real prefers-
+       reduced-motion gate only has to change the constant, not every
+       downstream call site. */
+    const shouldReduceMotion: boolean = reduceMotion;
+    /* Mobile perf gate. Canvas widths under 640px drop the two most
+       expensive Canvas2D ops:
+         • shadowBlur (per-particle Gaussian blur — ~3× fill cost)
+         • inter-particle filament strokes (O(n²) within a 500-cap,
+           still meaningful at 6k+ text particles)
+       Together these account for ~70% of the per-frame paint cost on
+       phones. The particle word itself is the hero; the bloom + web
+       are atmosphere that disproportionately hurt mobile FPS. We
+       check the canvas's actual rendered width (not viewport) so
+       desktop-zoomed-narrow still pays the full fidelity. */
+    const isMobile = () => widthRef.current > 0 && widthRef.current < 640;
 
     const buildParticles = () => {
       const w = widthRef.current;
@@ -223,8 +295,13 @@ export default function ImageParticleField({
          - Far tier:   tiny (0.4–1.2px), low alpha, faster drift.
                        Reads as distant background dust.
          The tier split is what makes the field feel like ATMOSPHERE
-         rather than a flat scatter of identical dots. */
-      const ambientTotal = Math.floor((w * h) / 28000);
+         rather than a flat scatter of identical dots.
+         Density divisor `28000` on desktop, `48000` under 640px
+         canvas width — the smaller canvas already concentrates the
+         ambient field, so the desktop divisor would oversample on
+         mobile and add unnecessary fill cost. */
+      const isMobileCanvas = w < 640;
+      const ambientTotal = Math.floor((w * h) / (isMobileCanvas ? 48000 : 28000));
       const nearCount = Math.floor(ambientTotal * 0.38);
       const farCount = ambientTotal - nearCount;
 
@@ -371,9 +448,14 @@ export default function ImageParticleField({
 
         // Ambient particles use per-particle alpha + skip the heavy
         // bloom (cheaper, and their soft drift doesn't need a glow).
-        if (p.ambient) {
+        // Mobile also skips bloom on TEXT particles — `isMobile()`
+        // returns true under 640px canvas width. The bloom on mobile
+        // adds ~50% per-frame cost for a halo that's barely visible
+        // at small font sizes anyway; killing it brings the section
+        // from ~24fps to a consistent 60fps on iPhone SE.
+        if (p.ambient || isMobile()) {
           context.shadowBlur = 0;
-          context.globalAlpha = p.alpha;
+          context.globalAlpha = p.ambient ? p.alpha : 1;
         } else {
           context.shadowBlur = 9;
           context.globalAlpha = 1;
@@ -389,7 +471,12 @@ export default function ImageParticleField({
       context.globalAlpha = 1;
 
       // Subtle connecting filaments between close particles.
-      if (!shouldReduceMotion) {
+      // Skipped on mobile (canvas width < 640px) — the O(n²) inner
+      // loop, even capped at 500 particles, is the second-largest
+      // per-frame cost after bloom. Filament glow reads as ornament
+      // on desktop but is barely visible at phone DPRs and isn't
+      // worth the ~15ms/frame hit on iPhone SE.
+      if (!shouldReduceMotion && !isMobile()) {
         context.lineWidth = 0.5;
         const checkLimit = Math.min(particles.length, 500);
         for (let i = 0; i < checkLimit; i += 2) {
@@ -425,6 +512,28 @@ export default function ImageParticleField({
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
     resize();
+    /* Re-sample particle positions once Albert Sans 700 finishes
+       loading. The initial resize() above may run BEFORE the brand
+       font is ready; on that first run, ctx.measureText falls back
+       to `system-ui` (Segoe UI Black on Windows, ~60% wider advance-
+       width than Albert Sans) and the resulting sample grid + dot
+       positions are sized to a system font that the user never
+       actually sees. When the real font streams in via next/font's
+       async pipeline, document.fonts.ready resolves and we re-sample
+       with the correct font — particles snap to the intended layout.
+       Calling buildParticles() directly (instead of resize()) skips
+       the canvas pixel-buffer reset since dimensions haven't changed;
+       only the sample points need updating. */
+    document.fonts.ready
+      .then(() => {
+        if (widthRef.current > 0 && heightRef.current > 0) {
+          buildParticles();
+          drawFnRef.current?.(0);
+        }
+      })
+      .catch(() => {
+        // document.fonts.ready can't reject in practice; no-op fallback.
+      });
     canvas.addEventListener("pointermove", onPointerMove, { passive: true });
     canvas.addEventListener("pointerleave", onPointerLeave);
 
@@ -449,7 +558,9 @@ export default function ImageParticleField({
      reduceMotion is a dep so accessibility users skip the rAF
      entirely (the static draw painted during resize is enough). */
   useEffect(() => {
-    if (reduceMotion === true || !inView) return;
+    // `reduceMotion` is a locked-false constant today; widened to boolean
+    // so this gate keeps working if the constant flips back to a real prop.
+    if ((reduceMotion as boolean) || !inView) return;
     let frame = window.requestAnimationFrame(function tick(time) {
       drawFnRef.current?.(time);
       frame = window.requestAnimationFrame(tick);

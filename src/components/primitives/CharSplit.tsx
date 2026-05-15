@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion, type Variants } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { useMemo } from "react";
 
 import { cn } from "@/lib/cn";
@@ -39,7 +39,8 @@ export default function CharSplit({
   className,
   style,
 }: CharSplitProps) {
-  const reduceMotion = useReducedMotion();
+  /* Animation runs for every visitor regardless of
+     `prefers-reduced-motion` — brand decision. */
   const mounted = useMounted();
   /* Split into [{char, isSpace}]. Spaces use a non-breaking space so
      the spans don't collapse and the layout matches the source string. */
@@ -53,11 +54,11 @@ export default function CharSplit({
   );
   const Tag = motion[as] as React.ElementType;
 
-  /* Static fallback: SSR + first client render + reduced-motion users.
-     See `useMounted` for the rationale. */
-  if (!mounted || reduceMotion) {
+  /* SSR + first client render — static path for hydration parity.
+     No aria-label: visible text already provides the accessible name. */
+  if (!mounted) {
     return (
-      <Tag className={cn(className)} style={style} aria-label={text}>
+      <Tag className={cn(className)} style={style}>
         {text}
       </Tag>
     );
@@ -86,8 +87,12 @@ export default function CharSplit({
       viewport={{ once: true, amount }}
       className={cn(className)}
       style={style}
-      aria-label={text}
     >
+      {/* sr-only label — per-char spans are aria-hidden so AT users would
+          otherwise hear nothing. aria-label is prohibited on headings;
+          an sr-only sibling satisfies axe-core while preserving the
+          letter-by-letter animation. */}
+      <span className="sr-only">{text}</span>
       {chars.map((c, i) => (
         <motion.span
           key={`${i}-${c.char}`}

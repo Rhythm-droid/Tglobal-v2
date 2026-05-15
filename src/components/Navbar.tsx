@@ -101,10 +101,20 @@ interface NavLink {
    Add a route here ONLY after its page.tsx exists, otherwise
    visitors hit a 404. /services and /contact are pending and
    will be added with the Friday commit. */
+/* Cross-page anchors use "/#..." so the link resolves from any
+   route (e.g. clicking "Problem" while on /about routes the user
+   to / then scrolls to #problem). The first four items are
+   sections of the landing page; Process and About Us are
+   standalone routes. /work is intentionally absent — the work
+   page hasn't shipped yet, so nothing in the chrome should link
+   to it. Add a route here only after its page.tsx exists. */
 const NAV_LINKS: readonly NavLink[] = [
-  { label: "Work", href: "/work" },
+  { label: "Problem", href: "/#problem" },
+  { label: "How It Works", href: "/#how-it-works" },
+  { label: "Services", href: "/#services" },
+  { label: "Capabilities", href: "/#capabilities" },
   { label: "Process", href: "/process" },
-  { label: "About", href: "/about" },
+  { label: "About Us", href: "/about" },
 ] as const;
 
 /* Theme — light vs dark hero.
@@ -295,13 +305,32 @@ export default function Navbar({ theme = "light" }: NavbarProps = {}) {
           • `dvh` — dynamic viewport height — accounts for the iOS Safari
             URL bar so the drawer never clips on small phones (iPhone SE
             375×667 etc.). 80px is the rendered header height. */}
+      {/* Drawer transition tuning.
+            • `transition-[max-height,opacity]` is mismatched with the
+              ms timings below — switching to inline style so both
+              max-height and opacity get the SAME ease but different
+              durations (opacity completes 100ms earlier so the panel
+              feels arrived before its content reflows in).
+            • Bezier (0.32, 0.72, 0, 1) is a Material-style "decelerate"
+              curve — slow exit, fast settle. Reads as a panel
+              gracefully landing rather than the previous linear-ish
+              snap that the default Tailwind `ease` produces.
+            • 380ms open, 280ms close — closing is intentionally
+              faster than opening so dismissing feels responsive while
+              opening feels deliberate. Achieved via two ms values
+              swapped by `mobileOpen`. */}
       <div
         ref={drawerRef}
         id="mobile-menu"
         inert={!mobileOpen}
-        className={`overflow-hidden transition-[max-height,opacity] duration-300 md:hidden ${
+        className={`overflow-hidden md:hidden ${
           mobileOpen ? "max-h-[calc(100dvh-80px)] opacity-100" : "max-h-0 opacity-0"
         }`}
+        style={{
+          transition: mobileOpen
+            ? "max-height 380ms cubic-bezier(0.32, 0.72, 0, 1), opacity 280ms cubic-bezier(0.32, 0.72, 0, 1)"
+            : "max-height 280ms cubic-bezier(0.32, 0.72, 0, 1), opacity 200ms cubic-bezier(0.32, 0.72, 0, 1)",
+        }}
       >
         <div className="border-t border-border/60 bg-white/95 px-6 py-6 backdrop-blur-md">
           <nav aria-label="Mobile" className="flex flex-col gap-1">
@@ -330,35 +359,72 @@ export default function Navbar({ theme = "light" }: NavbarProps = {}) {
 }
 
 function BurgerIcon({ open }: { open: boolean }) {
-  const baseLine = {
-    stroke: "currentColor",
-    strokeWidth: 2,
-    strokeLinecap: "round" as const,
-    style: { transition: "all 0.25s cubic-bezier(0.22,1,0.36,1)" },
-  };
+  /* Smoother burger ↔ cross morph.
+       OLD approach animated 4 endpoint coordinates per line on
+       `transition: all`, producing a visible kink mid-flight as the
+       top-left and bottom-right coordinates moved on independent
+       linear paths. Each line's two endpoints would arrive at the
+       cross at slightly different sub-frame times, so the morph
+       looked stuttered on phones.
+       NEW approach keeps the line endpoints FIXED in SVG space and
+       rotates the line as a whole around the SVG centre. One
+       transform per line = one easing curve = no visible kink.
+         • Top line:    rotate(45°) + translateY(5px)
+         • Middle line: scaleX(0) + opacity(0)  (folds into centre)
+         • Bottom line: rotate(-45°) + translateY(-5px)
+       The bottom line trails the top by 40ms, giving the morph a
+       coordinated "hand drawing the cross" feel instead of an
+       instant simultaneous flip. */
+  const EASE = "cubic-bezier(0.65, 0, 0.35, 1)";
+  const DUR = 350;
   return (
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
       <line
-        x1={open ? 5 : 4}
-        y1={open ? 5 : 7}
-        x2={open ? 17 : 18}
-        y2={open ? 17 : 7}
-        {...baseLine}
+        x1="4"
+        y1="6"
+        x2="18"
+        y2="6"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        style={{
+          transformOrigin: "11px 11px",
+          transform: open
+            ? "translateY(5px) rotate(45deg)"
+            : "translateY(0) rotate(0deg)",
+          transition: `transform ${DUR}ms ${EASE}`,
+        }}
       />
       <line
         x1="4"
         y1="11"
         x2="18"
         y2="11"
-        {...baseLine}
-        style={{ ...baseLine.style, opacity: open ? 0 : 1 }}
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        style={{
+          transformOrigin: "11px 11px",
+          transform: open ? "scaleX(0)" : "scaleX(1)",
+          opacity: open ? 0 : 1,
+          transition: `transform ${DUR}ms ${EASE}, opacity ${Math.round(DUR * 0.6)}ms ${EASE}`,
+        }}
       />
       <line
-        x1={open ? 5 : 4}
-        y1={open ? 17 : 15}
-        x2={open ? 17 : 18}
-        y2={open ? 5 : 15}
-        {...baseLine}
+        x1="4"
+        y1="16"
+        x2="18"
+        y2="16"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        style={{
+          transformOrigin: "11px 11px",
+          transform: open
+            ? "translateY(-5px) rotate(-45deg)"
+            : "translateY(0) rotate(0deg)",
+          transition: `transform ${DUR}ms ${EASE} 40ms`,
+        }}
       />
     </svg>
   );

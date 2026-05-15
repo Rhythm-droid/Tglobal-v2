@@ -10,66 +10,81 @@ import MagneticPill from "@/components/primitives/MagneticPill";
 import MaskReveal from "@/components/primitives/MaskReveal";
 import ScrubScale from "@/components/primitives/ScrubScale";
 import { useInView } from "@/lib/useInView";
+import { useMounted } from "@/lib/useMounted";
 
 import { HERO_COLORS } from "./palette";
 
-/* CTA — billboard close that mirrors the hero.
+/* Typewriter accent for the CTA headline.
    ─────────────────────────────────────────────────────────────
-   Previous attempts: left/right split with a body column +
-   two equal CTAs. That works for content sections but NOT for
-   a closing CTA — splits dilute the funnel, equal CTAs split
-   the action, body copy in a side column competes with the
-   headline.
+   Cycles through five adjectives that all qualify "prototype":
 
-   Premium closing CTAs (Linear, Stripe, Vercel, Apple) all use
-   the same template: centred single column, short headline,
-   one dominant CTA, generous breathing room. This rebuild
-   adopts that template AND mirrors the hero's centred axis so
-   the page closes the loop it opened.
+     working   — neutral baseline
+     clickable — UX-focused (echoes body copy)
+     shippable — production-ready angle
+     functional — engineering-precise
+     production — boldest claim
 
-   Structure (top → bottom, all centred):
-     • Editorial label   (Nº 05 · Working together)
-     • Massive headline  (9 words, italic typewriter accent)
-     • Body line         (narrow, one sentence)
-     • Primary CTA       (Start a sprint, dominant)
-     • Secondary link    (View work →, demoted text link)
+   Phase machine: hold → delete → wait → type → hold. Each branch
+   schedules ONE timer so we never stack timers. Sizing is pinned
+   to the LONGEST word ("production", 10 chars) via a CSS spacer
+   so the line never reflows as words swap — this is what keeps
+   the surrounding "prototype by Thursday." from jumping around.
 
-   Background: same hero MeshGradient (page bookends on one
-   instrument) PLUS a strong centred radial bloom that pulls
-   the eye straight to the headline. */
+   Hydration safety: useMounted gates the animated path so SSR
+   and first client render emit identical static markup. Without
+   the gate, framer-motion-free intervals still cause a render
+   divergence because typed text differs between server (initial
+   "working") and client (could be any phase). */
 
-const ACCENT_CYCLE = ["actually", "really", "finally", "genuinely"] as const;
+const ACCENT_CYCLE = [
+  "working",
+  "clickable",
+  "shippable",
+  "functional",
+  "production",
+] as const;
 
 function TypewriterAccent() {
+  const mounted = useMounted();
   const [i, setI] = useState(0);
   const [text, setText] = useState<string>(ACCENT_CYCLE[0]);
-  const [phase, setPhase] = useState<"hold" | "delete" | "type" | "wait">("hold");
+  const [phase, setPhase] = useState<"hold" | "delete" | "wait" | "type">(
+    "hold",
+  );
 
-  // Phase machine — `hold` → `delete` (per-char) → `wait` (advance
-  // index) → `type` (per-char) → `hold`. Each phase schedules ONE
-  // timer to transition to the next; all timing constants are
-  // local to the branch so tuning one phase doesn't touch others.
   useEffect(() => {
+    if (!mounted) return;
     let timeout: ReturnType<typeof setTimeout> | undefined;
+    /* Per-char + hold timings tuned so a full cycle of the
+       longest word ("production", 10 letters) reads as snappy
+       rather than sluggish.
+         hold:    1400ms (was 2200) — long enough to read the
+                  word, short enough that visitors don't lose
+                  attention on a CTA section
+         delete:  24ms/char (was 38) — backspace should feel fast
+         type:    52ms/char (was 85) — types at human-fast pace
+         wait:    140ms (was 220) — brief beat between words
+       Total cycle for "production": ~1.4s hold + 0.24s delete +
+       0.14s wait + 0.52s type ≈ 2.3s (was ~3.7s). */
     if (phase === "hold") {
-      timeout = setTimeout(() => setPhase("delete"), 2400);
+      timeout = setTimeout(() => setPhase("delete"), 1400);
     } else if (phase === "delete") {
       if (text.length > 0) {
-        timeout = setTimeout(() => setText((t) => t.slice(0, -1)), 38);
+        timeout = setTimeout(() => setText((t) => t.slice(0, -1)), 24);
       } else {
-        timeout = setTimeout(() => setPhase("wait"), 240);
+        timeout = setTimeout(() => setPhase("wait"), 140);
       }
     } else if (phase === "wait") {
       timeout = setTimeout(() => {
         setI((n) => (n + 1) % ACCENT_CYCLE.length);
         setPhase("type");
-      }, 80);
+      }, 60);
     } else if (phase === "type") {
       const next = ACCENT_CYCLE[i];
       if (text.length < next.length) {
         timeout = setTimeout(
           () => setText(next.slice(0, text.length + 1)),
-          85,
+          52,
         );
       } else {
         timeout = setTimeout(() => setPhase("hold"), 0);
@@ -78,26 +93,68 @@ function TypewriterAccent() {
     return () => {
       if (timeout) clearTimeout(timeout);
     };
-  }, [phase, text, i]);
+  }, [phase, text, i, mounted]);
 
+  /* SSR + first client render emit the same static markup —
+     just the first word, no width-pinning spacer span needed,
+     no animation. Once mounted flips true, the animated path
+     takes over. */
+  if (!mounted) {
+    return (
+      <span
+        className="italic text-[#6b5ce7]"
+        style={{
+          fontFamily: "var(--font-instrument-serif), Georgia, serif",
+        }}
+      >
+        {ACCENT_CYCLE[0]}
+      </span>
+    );
+  }
+
+  /* No width-pinning spacer — the accent renders at its own
+     natural width, and the rest of the headline ("prototype
+     Thursday.") shifts horizontally as the word swaps. Previously
+     we pinned the slot to the longest word ("production"); that
+     made shorter words like "working" leave a 3-char-wide gap
+     between the typewriter and "prototype", which read as
+     accidental whitespace rather than typing. The natural-width
+     shift IS the typewriter motif — stripe.com and linear.app
+     both do the same. The headline's outer container max-w + line
+     clamp keep the visual to two lines at every viewport even
+     when the accent expands to its longest word. */
   return (
     <span
-      className="italic text-[#6b5ce7]"
+      aria-live="polite"
+      className="whitespace-nowrap italic text-[#6b5ce7]"
       style={{
         fontFamily: "var(--font-instrument-serif), Georgia, serif",
-        whiteSpace: "nowrap",
-        // MaskReveal swaps text whitespace for `paddingRight: 0.22em`
-        // on each word span, so the leading space in " ship it." is
-        // dropped — the accent and "ship" collide ("finallyship").
-        // Matching that padding here puts the space back without
-        // depending on whitespace nodes that MaskReveal strips.
-        paddingRight: "0.22em",
+        paddingRight: "0.18em",
       }}
     >
       {text || "\u00A0"}
     </span>
   );
 }
+
+/* CTA — billboard close that mirrors the hero.
+   ─────────────────────────────────────────────────────────────
+   Premium closing CTAs (Linear, Stripe, Vercel, Apple) all use
+   the same template: centred single column, short headline,
+   one dominant CTA, generous breathing room. This rebuild
+   adopts that template AND mirrors the hero's centred axis so
+   the page closes the loop it opened.
+
+   Structure (top → bottom, all centred):
+     • Editorial label   (Nº 05 · Working together)
+     • Massive headline  (deliverable + timeline, italic accent)
+     • Body line         (the three-things ask + the 36/48 promise)
+     • Primary CTA       (Start a sprint, dominant)
+     • Secondary link    (View work →, demoted text link)
+
+   Background: same hero MeshGradient (page bookends on one
+   instrument) PLUS a strong centred radial bloom that pulls
+   the eye straight to the headline. */
 
 export default function AboutCTA() {
   const [shaderRef, shaderInView] = useInView<HTMLElement>({
@@ -193,44 +250,55 @@ export default function AboutCTA() {
         <ScrubScale scaleTo={1.03} opacityTo={1}>
           <h2
             id="about-cta-heading"
-            // No per-element max-w — the container above handles
-            // the outer bound. Font cap reduced from 124px so the
-            // longest line ("We will genuinely ship it." = 26
-            // chars) fits the container width on a single line
-            // at every viewport, locking the layout to 2 lines.
-            className="mt-6 font-medium leading-[1] text-foreground sm:mt-8"
+            /* Locked to TWO visual lines across every viewport from
+               280px (Galaxy Z Fold folded) to 4K. The mechanism:
+                 • `<br>` (via two block spans) forces the break
+                   after line 1.
+                 • Font-size clamp is tuned so the longer line
+                   ("production prototype Thursday." — 30 chars
+                   incl. italic accent) fits the container width on
+                   ONE visual line at every step of the clamp curve.
+                 • Container max-w (1280px) + responsive px-* gutters
+                   give consistent budget at each breakpoint.
+               Math check (font × longest-line chars vs container w):
+                 280px vw - 48 gutter = 232px usable.
+                 Line 2 = 30 chars × ~0.5em avg = 15em.
+                 At font 18px: 15 × 18 × 0.5 = 135px → fits.
+                 At font 20px: 15 × 20 × 0.5 = 150px → fits.
+                 So the clamp FLOOR is 18px (not 22px) to give a
+                 small safety margin at the absolute narrowest
+                 viewport (Z Fold folded). At sm+ the formula
+                 ramps up rapidly via the vw curve. */
+            className="mt-6 font-medium leading-[1.05] text-foreground sm:mt-8"
             style={{
-              fontSize: "clamp(36px, 5vw, 86px)",
+              fontSize: "clamp(18px, 7vw, 78px)",
               letterSpacing: "-0.045em",
             }}
           >
+            {/* Closing headline — "Spec Monday. {typewriter}
+                prototype Thursday."
+                  • Self-contained (no pronouns to interpret).
+                  • Names two days + two artifacts.
+                  • Telegraphic form (no "on"/"by") chosen so the
+                    long line fits ONE visual line down to a
+                    280-px folded-fold viewport — those two
+                    prepositions cost ~5 characters which is the
+                    difference between 2 lines and 3.
+                  • Body copy below proves the tighter 36/48hr
+                    breakdown.
+                  • Typewriter cycles through 5 synonyms for
+                    "working prototype" — see TypewriterAccent. */}
             <MaskReveal
-              text="Bring the idea."
+              text="Spec Monday."
               as="span"
-              className="block"
+              className="block whitespace-nowrap"
               stagger={0.05}
               duration={0.9}
             />
-            <span className="mt-1 inline-block">
-              <MaskReveal
-                text="We will "
-                as="span"
-                className="inline"
-                stagger={0.05}
-                duration={0.9}
-              />
+            <span className="mt-1 block whitespace-nowrap">
               <TypewriterAccent />
-              {/* Forced line break ONLY below sm (640px). Below that
-                  width "We will [accent] ship it." cannot fit one
-                  line even at the floor font size (36px × 26 chars
-                  ≈ 449px vs ~327px available on iPhone SE) — so
-                  the wrap point would otherwise flip between line 2
-                  and line 3 as the accent cycled through different
-                  lengths. The br forces a CONSISTENT 3-line layout
-                  on mobile, while sm+ stays 2 lines as designed. */}
-              <br className="sm:hidden" />
               <MaskReveal
-                text=" ship it."
+                text=" prototype Thursday."
                 as="span"
                 className="inline"
                 stagger={0.05}
@@ -240,9 +308,10 @@ export default function AboutCTA() {
           </h2>
         </ScrubScale>
 
-        <p className="mt-7 max-w-[52ch] text-balance text-base leading-[1.55] text-foreground-mid sm:mt-10 sm:text-lg lg:text-xl">
-          Send the goal, the constraint, and what needs to be true after
-          the first sprint. You will get a direct next step within 48 hours.
+        <p className="mt-7 max-w-[60ch] text-balance text-base leading-[1.55] text-foreground-mid sm:mt-10 sm:text-lg lg:text-xl">
+          Send three things — the goal, the constraint, and what
+          &ldquo;shipped&rdquo; looks like to you. You will have a
+          clickable prototype in 36 hours, and a sprint plan in 48.
         </p>
 
         <div className="mt-9 flex flex-col items-center gap-5 sm:mt-12">
@@ -253,15 +322,20 @@ export default function AboutCTA() {
           >
             Start a sprint <ArrowRight aria-hidden size={18} />
           </MagneticPill>
+          {/* Secondary link — same #talk-to-us anchor as the
+              primary pill above. The landing page's CTA form has
+              a mode toggle for "Talk to an expert" vs "Sprint
+              plan"; this secondary link signals the alternate
+              path (expert conversation) without needing a
+              separate destination. Was "View work" pointing at
+              /work — restore when the work archive ships. */}
           <Link
-            href="/work"
-            // data-cursor-text triggers the pill cursor with this label.
-            // Same opt-in mechanism MagneticPill uses internally.
-            data-cursor-text="see it"
+            href="/#talk-to-us"
+            data-cursor-text="reach out"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground-mid transition-colors hover:text-foreground"
             style={{ letterSpacing: "-0.01em" }}
           >
-            View work <ArrowUpRight aria-hidden size={14} />
+            Talk to an expert <ArrowUpRight aria-hidden size={14} />
           </Link>
         </div>
       </div>

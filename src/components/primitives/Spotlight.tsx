@@ -45,7 +45,6 @@
  */
 
 import { useEffect, useRef } from "react";
-import { useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/cn";
 
 interface SpotlightProps {
@@ -68,10 +67,10 @@ export default function Spotlight({
   as = "section",
 }: SpotlightProps) {
   const ref = useRef<HTMLElement>(null);
-  const reduceMotion = useReducedMotion();
+  /* Cursor-follow runs unconditionally — no reduced-motion early-out.
+     Brand decision: spotlight is part of the identity. */
 
   useEffect(() => {
-    if (reduceMotion) return;
     const el = ref.current;
     if (!el) return;
 
@@ -112,7 +111,7 @@ export default function Spotlight({
       el.removeEventListener("mouseleave", handleMouseLeave);
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
-  }, [reduceMotion, radius]);
+  }, [radius]);
 
   const Tag = as as React.ElementType;
 

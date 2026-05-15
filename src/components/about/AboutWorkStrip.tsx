@@ -2,9 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { ArrowUpRight } from "lucide-react";
-import Link from "next/link";
-
 import { AnimateIn, MaskReveal } from "@/components/primitives";
 import { ScrollBasedVelocity } from "@/components/ui/scroll-based-velocity";
 
@@ -42,19 +39,23 @@ interface CaseStudy {
   readonly tagline: string;
   readonly client: string;
   readonly headline: string;
-  /* Display value for the stat hero. Format-agnostic — can be
-     "38" + suffix "%", or a "14 → 4" rate, or a "19" + "DAYS"
-     unit. Numeric `target` is used for the count-up animation;
-     `prefix`/`suffix` render around it without animating. The
-     `formatRate` flag swaps in a "before → after" rendering for
-     cases where two numbers tell the story better than one. */
+  /* Two-signal stat hero instead of a single count-up number.
+     We don't have client-approved performance metrics to publish
+     (conversion %, time-savings, etc.), so the hero is anchored
+     on facts that are 100% defensible from the codebase:
+       • `primary`  — the loud number (e.g. "20" for module count)
+       • `primaryLabel` — what that number IS (e.g. "modules")
+       • `secondary`— the smaller secondary number (e.g. "2025")
+       • `secondaryLabel` — what that number IS (e.g. "shipped")
+     Both numbers animate via the same count-up easing — the
+     secondary just renders smaller and to the side. The labels
+     are mono-uppercase to read as instrument readouts rather
+     than marketing copy. */
   readonly stat: {
-    readonly prefix?: string;
-    readonly target: number;
-    readonly suffix?: string;
-    readonly rateFrom?: number;
-    readonly rateTo?: number;
-    readonly unit: string;
+    readonly primary: number;
+    readonly primaryLabel: string;
+    readonly secondary: number;
+    readonly secondaryLabel: string;
   };
   readonly outcome: string;
   readonly services: readonly string[];
@@ -65,34 +66,70 @@ interface CaseStudy {
 const CASES: readonly CaseStudy[] = [
   {
     slug: "skyline",
-    tagline: "Travel · 2024",
+    tagline: "Elevator Industry · 2025",
     client: "Skyline",
-    headline: "Booking flow rebuilt in two sprints.",
-    stat: { prefix: "+", target: 38, suffix: "%", unit: "conversion lift" },
-    outcome: "Audit-clean cutover, zero downtime in production.",
-    services: ["React", "Postgres", "Stripe"],
+    headline:
+      "Proposal-to-contract platform for an NYC elevator firm.",
+    /* 12 = real top-level page modules under src/pages/
+         (Admin, CreateDashboard, PaymentTable, Procument, auth,
+          coming-soon, dashboard, directory, inspections,
+          not-found, proposalDashboard, users). Counted from the
+          actual repo, not inflated. */
+    stat: {
+      primary: 12,
+      primaryLabel: "modules shipped",
+      secondary: 2025,
+      secondaryLabel: "live since",
+    },
+    outcome:
+      "Gmail-integrated proposals, multi-elevator grouping, inspections, payment phases.",
+    services: ["React", "Redux", "Radix", "Google Maps", "Gmail API"],
     accent: "#4b28ff",
     status: "Live",
   },
   {
     slug: "medcollect",
-    tagline: "Healthcare · 2024",
+    tagline: "Healthcare · 2025",
     client: "MedCollect",
-    headline: "Clinical intake from 14 mins to 4.",
-    stat: { rateFrom: 14, rateTo: 4, target: 4, unit: "minutes per intake" },
-    outcome: "Audit-ready logs, 0 PHI leaks at launch.",
-    services: ["Next.js", "OpenAI", "HIPAA"],
+    headline:
+      "Claims, ERA/EOB and patient management for a US billing team.",
+    /* 20 = real backend modules under src/modules/ of
+         med-collect-BACKEND (activity-logs, auth, billing-
+         entities, claims, common, cpt-code-rates, cpt-codes, era,
+         facilities, groups, manual-eob, patient-insurance,
+         patients, payers, permissions, profile, providers,
+         queue, roles, system, users). Defensible from `ls`. */
+    stat: {
+      primary: 20,
+      primaryLabel: "backend modules",
+      secondary: 2025,
+      secondaryLabel: "live since",
+    },
+    outcome:
+      "Cookie-session RBAC, field-level encryption, single-session auth.",
+    services: ["React", "TanStack Query", "Hapi", "MongoDB", "AWS S3"],
     accent: "#fc5038",
     status: "Live",
   },
   {
     slug: "jijibai",
-    tagline: "Marketplace · 2023",
+    tagline: "Inventory & Billing · 2025",
     client: "Jijibai",
-    headline: "Marketplace shipped before the launch press.",
-    stat: { target: 19, suffix: " days", unit: "concept → production" },
-    outcome: "Built, reviewed, deployed, indexed.",
-    services: ["Remix", "Supabase", "Algolia"],
+    headline:
+      "Vendor dashboard for inventory, billing, returns and refunds.",
+    /* 13 = real backend controllers under
+         jijibai-dashboard/server/src/controllers (auth, backup,
+         bills, customers, dashboard, errorlog, expenses,
+         products, returns, settings, trash, upload, users). */
+    stat: {
+      primary: 13,
+      primaryLabel: "controllers built",
+      secondary: 2025,
+      secondaryLabel: "live since",
+    },
+    outcome:
+      "Barcode + QR, PDF invoicing, Cloudinary storage, audit logs, soft-delete trash.",
+    services: ["React 19", "Express", "MongoDB", "Cloudinary", "JWT"],
     accent: "#00a656",
     status: "Live",
   },
@@ -130,6 +167,10 @@ function useEnteredViewport<T extends HTMLElement>() {
   useEffect(() => {
     const node = ref.current;
     if (!node || typeof IntersectionObserver === "undefined") {
+      /* Fallback: if IntersectionObserver isn't available, assume
+         entered so the count-up animation isn't permanently stuck
+         at 0. Intentional inverse of the normal observer flow. */
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEntered(true);
       return;
     }
@@ -164,69 +205,83 @@ function StatHero({
   entered: boolean;
   size?: "primary" | "secondary" | "banner";
 }) {
-  const fromValue = useCountUp(stat.rateFrom ?? 0, entered && stat.rateFrom != null);
-  const toValue = useCountUp(stat.target, entered);
+  const primaryValue = useCountUp(stat.primary, entered);
+  /* Year doesn't count up — a 0 → 2025 roll reads as a phone
+     number. Render the year statically once the card has entered
+     the viewport (entered === true means the rest of the card
+     has already animated in, so a static year doesn't feel
+     dead against an animating primary). */
+  const secondaryValue = entered ? stat.secondary : 0;
 
-  const sizeMap = {
+  const primarySizeMap = {
     primary: "clamp(72px, 9vw, 144px)",
     secondary: "clamp(56px, 6.5vw, 104px)",
     banner: "clamp(80px, 10vw, 160px)",
   } as const;
-  const unitSizeMap = {
-    primary: "clamp(13px, 1vw, 16px)",
-    secondary: "clamp(12px, 0.9vw, 14px)",
-    banner: "clamp(14px, 1.1vw, 18px)",
+  const secondarySizeMap = {
+    primary: "clamp(22px, 2vw, 32px)",
+    secondary: "clamp(20px, 1.8vw, 28px)",
+    banner: "clamp(26px, 2.4vw, 38px)",
+  } as const;
+  const labelSizeMap = {
+    primary: "clamp(11px, 0.9vw, 13px)",
+    secondary: "clamp(10px, 0.85vw, 12px)",
+    banner: "clamp(12px, 1vw, 14px)",
   } as const;
 
   return (
     <div className="flex flex-col items-start">
+      {/* Primary number — the loud "modules shipped" / "controllers
+          built" count. Anchors the card. */}
       <div
         className="flex items-baseline font-medium leading-[0.9] text-foreground"
         style={{
-          fontSize: sizeMap[size],
+          fontSize: primarySizeMap[size],
           letterSpacing: "-0.05em",
         }}
       >
-        {stat.rateFrom != null ? (
-          <>
-            <span className="tabular-nums">{fromValue}</span>
-            <span
-              aria-hidden
-              className="mx-3 text-foreground/35"
-              style={{ fontSize: "0.7em", letterSpacing: 0 }}
-            >
-              →
-            </span>
-            <span className="tabular-nums">{toValue}</span>
-          </>
-        ) : (
-          <>
-            {stat.prefix && (
-              <span className="mr-[0.02em]">{stat.prefix}</span>
-            )}
-            <span className="tabular-nums">{toValue}</span>
-            {stat.suffix && (
-              <span
-                style={{ fontSize: "0.55em", marginLeft: "0.06em" }}
-                className="tabular-nums"
-              >
-                {stat.suffix}
-              </span>
-            )}
-          </>
-        )}
+        <span className="tabular-nums">{primaryValue}</span>
       </div>
       <p
         className="mt-4 text-foreground-mid"
         style={{
           fontFamily: "var(--font-mono), monospace",
-          fontSize: unitSizeMap[size],
+          fontSize: labelSizeMap[size],
           letterSpacing: "0.14em",
           textTransform: "uppercase",
         }}
       >
-        {stat.unit}
+        {stat.primaryLabel}
       </p>
+      {/* Secondary number — the launch year, rendered smaller and
+          separated by a hairline rule so it reads as a sub-stat,
+          not a competing value. The two-signal layout replaces the
+          single count-up percentage we used to invent. */}
+      <div
+        aria-hidden
+        className="mt-6 h-px w-12 bg-foreground/15"
+      />
+      <div
+        className="mt-4 flex items-baseline gap-3 text-foreground/85"
+        style={{
+          fontSize: secondarySizeMap[size],
+          letterSpacing: "-0.03em",
+          fontWeight: 500,
+        }}
+      >
+        <span className="tabular-nums">{secondaryValue}</span>
+        <span
+          className="text-foreground-mid"
+          style={{
+            fontFamily: "var(--font-mono), monospace",
+            fontSize: labelSizeMap[size],
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+          }}
+        >
+          {stat.secondaryLabel}
+        </span>
+      </div>
     </div>
   );
 }
@@ -293,10 +348,17 @@ function CaseCard({
   return (
     <AnimateIn y={28} delay={index * 0.08}>
       <div ref={ref} className="h-full">
-        <Link
-          href={`/work/${c.slug}`}
-          data-cursor-text="view it"
-          className="group relative flex h-full flex-col overflow-hidden rounded-sm border border-foreground/12 bg-[var(--color-paper-cream,#fdfaf2)] p-8 transition-[border-color,box-shadow,transform] duration-500 ease-out hover:-translate-y-1 hover:border-foreground/30 hover:shadow-[0_28px_64px_-30px_rgba(75,40,255,0.22)] sm:p-10 lg:p-12"
+        {/* Static (non-clickable) case card — /work/<slug> detail
+            pages aren't shipping in this launch scope, so we render
+            the card as a passive editorial tile rather than a link.
+            Hover lift/shadow + chevron icon were removed because
+            both signalled "click me" to a destination that doesn't
+            exist yet. The accent bloom, live pulse, and grow-rule
+            stay — those are passive visual flair, not interaction
+            affordances. Wrap this back in <Link> + restore the
+            chevron/hover treatment when /work/[slug] ships. */}
+        <div
+          className="relative flex h-full flex-col overflow-hidden rounded-sm border border-foreground/12 bg-[var(--color-paper-cream,#fdfaf2)] p-8 sm:p-10 lg:p-12"
           style={{ minHeight: isBanner ? "auto" : "100%" }}
         >
           {/* Accent radial bloom — bottom-right, tinted with case
@@ -397,25 +459,20 @@ function CaseCard({
                 </span>
               ))}
             </div>
-            <ArrowUpRight
-              aria-hidden
-              size={22}
-              className="shrink-0 text-foreground/55 transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-foreground"
-            />
           </div>
 
           {/* Accent rule — sits flush at the card's bottom edge,
               flush-left of the content padding so it reads as the
-              underline UNDER the services chips. Grows 48 → 128px
-              on hover. Negative margin compensates for the card's
-              padding so the rule starts at the actual left edge,
-              not at the content's left edge. */}
+              underline UNDER the services chips. Fixed-width now
+              that the card is non-clickable — there's no hover
+              state to grow on. Restore the 48 → 128px transition
+              when the card is re-linked. */}
           <span
             aria-hidden
-            className="absolute bottom-0 left-0 h-[3px] w-12 transition-[width] duration-500 group-hover:w-32"
+            className="absolute bottom-0 left-0 h-[3px] w-12"
             style={{ background: c.accent }}
           />
-        </Link>
+        </div>
       </div>
     </AnimateIn>
   );
@@ -447,15 +504,13 @@ export default function AboutWorkStrip() {
               }}
             />
           </div>
-          <Link
-            href="/work"
-            data-cursor-text="all work"
-            className="inline-flex items-center gap-2 self-start text-base font-medium text-foreground hover:text-primary lg:col-span-5 lg:justify-end lg:text-lg"
-            style={{ letterSpacing: "-0.02em" }}
-          >
-            See all case studies
-            <ArrowUpRight aria-hidden size={18} />
-          </Link>
+          {/* "See all case studies" link was here, pointing to
+              /work. Hidden for this launch — the /work archive
+              page hasn't shipped, so the link would dead-end on a
+              404. Restore once /work is live. The col-span gap
+              on the right of the header (col-span-5) is now
+              empty whitespace, which reads as breathing room
+              rather than a missing affordance. */}
         </div>
 
         {/* Velocity marquee — real client names cycling. Edge

@@ -129,7 +129,7 @@ export default function LogoLoader({
     return () => {
       animations.forEach((a) => a.cancel());
     };
-  }, []);
+  }, [colorActive, colorRest]);
 
   return (
     <span

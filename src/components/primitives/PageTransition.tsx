@@ -36,10 +36,10 @@
  *   render simultaneously, causing layout flash. "wait" lets the
  *   exit complete before the new page paints — visually clean.
  *
- * Reduced-motion contract:
- *   `useReducedMotion()` from framer-motion reads the OS-level
- *   `prefers-reduced-motion` setting. When true, we shorten the
- *   fade to 100ms (still fade to communicate "page changed").
+ * Reduced-motion:
+ *   Animation runs unconditionally — brand decision. The historical
+ *   reduced-motion duration short-circuit (100 ms fade for users
+ *   with `prefers-reduced-motion: reduce`) has been removed.
  *
  * Server-component compatibility:
  *   This file is "use client" because framer-motion needs the DOM
@@ -48,7 +48,7 @@
  *   through client component children just fine.
  */
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 
 interface PageTransitionProps {
@@ -57,14 +57,15 @@ interface PageTransitionProps {
 
 export default function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname();
-  const reduceMotion = useReducedMotion();
 
   /* Cubic-bezier (0.22, 1, 0.36, 1) — same easing curve used by every
      other primitive on the site (AnimateIn, MagneticPill, etc). Keeps
      the motion language consistent: a soft start, a strong middle, a
      gentle settle. */
   const ease = [0.22, 1, 0.36, 1] as const;
-  const duration = reduceMotion ? 0.1 : 0.24;
+  /* Animation runs for every visitor — brand decision. No
+     reduced-motion duration short-circuit. */
+  const duration = 0.24;
 
   return (
     <AnimatePresence mode="wait" initial={false}>

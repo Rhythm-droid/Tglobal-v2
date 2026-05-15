@@ -39,7 +39,7 @@
  *   • Above-the-fold hero copy that should be paint-instant for LCP.
  */
 
-import { motion, useReducedMotion, type Variants } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { useMemo } from "react";
 import { cn } from "@/lib/cn";
 import { splitWords } from "@/lib/splitWords";
@@ -70,7 +70,11 @@ export default function WordReveal({
   yOffset = 12,
   className,
 }: WordRevealProps) {
-  const reduceMotion = useReducedMotion();
+  /* Animation runs for every visitor regardless of
+     `prefers-reduced-motion` — brand decision. The mounted gate is
+     still required so SSR + first client render emit identical
+     markup (avoids hydration mismatch on framer-motion's variant
+     tree). */
   const mounted = useMounted();
   /* `useMemo` so re-renders don't re-tokenize a static string. Cheap
      for short paragraphs but adds up if the parent re-renders often
@@ -79,13 +83,9 @@ export default function WordReveal({
 
   const Tag = motion[as] as React.ElementType;
 
-  /* Static fallback path. Two cases:
-       • SSR + first client render (mounted === false): renders plain
-         text so hydration is clean. See `useMounted` for rationale.
-       • Reduced-motion users (post-mount): renders plain text with a
-         soft 0.2s opacity fade — content still appears, no spatial
-         choreography. */
-  if (!mounted || reduceMotion) {
+  /* SSR + first client render — static path so server/client match.
+     No aria-label: visible text already provides the accessible name. */
+  if (!mounted) {
     return (
       <Tag
         initial={mounted ? { opacity: 0 } : false}
@@ -93,7 +93,6 @@ export default function WordReveal({
         viewport={{ once: true, amount: 0.2 }}
         transition={{ duration: 0.2 }}
         className={cn(className)}
-        aria-label={text}
       >
         {text}
       </Tag>
@@ -121,8 +120,12 @@ export default function WordReveal({
       whileInView="visible"
       viewport={{ once: true, amount: 0.2 }}
       className={cn(className)}
-      aria-label={text}
     >
+      {/* sr-only label — per-word spans below are aria-hidden so AT users
+          would otherwise hear nothing. aria-label is prohibited on
+          headings; an sr-only sibling satisfies axe while preserving the
+          word-stagger animation. */}
+      <span className="sr-only">{text}</span>
       {words.map((w, i) => (
         <span
           key={`${i}-${w}`}

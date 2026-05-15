@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion, type Variants } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { useMemo } from "react";
 
 import { cn } from "@/lib/cn";
@@ -38,16 +38,17 @@ export default function BlurUnblur({
   className,
   style,
 }: BlurUnblurProps) {
-  const reduceMotion = useReducedMotion();
+  /* Animation runs for every visitor regardless of
+     `prefers-reduced-motion` — brand decision. */
   const mounted = useMounted();
   const words = useMemo(() => splitWords(text), [text]);
   const Tag = motion[as] as React.ElementType;
 
-  /* Static fallback: SSR + first client render + reduced-motion users.
-     See `useMounted` for the rationale. */
-  if (!mounted || reduceMotion) {
+  /* SSR + first client render — static path for hydration parity.
+     No aria-label needed: the visible text content IS the accessible name. */
+  if (!mounted) {
     return (
-      <Tag className={cn(className)} style={style} aria-label={text}>
+      <Tag className={cn(className)} style={style}>
         {text}
       </Tag>
     );
@@ -75,8 +76,14 @@ export default function BlurUnblur({
       viewport={{ once: true, amount }}
       className={cn(className)}
       style={style}
-      aria-label={text}
     >
+      {/* Screen-reader-only copy of the full text. The animated word spans
+          below are aria-hidden so AT users would otherwise hear nothing.
+          aria-label on a heading is forbidden by ARIA-in-HTML; an sr-only
+          child satisfies axe's `aria-prohibited-attr` rule while keeping
+          the visual animation intact. The `Tailwind sr-only` class is
+          defined by globals.css / Tailwind preflight. */}
+      <span className="sr-only">{text}</span>
       {words.map((w, i) => (
         <span
           key={`${i}-${w}`}

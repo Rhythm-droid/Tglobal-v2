@@ -26,19 +26,20 @@
  *     so AT announces once per cycle.
  *
  * Reduced motion:
- *   When `prefers-reduced-motion: reduce` is set, animation is
- *   disabled entirely; the first word renders statically.
+ *   Animation runs unconditionally — brand decision (see
+ *   MotionProvider). The mounted gate below stays in place purely
+ *   for hydration safety, not for accessibility opt-out.
  *
  * Hydration safety:
- *   `useReducedMotion()` returns null on the server and the real
- *   value on the first client render. To avoid a hydration mismatch
- *   we render the static path on SSR + first client render via the
- *   `useMounted` gate, then upgrade to the animated tree on the
- *   second render.
+ *   SSR + first client render must emit identical markup to avoid a
+ *   hydration mismatch on framer-motion's AnimatePresence tree. The
+ *   `useMounted` gate renders the static first-word span on SSR and
+ *   the very first client paint, then swaps to the animated tree on
+ *   the post-mount render.
  */
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { cn } from "@/lib/cn";
 import { useMounted } from "@/lib/useMounted";
@@ -72,17 +73,22 @@ export default function RotatingWord({
   duration = 0.55,
   className,
 }: RotatingWordProps) {
-  const reduceMotion = useReducedMotion();
+  /* Animation runs for every visitor regardless of
+     `prefers-reduced-motion` — brand decision. The mounted gate is
+     still required to prevent a hydration mismatch: SSR renders the
+     first word statically; after mount, the animated rotator takes
+     over. Without the gate, framer-motion's AnimatePresence emits
+     different markup on the server vs. the client's first paint. */
   const mounted = useMounted();
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    if (!mounted || reduceMotion || words.length <= 1) return;
+    if (!mounted || words.length <= 1) return;
     const id = window.setInterval(() => {
       setIndex((i) => (i + 1) % words.length);
     }, interval);
     return () => window.clearInterval(id);
-  }, [interval, mounted, reduceMotion, words.length]);
+  }, [interval, mounted, words.length]);
 
   const current = words[index] ?? words[0] ?? "";
   /* Longest word determines the sizing-spacer width. Computed
@@ -90,9 +96,9 @@ export default function RotatingWord({
      but trivial. */
   const longest = words.reduce((a, b) => (a.length >= b.length ? a : b), "");
 
-  /* Static path: SSR + first client render + reduced-motion users +
-     single-word lists. Identical markup on server and client. */
-  if (!mounted || reduceMotion || words.length <= 1) {
+  /* SSR + first client render + single-word lists fall through to a
+     static span so server/client paint identical markup. */
+  if (!mounted || words.length <= 1) {
     return <span className={className}>{current}</span>;
   }
 

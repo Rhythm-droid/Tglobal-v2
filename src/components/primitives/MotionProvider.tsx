@@ -5,11 +5,16 @@ import type { ReactNode } from "react";
 
 /**
  * Global motion provider.
- * `reducedMotion="user"` makes framer-motion strip transform/scale/rotate
- * animations (keeping opacity) automatically for users who opted into
- * prefers-reduced-motion. Opting into this at the root is the only way to
- * avoid per-component SSR/client mismatches from useReducedMotion().
+ * `reducedMotion="never"` opts the whole app OUT of framer-motion's
+ * automatic transform/scale/rotate stripping for users with
+ * `prefers-reduced-motion: reduce` set. Brand decision: motion is
+ * core to the identity and runs at full fidelity for every visitor
+ * regardless of OS-level motion preferences.
+ *
+ * If accessibility compliance ever becomes a hard requirement (gov
+ * contracts, EU EAA, ADA, Section 508), flip this back to "user" —
+ * framer-motion will resume honoring the OS setting site-wide.
  */
 export default function MotionProvider({ children }: { children: ReactNode }) {
-  return <MotionConfig reducedMotion="user">{children}</MotionConfig>;
+  return <MotionConfig reducedMotion="never">{children}</MotionConfig>;
 }

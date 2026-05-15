@@ -1,6 +1,6 @@
 "use client";
 
-import { useScroll, useTransform, motion, useReducedMotion } from "framer-motion";
+import { useScroll, useTransform, motion } from "framer-motion";
 import { useRef } from "react";
 
 import { cn } from "@/lib/cn";
@@ -42,7 +42,8 @@ export default function ColorSweep({
   className,
   style,
 }: ColorSweepProps) {
-  const reduceMotion = useReducedMotion();
+  /* Animation runs for every visitor regardless of
+     `prefers-reduced-motion` — brand decision. */
   const mounted = useMounted();
   const ref = useRef<HTMLElement | null>(null);
 
@@ -60,10 +61,10 @@ export default function ColorSweep({
   const sweepPercent = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
   const Tag = motion[as] as React.ElementType;
 
-  /* Static fallback: SSR + first client render + reduced-motion users.
-     Renders with the final ("filled") color so content is fully
-     legible without the scroll-tied sweep. See `useMounted`. */
-  if (!mounted || reduceMotion) {
+  /* SSR + first client render — static path with the final ("filled")
+     color so server/client paint identically and content is legible
+     before the scroll-tied sweep takes over. */
+  if (!mounted) {
     return (
       <Tag className={cn(className)} style={{ ...style, color: to }}>
         {text}

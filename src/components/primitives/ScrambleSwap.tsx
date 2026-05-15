@@ -47,7 +47,6 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/cn";
 
@@ -74,16 +73,12 @@ export default function ScrambleSwap({
   randomRefreshMs = 75,
   className,
 }: ScrambleSwapProps) {
-  const reduceMotion = useReducedMotion();
+  /* Scramble runs unconditionally. Brand decision: motion is part of
+     the identity, no reduced-motion early-out. */
   const [display, setDisplay] = useState(text);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (reduceMotion) {
-      setDisplay(text);
-      return;
-    }
-
     /* Cancel any in-progress scramble so rapidly-changing text props
        (e.g. user scrubbing scroll back and forth across a threshold)
        don't pile rAF loops on top of each other. */
@@ -150,7 +145,7 @@ export default function ScrambleSwap({
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [text, duration, chars, randomRefreshMs, reduceMotion]);
+  }, [text, duration, chars, randomRefreshMs]);
 
   return (
     <span

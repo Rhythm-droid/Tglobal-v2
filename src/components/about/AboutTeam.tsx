@@ -64,10 +64,17 @@ const FOUNDERS: readonly Founder[] = [
     initials: "CG",
     name: "Chandan Gupta",
     role: "Co-founder · Forward Deployed Engineer",
+    /* Anchor is the slot that actually renders on the card (see
+       CaseCard render below — `founder.anchor`, not `founder.bio`).
+       We put the long-form bio paragraph here so it's what visitors
+       see. The `bio` field below is kept populated for the interface
+       contract; if it's ever wired into a "read more" expansion or
+       a /team detail page later, having it filled keeps that work
+       to a one-line render edit. */
     anchor:
-      "Cut MedCollect's clinical intake from 14 minutes to 4 by replacing a 200-line form with an LLM intake agent.",
-    bio: "Six years architecting data systems across finance and healthcare in the US, EU, and APAC. Specialty: translating compliance-heavy requirements into scalable roadmaps and pulling delivery from months into days.",
-    note: "I personally review every PR that ships. — CG",
+      "Six years building compliance-grade data systems for finance and healthcare clients in the US, Europe, and APAC. Replaces manual fragmentation with a single source of truth, and compresses two-month delivery cycles into four days.",
+    bio: "Six years building compliance-grade data systems for finance and healthcare clients in the US, Europe, and APAC. Replaces manual fragmentation with a single source of truth, and compresses two-month delivery cycles into four days.",
+    note: "I review what I architect. — CG",
     email: "chandan@tglobal.in",
     portraitColors: ["#4b28ff", "#7d5cff", "#bd70f6", "#e7dffd", "#fbf8f1"],
   },
@@ -76,9 +83,15 @@ const FOUNDERS: readonly Founder[] = [
     initials: "DG",
     name: "Dhruv Gupta",
     role: "Co-founder · Technical Project Manager",
+    /* Anchor renders on the card. We use the same long-bio
+       paragraph treatment as Chandan above so the two founder
+       cards read as a matched pair (same sentence rhythm, same
+       claim density). The `bio` field below mirrors the anchor
+       for the same reason Chandan's does — keeps the contract
+       intact for any future "read more" expansion. */
     anchor:
-      "Rebuilt Skyline's booking flow in two sprints with zero downtime on cutover — +38% conversion the next quarter.",
-    bio: "Seven years driving AI-native engineering execution. Bridges business logic and shipping reality so the team always knows what 'done' looks like — and gets there without waste.",
+      "Seven years of AI-native engineering execution for enterprise teams. Bridges complex business logic with rapid deployment, and cuts lead times by 8% while raising quality by 10%.",
+    bio: "Seven years of AI-native engineering execution for enterprise teams. Bridges complex business logic with rapid deployment, and cuts lead times by 8% while raising quality by 10%.",
     note: "If we said two weeks, it ships in two weeks. — DG",
     email: "dhruv@tglobal.in",
     portraitColors: ["#1a1233", "#2d1f5e", "#6b5ce7", "#c5baff", "#fbf8f1"],
@@ -87,14 +100,16 @@ const FOUNDERS: readonly Founder[] = [
     slug: "rhythm",
     initials: "RM",
     name: "Rhythm Mittal",
-    /* TODO — confirm role/anchor with Rhythm. Placeholder copy
-       below mirrors the style of the other two so the card reads
-       coherently in dev. Replace before pushing to prod. */
-    role: "Co-founder · Engineer",
+    role: "Full-stack Engineer",
+    /* Anchor mirrors the rhythm of the founder bios above
+       (Chandan + Dhruv) — "X across Y. [Verb action], and [verb
+       action]." — so the three cards read as a coherent set. The
+       claims are defensible from the engineer's actual shipped
+       work (MERN + Next.js portfolio across six live products). */
     anchor:
-      "Shipped the TGlobal revamp from the manifesto down — pinned hero, scroll-linked principles, brand-mark loader.",
-    bio: "Full-stack engineer with a designer's eye. Sweats the half-pixel details and the half-second interactions — the parts users feel but can't name.",
-    note: "Half-pixel details are still details. — RM",
+      "Full-stack engineer working across modern web stacks. Builds production systems end-to-end on MERN and Next.js, and ships them with the engineer's name attached.",
+    bio: "Full-stack engineer working across modern web stacks. Builds production systems end-to-end on MERN and Next.js, and ships them with the engineer's name attached.",
+    note: "If I shipped it, I'll debug it at 2am. — RM",
     email: "rhythm@tglobal.in",
     /* Cool-tone palette to match the other two founder cards.
        Warm orange (the previous seed) broke the trio's visual
@@ -112,6 +127,11 @@ function useViewportPause<T extends HTMLElement>() {
   useEffect(() => {
     const node = ref.current;
     if (!node || typeof IntersectionObserver === "undefined") {
+      /* Fallback for environments without IntersectionObserver
+         (e.g. older browsers, JSDOM in tests): assume the element
+         is "active" so animations never silently stall. This is the
+         intentional inverse of the observer's behaviour. */
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActive(true);
       return;
     }
@@ -124,6 +144,30 @@ function useViewportPause<T extends HTMLElement>() {
   }, []);
   return { ref, active };
 }
+
+/* Build-time registry of which founders have which assets in
+   /public/team/. Add an entry to either map when you drop the
+   file in — that flips the card from Warp-shader fallback to the
+   real photo / note image. Until then we DO NOT issue a request
+   for the file, so the dev console stays clean and we save a
+   round-trip per founder on every page load even in prod.
+
+   The value is the FILE EXTENSION ("jpg", "png", "webp" …) — that
+   way each founder can carry the format that best fits their
+   asset (PNGs for crisp edges / alpha, JPGs for photographic
+   headshots) without forcing a re-encode just to match the code.
+
+   Previous implementation did a runtime Image() existence-check
+   per card — which fired a 404 per founder per page load, polluting
+   the dev console with 6+ red errors and costing 6 HEAD requests
+   in prod long after real assets were in place. */
+const FOUNDERS_PORTRAIT_EXT: Readonly<Record<string, string>> = {
+  chandan: "png",
+  // Add slug → ext here when the photo lands in /public/team/<slug>.<ext>
+};
+const FOUNDERS_NOTE_EXT: Readonly<Record<string, string>> = {
+  // Add slug → ext here when the note lands in /public/team/<slug>-note.<ext>
+};
 
 function FounderCard({
   founder,
@@ -139,27 +183,24 @@ function FounderCard({
 }) {
   const { ref, active } = useViewportPause<HTMLDivElement>();
   const [flipped, setFlipped] = useState(false);
-  const portraitSrc = `/team/${founder.slug}.jpg`;
-  const noteSrc = `/team/${founder.slug}-note.jpg`;
 
-  /* Image-existence is checked via an Image() preload — Next.js
-     doesn't expose a sync "does this file exist" API in client
-     code. If the load fails (404), we fall through to the Warp
-     shader portrait. Same pattern for the back-flip note photo. */
-  const [hasPortrait, setHasPortrait] = useState<boolean>(false);
-  const [hasNote, setHasNote] = useState<boolean>(false);
-  useEffect(() => {
-    const img = new Image();
-    img.onload = () => setHasPortrait(true);
-    img.onerror = () => setHasPortrait(false);
-    img.src = portraitSrc;
-  }, [portraitSrc]);
-  useEffect(() => {
-    const img = new Image();
-    img.onload = () => setHasNote(true);
-    img.onerror = () => setHasNote(false);
-    img.src = noteSrc;
-  }, [noteSrc]);
+  /* Photo / note assets are resolved through the registry maps
+     above. The map's value is the file extension so each founder
+     can ship the right format for their image (e.g. PNG when alpha
+     or edge crispness matter, JPG for plain headshots). An entry
+     missing from the map = no asset → render the Warp shader
+     fallback. */
+  const portraitExt = FOUNDERS_PORTRAIT_EXT[founder.slug];
+  const noteExt = FOUNDERS_NOTE_EXT[founder.slug];
+  const portraitSrc = portraitExt
+    ? `/team/${founder.slug}.${portraitExt}`
+    : "";
+  const noteSrc = noteExt
+    ? `/team/${founder.slug}-note.${noteExt}`
+    : "";
+
+  const hasPortrait = portraitExt != null;
+  const hasNote = noteExt != null;
 
   const nameSize =
     emphasis === "primary"
@@ -430,8 +471,8 @@ export default function AboutTeam() {
                 letterSpacing: "-0.01em",
               }}
             >
-              &ldquo;Small studio, senior bench. Nothing ships without
-              going past one of us first.&rdquo;
+              &ldquo;You hire us, you get us. The names on the
+              contract are the people on your keyboard.&rdquo;
             </p>
             <p
               className="mt-4 text-sm text-foreground-mid"

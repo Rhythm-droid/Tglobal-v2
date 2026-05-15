@@ -23,10 +23,10 @@ interface AnimateInProps {
  * the JS cost is a one-shot IntersectionObserver per element that
  * disconnects after firing.
  *
- * Reduced motion is honored via the `@media (prefers-reduced-motion)`
- * rule in globals.css that targets `[data-animate-in]` — server and
- * client render identical markup, CSS flips the final styles at the
- * browser level, no hydration mismatch.
+ * Reduced motion: animation runs unconditionally — brand decision.
+ * The historical CSS `@media (prefers-reduced-motion)` override that
+ * pinned `[data-animate-in]` to its final state has been removed
+ * from globals.css.
  */
 export default function AnimateIn({
   children,
@@ -41,12 +41,10 @@ export default function AnimateIn({
     const el = ref.current;
     if (!el) return;
 
-    // Respect reduced-motion: skip the observer entirely — the CSS rule
-    // in globals.css already pins [data-animate-in] to its final state.
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      el.setAttribute("data-in-view", "");
-      return;
-    }
+    /* Reveal animation runs unconditionally — no reduced-motion
+       short-circuit. Brand decision: scroll-tied reveals are part
+       of the identity. (Previous code skipped the observer and set
+       data-in-view immediately for `prefers-reduced-motion` users.) */
 
     const io = new IntersectionObserver(
       (entries) => {

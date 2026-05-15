@@ -45,55 +45,16 @@
  *     trigger button so screen readers announce the question when
  *     focus enters the answer text. */
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useState } from "react";
+import { FAQ_ITEMS } from "./faq-data";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-/* ─── Content ────────────────────────────────────────────────────
- *
- * Questions adapted from the reference image but rewritten for
- * TGlobal's actual business. The reference assumes a retail-only
- * studio; TGlobal works across healthcare, supply chain, fintech,
- * and consumer marketplaces, so the "Do you only work with retail
- * companies?" question becomes a broader "What kinds of teams do
- * you work with?". Copy stays in the founder's voice — concrete,
- * unhedged, no filler. */
-const FAQ_ITEMS: ReadonlyArray<{
-  question: string;
-  answer: string;
-}> = [
-  {
-    question: "How are you different from a traditional dev agency?",
-    answer:
-      "Two things. First, we don't bill engineering time. We commit to outcomes per sprint, and we eat the overruns if they happen. Second, our agent stack lets a small team deliver what a much bigger team usually does. The combination is why teams trust us with go-live deadlines they wouldn't give a traditional vendor.",
-  },
-  {
-    question: "What does an engagement cost?",
-    answer:
-      "We quote a fixed cost per sprint after a discovery week, once we understand the scope. We don't publish rate cards because we're not selling rates, we're selling shipped systems. If we quote a number before we understand your business, that number is a guess.",
-  },
-  {
-    question: "What if we want to stop after one sprint?",
-    answer:
-      "You can. Two weeks' notice between sprints, no cancellation penalty. The code, docs, and infrastructure are yours from day one. There's nothing locking you in. The contract is built so the cost of leaving is the same as the cost of staying.",
-  },
-  {
-    question: "Where does AI sit in your delivery?",
-    answer:
-      "Each engineer is paired with an internal agent stack: spec, build, test, deploy. The agents handle the work that doesn't need human judgment; humans own architecture, trade-offs, and the relationship with your team. We never ship code an agent wrote alone, and we mark every AI-assisted commit so your team knows what they're reviewing.",
-  },
-  {
-    question: "Do you work with our existing engineering team?",
-    answer:
-      "Yes. About half our work is alongside in-house teams: we deliver a module, your team owns the rest. Code lives in your repo, runs on your CI, follows your standards. A structured handoff phase is built into every sprint so there's no \"black box\" once we leave.",
-  },
-  {
-    question: "What kinds of teams do you work with?",
-    answer:
-      "Founders, scaleups, and enterprise teams who care about ship-velocity. We've shipped for healthcare, supply chain, fintech, and consumer marketplaces. If you have real users waiting for software and a deadline that's already slipped once, we're a fit.",
-  },
-];
+/* Content lives in ./faq-data.ts so the homepage can read the same
+ * source-of-truth array and emit a server-rendered FAQPage JSON-LD
+ * <script>. Editing a question or answer here means editing one file,
+ * and both the visible UI and the structured data stay in sync. */
 
 /* ─── Section ────────────────────────────────────────────────── */
 export default function Faq() {
@@ -183,7 +144,7 @@ interface FaqRowProps {
 }
 
 function FaqRow({ index, question, answer, isOpen, onToggle }: FaqRowProps) {
-  const reduceMotion = useReducedMotion();
+  /* Accordion runs full motion for every visitor — brand decision. */
   const triggerId = `faq-trigger-${index}`;
   const panelId = `faq-panel-${index}`;
 
@@ -220,7 +181,7 @@ function FaqRow({ index, question, answer, isOpen, onToggle }: FaqRowProps) {
               isOpen ? "text-primary" : "text-primary/70 group-hover:text-primary"
             }`}
           >
-            <PlusIcon open={isOpen} reduceMotion={!!reduceMotion} />
+            <PlusIcon open={isOpen} />
           </span>
         </button>
       </h3>
@@ -266,7 +227,7 @@ function FaqRow({ index, question, answer, isOpen, onToggle }: FaqRowProps) {
           /* Discrete duration — content reveals in 360ms, exits
            * in 220ms. Exit is faster than enter per the motion
            * design rule (so dismissal feels responsive). */
-          duration: reduceMotion ? 0 : 0.36,
+          duration: 0.36,
           ease: EASE,
         }}
         style={{ overflow: "hidden" }}
@@ -282,14 +243,8 @@ function FaqRow({ index, question, answer, isOpen, onToggle }: FaqRowProps) {
 /* Plus glyph that rotates 45° to become an × when open. Single SVG
  * with two lines — rotating the whole svg flips both lines together,
  * which is cheaper than swapping icons and avoids a layout flash on
- * toggle. With reduceMotion the rotation is instantaneous. */
-function PlusIcon({
-  open,
-  reduceMotion,
-}: {
-  open: boolean;
-  reduceMotion: boolean;
-}) {
+ * toggle. */
+function PlusIcon({ open }: { open: boolean }) {
   return (
     <motion.svg
       width={22}
@@ -300,7 +255,7 @@ function PlusIcon({
       strokeWidth="1.8"
       strokeLinecap="round"
       animate={{ rotate: open ? 45 : 0 }}
-      transition={{ duration: reduceMotion ? 0 : 0.28, ease: EASE }}
+      transition={{ duration: 0.28, ease: EASE }}
     >
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />

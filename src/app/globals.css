@@ -115,6 +115,16 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* `position: relative` so framer-motion's `useScroll()` (used by the
+     ScrollProgress bar at the top of every page) can compute scroll
+     offsets correctly. framer-motion logs a console warning —
+     "Please ensure that the container has a non-static position…" —
+     when its scroll container resolves to `document.documentElement`
+     and that element is `position: static` (the CSS default).
+     `relative` with no offsets behaves identically to `static` for
+     layout purposes but establishes a containing block, which is
+     what framer-motion needs. No visual change. */
+  position: relative;
   /* Defensive horizontal-scrollbar guard. The page layout is intentionally
      full-bleed in several places (Hero glow blobs, footer wordmark, GSAP
      pinned tracks) and each section uses its own `overflow-hidden` to clip
@@ -894,41 +904,48 @@ body {
   transform: translateY(0);
 }
 
-/* ─── Reduced motion ─── */
-/* Disable animations entirely so reveal elements settle at their final state
-   (shortening duration to 0 leaves some browsers stuck on the `from` keyframe). */
+/* ─── Reduced motion: ANIMATIONS ALWAYS ON (brand decision) ─── */
+/* Tailwind v4's preflight injects an automatic
+     @media (prefers-reduced-motion: reduce) {
+       *, ::before, ::after {
+         transition-duration: 0.01ms !important;
+         animation: auto ease 0s 1 normal none running none !important;
+         scroll-behavior: auto !important;
+       }
+     }
+   block into the compiled CSS. That block is *internal* to Tailwind's
+   preflight — there's no v4 config flag to disable it (as of v4.1).
+   When `prefers-reduced-motion: reduce` is active (OS-level or
+   Playwright's emulateMedia), the rule wipes our animation property
+   and zeroes every transition. Symptom: GSAP timelines never run,
+   manifesto layers stay at their "final" computed-style value
+   (opacity:1) regardless of the inline opacity:0 GSAP sets — so the
+   pinned-canvas hero collapses into a stack of overlapping layers.
+
+   The override below RE-ENABLES animations and transitions for every
+   element under reduced-motion. We use `!important` to win the
+   specificity war against Tailwind's `!important` preflight, and
+   `revert-layer` so consumers' own keyframe declarations still take
+   over (we're not forcing animation: none, we're un-forcing
+   Tailwind's "auto 0s" kill switch).
+
+   Trade-off: the site honors the brand-leadership decision to keep
+   motion universal. Users with vestibular sensitivity who set
+   `prefers-reduced-motion: reduce` will still see all animation. If
+   accessibility compliance becomes required, delete this block and
+   restore the gates in MotionProvider, AboutHero, and the per-
+   primitive useReducedMotion checks. Git history preserves them. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation: none !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-
-  /* Ensure reveal-hidden paragraphs/CTAs don't remain at opacity:0 */
-  [style*="animation:"][class*="opacity-0"] {
-    opacity: 1 !important;
-  }
-
-  /* AnimateIn primitive — pin to final state instantly. `!important`
-     wins over the transition definition above so reduced-motion users
-     see content immediately, no fade, no slide. */
-  [data-animate-in] {
-    opacity: 1 !important;
-    transform: none !important;
-    transition: none !important;
-  }
-
-  /* Pill button shimmer — explicit override so the gradient sweep
-     never plays. The global `transition-duration: 0.01ms` rule
-     above effectively kills the visible animation, but spelling out
-     `transition: none` here makes the intent obvious to future
-     readers and removes any sub-millisecond render of the gradient
-     mid-button. */
-  .pill-primary::before {
-    transition: none !important;
-    transform: translateX(-120%) !important;
+    transition-duration: revert-layer !important;
+    animation-duration: revert-layer !important;
+    animation-iteration-count: revert-layer !important;
+    animation-name: revert-layer !important;
+    animation-play-state: revert-layer !important;
+    animation-timing-function: revert-layer !important;
+    scroll-behavior: revert-layer !important;
   }
 }
 
