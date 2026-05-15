@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "sweep": "node scripts/responsive-sweep.mjs",
     "analyze": "next experimental-analyze",
-    "preflight": "npm run typecheck && npm run lint"
+    "preflight": "npm run typecheck && npm run lint",
     "optimize:svg": "svgo --multipass --config svgo.config.mjs -f public/how-it-works -f public/services"
   },
   "dependencies": {
