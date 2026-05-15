@@ -122,6 +122,10 @@ const FOOTER_CONTENT = {
        #talk-to-us   → CTA (Contact Us)
        #faq          → Faq             (now after CTA — see page.tsx)
      If a section is added/removed/renamed in page.tsx, mirror it here. */
+  /* "Projects" / "#our-work" was removed — the /work page hasn't
+     shipped yet, so the chrome shouldn't link to it (per launch
+     scope: only landing, /process, /about are live). "Process"
+     and "About Us" are added since both are now shipping. */
   quickLinkColumns: [
     [
       { label: "Home", href: "#top" },
@@ -131,7 +135,8 @@ const FOOTER_CONTENT = {
     ],
     [
       { label: "Capabilities", href: "#capabilities" },
-      { label: "Projects", href: "#our-work" },
+      { label: "Process", href: "/process" },
+      { label: "About Us", href: "/about" },
       { label: "Contact Us", href: "#talk-to-us" },
     ],
   ],
@@ -417,7 +422,15 @@ function NoiseOverlay() {
                   discrete 51% coverage, white @ 10% alpha, merged
                   back over the source.
      • Shadow:    inset, dy=-5, stdDeviation=15, white @ 40% alpha,
-                  blended `plus-lighter` over the source.
+                  blended `screen` over the source. (Figma exported
+                  this as `plus-lighter` which is a CSS-only blend
+                  mode — the SVG `feBlend` element only supports the
+                  fixed enum from the SVG Filter Effects spec. Chrome
+                  was logging a parse error on every page load and
+                  silently falling back. `screen` is the closest
+                  additive-brightening enum value the spec allows
+                  and produces a visually equivalent inset highlight
+                  for the white-on-violet wordmark below.)
 
    ViewBox 0 0 1193 368 matches the Figma `filter3_i` region
    (1193.09 × 367.479) so the SVG box is the wordmark envelope.
@@ -541,7 +554,7 @@ function GiantWordmark({ text }: { text: string }) {
             type="matrix"
             values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.4 0"
           />
-          <feBlend mode="plus-lighter" in2="shape" />
+          <feBlend mode="screen" in2="shape" />
         </filter>
       </defs>
 

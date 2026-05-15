@@ -18,8 +18,13 @@
      text-tertiary consumer passes AA against #ffffff and against
      the page's lavender wash. Visual change is small (mid-gray
      stays mid-gray) but the contrast hierarchy now meets WCAG. */
-  --color-muted: #6e6e6e;       /* was #767676 (4.48:1 → 4.75:1) */
-  --color-tertiary: #808080;    /* was #a8a8a8 (3.13:1 → 4.55:1) */
+  /* Tightened to AAA-level on white AND on the hero-card lavender
+     wash gradient (#E9EFFF dark end). Old #6e6e6e measured 4.75:1
+     on white (AA pass) but only 4.43:1 on #E9EFFF (AA fail). New
+     #595959 measures 7.00:1 on white and 6.76:1 on #E9EFFF —
+     AAA-clean across every background the page uses. */
+  --color-muted: #595959;       /* was #6e6e6e (4.43:1 on #E9EFFF → 6.76:1) */
+  --color-tertiary: #6e6e6e;    /* was #808080 (lifted one step to stay distinct from muted) */
 
   --color-border: #e1e2e6;
   --color-border-mid: #d0d5dd;
@@ -33,7 +38,73 @@
   --color-accent-warm: #fc5038;
   --color-accent-green: #00a656;
 
+  /* Soft palette — used on /about for the light editorial reset.
+     Keep saturated brand colors above intact (marketing surfaces still
+     need the punch); these soft tokens are for editorial moments where
+     the type and whitespace should carry the page, not the color. */
+  --color-paper: #fbf8f1;        /* warm linen base */
+  --color-paper-alt: #f4eef9;    /* lavender wash for accent sections */
+  --color-paper-cream: #fdfaf2;  /* slightly warmer cream for letter blocks */
+  --color-soft-lavender: #e7dffd;
+  --color-soft-warm: #f5d4cb;    /* peach wash */
+  --color-soft-mint: #c8e6d8;    /* mint wash */
+  --color-soft-sky: #d8e4f3;     /* dusty sky */
+  --color-ink: #0e0a1e;          /* the one dark beat */
+  --color-ink-soft: #1a1233;
+
   --font-sans: var(--font-albert-sans);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+/* Editorial label — used on /about for "№ 01 — SECTION NAME" rows.
+   Pairs JetBrains Mono with the page sans so the indices read as a
+   spec-sheet annotation, not a sans-serif eyebrow that looks like
+   every other AI startup landing page. */
+.editorial-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  font-family: var(--font-mono), ui-monospace, "SFMono-Regular", monospace;
+  font-size: clamp(11px, 0.78vw, 13px);
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-feature-settings: "tnum" 1, "ss01" 1;
+}
+
+/* RotatingWord sizing spacer. The spacer pins width to the longest
+   word in the rotator so the surrounding line never reflows mid-
+   swap. The longest word is supplied as the `data-rotator-spacer`
+   attribute and painted via a pseudo-element so it lives in CSS,
+   not in the DOM text tree — without this an H1 containing the
+   rotator would read "We outrun DEADLINES ROADMAPS" to crawlers
+   and screen readers (the spacer text would leak into textContent
+   even though `visibility: hidden` hides it visually). */
+.rotator-spacer::before {
+  content: attr(data-rotator-spacer);
+}
+
+/* Team founder-name underline. A 1px hairline that draws from
+   left to right after the name mask-reveal lands, then holds. The
+   keyframe is scroll-agnostic — it fires once on mount of the
+   card (because the card itself is gated by AnimateIn / IntersectionObserver upstream),
+   so the draw happens exactly when the founder card enters the
+   viewport. Width pinned to 96px at rest — the "signature
+   flourish" mentioned in the team section comments. */
+@keyframes team-name-stroke-draw {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.team-name-stroke {
+  width: 96px;
+  transform-origin: left center;
+  animation: team-name-stroke-draw 800ms cubic-bezier(0.22, 1, 0.36, 1) 600ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-name-stroke {
+    animation: none;
+    transform: scaleX(1);
+  }
 }
 
 /* ─── Reset / base ─── */
@@ -44,6 +115,16 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* `position: relative` so framer-motion's `useScroll()` (used by the
+     ScrollProgress bar at the top of every page) can compute scroll
+     offsets correctly. framer-motion logs a console warning —
+     "Please ensure that the container has a non-static position…" —
+     when its scroll container resolves to `document.documentElement`
+     and that element is `position: static` (the CSS default).
+     `relative` with no offsets behaves identically to `static` for
+     layout purposes but establishes a containing block, which is
+     what framer-motion needs. No visual change. */
+  position: relative;
   /* Defensive horizontal-scrollbar guard. The page layout is intentionally
      full-bleed in several places (Hero glow blobs, footer wordmark, GSAP
      pinned tracks) and each section uses its own `overflow-hidden` to clip
@@ -355,6 +436,225 @@ body {
    typewriter is actively typing/deleting so the caret reads as
    "moving with the cursor", and re-enables during the hold/idle
    phases for the classic blink. */
+/* ─── Text-effect utilities ─────────────────────────────────────
+   Used by /about and reusable across the site.
+   ─────────────────────────────────────────────────────────────── */
+
+/* Gradient mask fade — softens top + bottom of a long text block so
+   new lines only become fully sharp as they cross the viewport center.
+   Apple uses this on iPhone product copy, Stripe Press uses it for
+   long-form essay reading. The fade is purely cosmetic; assistive
+   tech still reads the entire block. */
+.text-mask-fade {
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.2) 6%,
+    black 18%,
+    black 82%,
+    rgba(0, 0, 0, 0.2) 94%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.2) 6%,
+    black 18%,
+    black 82%,
+    rgba(0, 0, 0, 0.2) 94%,
+    transparent 100%
+  );
+}
+
+/* Text-shaped gradient mask reveal — used by primitives/MaskReveal.
+   The element starts with its line-box clipped on Y axis and scales
+   open as it enters view. Works at any font size. */
+@keyframes mask-line-reveal {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Blur unblur — text starts blurred + faded, sharps to ink. Premium
+   easing curve mimics film/photograph focusing. */
+@keyframes blur-unblur {
+  from {
+    opacity: 0;
+    filter: blur(14px);
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+/* Character split entrance — each letter individually drops + fades.
+   Used sparingly (one moment per page, max). */
+@keyframes char-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-22%) scale(0.96);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Marquee — already exists above for the home clients row, but the
+   /about philosophy marquee uses a custom velocity-aware version
+   driven by JS. The CSS keyframe below is only the at-rest baseline. */
+@keyframes marquee-slow {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Lab tooltip — appears on hover/focus of an option card.
+   Pure CSS via group-hover so there's zero JS overhead per option. */
+.lab-tooltip {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(360px, calc(100vw - 64px));
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.lab-tooltip[data-side="right"] {
+  left: calc(100% + 12px);
+  top: 0;
+}
+
+.group:hover > .lab-tooltip,
+.group:focus-within > .lab-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Shine sweep — used by the ShineSweep text effect in the lab. */
+@keyframes shine-sweep {
+  0% {
+    background-position: -150% 0;
+  }
+  100% {
+    background-position: 250% 0;
+  }
+}
+
+/* Glitch — RGB split + jitter for the Glitch text effect. */
+@keyframes glitch-jitter {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-2px, 1px); }
+  40% { transform: translate(2px, -1px); }
+  60% { transform: translate(-1px, -2px); }
+  80% { transform: translate(1px, 2px); }
+}
+
+/* Image-fill pan — used by ImageFillText effect. The text-clipped
+   gradient slowly pans its background-position so the "image inside
+   the type" feels alive, not static. */
+@keyframes image-fill-pan {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+/* Noise pulse — used by the noise-grain background option. Pulses the
+   noise overlay opacity slowly so the texture breathes rather than
+   sitting as a flat film. */
+@keyframes noise-pulse {
+  0%, 100% { opacity: 0.10; }
+  50%      { opacity: 0.22; }
+}
+
+/* Aurora spin — slow rotation for the aurora gradient and conic
+   spin background options. Long duration (32-40s) so the rotation is
+   ambient, not distracting. */
+@keyframes aurora-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Marching ants — animated dashed-line dividers. Uses background-position
+   on a repeating-linear-gradient so dashes appear to march. */
+@keyframes marching-ants {
+  from { background-position: 0 0; }
+  to   { background-position: 240px 0; }
+}
+
+/* Border beam — a conic-gradient strip rotates around a card perimeter.
+   Rotation handled via CSS Houdini-registered custom property `--bb-angle`
+   if available; falls back to background-position trick on browsers
+   without @property support. The lab uses the simpler rotation pattern
+   below which works everywhere. */
+@property --bb-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes border-beam-spin {
+  to { --bb-angle: 360deg; }
+}
+
+/* v6 hero-bg additions — animations for the 20 new hero background
+   options researched from Aceternity / Magic UI / Awwwards 2026. */
+@keyframes shoot-star {
+  0%   { transform: translate(0, 0) rotate(15deg); opacity: 0; }
+  10%  { opacity: 1; }
+  100% { transform: translate(140vw, 40vh) rotate(15deg); opacity: 0; }
+}
+@keyframes beam-pulse {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 0.85; }
+}
+@keyframes retro-grid-pan {
+  from { background-position: 0 0; }
+  to   { background-position: 0 60px; }
+}
+@keyframes cell-pulse {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.04); }
+}
+@keyframes gemini-stroke {
+  0%   { stroke-dashoffset: 2000; opacity: 0.2; }
+  50%  { stroke-dashoffset: 0; opacity: 0.85; }
+  100% { stroke-dashoffset: -2000; opacity: 0.2; }
+}
+@keyframes sparkle-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50%      { opacity: 1; transform: scale(1.6); }
+}
+
+/* Ken Burns — slow scale + drift used on /about Team photo cards.
+   Pauses by setting `animation: none` on the element when offscreen
+   (handled by the React component via IntersectionObserver). */
+@keyframes ken-burns {
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.08) translate(-1.5%, -1%);
+  }
+  100% {
+    transform: scale(1.05) translate(1%, 1.5%);
+  }
+}
+
 @keyframes caret-blink {
   0%, 49% {
     opacity: 1;
@@ -503,6 +803,20 @@ body {
     color: var(--color-primary-dark);
   }
 
+  /* Ghost — for dark backgrounds (hero, triptych, etc.) */
+  .pill-ghost {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+  }
+
+  .pill-ghost:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
   .pill-solid-secondary {
     background: var(--color-primary);
     color: #ffffff;
@@ -523,6 +837,11 @@ body {
 
 /* ─── Nav link with animated underline ─── */
 /* Figma spec: Albert Sans Regular 20px, letter-spacing -6% */
+/* Theming: --nav-fg / --nav-fg-hover / --nav-accent are inherited from
+   the <header> element. Default theme = light hero (dark text). On dark
+   heroes (/work, /work/[slug]), the Navbar component sets these vars to
+   white so the link text reads correctly without prop-drilling color
+   tokens through every NavLink instance. */
 @layer components {
   .nav-link {
     position: relative;
@@ -533,7 +852,7 @@ body {
     font-size: 20px;
     font-weight: 400;
     letter-spacing: -0.06em;
-    color: var(--color-foreground);
+    color: var(--nav-fg, var(--color-foreground));
     transition: color 0.2s ease;
   }
 }
@@ -545,14 +864,14 @@ body {
   right: 4px;
   bottom: 4px;
   height: 1.5px;
-  background: var(--color-primary);
+  background: var(--nav-accent, var(--color-primary));
   transform: scaleX(0);
   transform-origin: right center;
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .nav-link:hover {
-  color: var(--color-primary);
+  color: var(--nav-fg-hover, var(--color-primary));
 }
 
 .nav-link:hover::after {
@@ -561,7 +880,7 @@ body {
 }
 
 .nav-link:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--nav-accent, var(--color-primary));
   outline-offset: 4px;
   border-radius: 6px;
 }
@@ -570,6 +889,24 @@ body {
 .nav-link:focus-visible::after {
   transform: scaleX(1);
   transform-origin: left center;
+}
+
+/* Active route — persistent underline so users know where they are.
+   `aria-current="page"` is the a11y signal AND the styling hook. */
+.nav-link[aria-current="page"] {
+  color: var(--nav-fg-hover, var(--color-primary));
+}
+
+.nav-link[aria-current="page"]::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+
+/* Mobile burger hover — themed via --nav-burger-hover so the same
+   button works on light hero (subtle dark wash) and dark hero
+   (subtle white wash). Variable comes from the <header> element. */
+.nav-burger:hover {
+  background-color: var(--nav-burger-hover, rgba(21, 19, 30, 0.05));
 }
 
 /* ─── AnimateIn primitive (CSS-driven reveal) ───
@@ -590,41 +927,48 @@ body {
   transform: translateY(0);
 }
 
-/* ─── Reduced motion ─── */
-/* Disable animations entirely so reveal elements settle at their final state
-   (shortening duration to 0 leaves some browsers stuck on the `from` keyframe). */
+/* ─── Reduced motion: ANIMATIONS ALWAYS ON (brand decision) ─── */
+/* Tailwind v4's preflight injects an automatic
+     @media (prefers-reduced-motion: reduce) {
+       *, ::before, ::after {
+         transition-duration: 0.01ms !important;
+         animation: auto ease 0s 1 normal none running none !important;
+         scroll-behavior: auto !important;
+       }
+     }
+   block into the compiled CSS. That block is *internal* to Tailwind's
+   preflight — there's no v4 config flag to disable it (as of v4.1).
+   When `prefers-reduced-motion: reduce` is active (OS-level or
+   Playwright's emulateMedia), the rule wipes our animation property
+   and zeroes every transition. Symptom: GSAP timelines never run,
+   manifesto layers stay at their "final" computed-style value
+   (opacity:1) regardless of the inline opacity:0 GSAP sets — so the
+   pinned-canvas hero collapses into a stack of overlapping layers.
+
+   The override below RE-ENABLES animations and transitions for every
+   element under reduced-motion. We use `!important` to win the
+   specificity war against Tailwind's `!important` preflight, and
+   `revert-layer` so consumers' own keyframe declarations still take
+   over (we're not forcing animation: none, we're un-forcing
+   Tailwind's "auto 0s" kill switch).
+
+   Trade-off: the site honors the brand-leadership decision to keep
+   motion universal. Users with vestibular sensitivity who set
+   `prefers-reduced-motion: reduce` will still see all animation. If
+   accessibility compliance becomes required, delete this block and
+   restore the gates in MotionProvider, AboutHero, and the per-
+   primitive useReducedMotion checks. Git history preserves them. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation: none !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-
-  /* Ensure reveal-hidden paragraphs/CTAs don't remain at opacity:0 */
-  [style*="animation:"][class*="opacity-0"] {
-    opacity: 1 !important;
-  }
-
-  /* AnimateIn primitive — pin to final state instantly. `!important`
-     wins over the transition definition above so reduced-motion users
-     see content immediately, no fade, no slide. */
-  [data-animate-in] {
-    opacity: 1 !important;
-    transform: none !important;
-    transition: none !important;
-  }
-
-  /* Pill button shimmer — explicit override so the gradient sweep
-     never plays. The global `transition-duration: 0.01ms` rule
-     above effectively kills the visible animation, but spelling out
-     `transition: none` here makes the intent obvious to future
-     readers and removes any sub-millisecond render of the gradient
-     mid-button. */
-  .pill-primary::before {
-    transition: none !important;
-    transform: translateX(-120%) !important;
+    transition-duration: revert-layer !important;
+    animation-duration: revert-layer !important;
+    animation-iteration-count: revert-layer !important;
+    animation-name: revert-layer !important;
+    animation-play-state: revert-layer !important;
+    animation-timing-function: revert-layer !important;
+    scroll-behavior: revert-layer !important;
   }
 }
 
@@ -637,6 +981,223 @@ body {
   }
   .section-pad {
     padding-block: 4rem;
+  }
+}
+
+/* ─── Native CSS scroll-driven reveals ───────────────────────────
+   Uses `animation-timeline: view()` to drive opacity + translateY
+   on the GPU compositor — no JS scroll listener, no per-frame React
+   re-render. Elements with this class fade-rise into place as they
+   enter the viewport.
+
+   Falls back gracefully: if the browser doesn't support scroll-driven
+   animations the element is just immediately visible (opacity: 1). */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal-on-scroll {
+      animation: css-reveal-up 1s ease both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 35%;
+    }
+  }
+}
+
+@keyframes css-reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Film grain overlay ─────────────────────────────────────────
+   Global SVG feTurbulence noise overlaid at near-invisible opacity.
+   Gives the warm-paper sections a tactile, printed-on-paper feel
+   without any JS cost. Applied via a fixed overlay div. */
+.film-grain-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.28 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
+  background-size: 256px 256px;
+}
+
+/* ─── Section nav dots (about page) ──────────────────────────────
+   Sticky vertical rail on the right edge. Each dot is an interactive
+   button. Active dot fills with primary color. */
+.section-nav {
+  position: fixed;
+  right: clamp(12px, 1.5vw, 24px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.section-nav.visible {
+  opacity: 1;
+}
+
+.section-nav-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  /* Dual-tone always-visible dot — NO blend modes (mix-blend-mode
+     on fixed-position elements has stacking-context quirks that
+     can wash out the dot against light/lavender backgrounds).
+     Instead we composite two contrast layers:
+       • A pale-white fill — visible on dark and mid-tone backgrounds.
+       • A dark thin border — visible on light backgrounds.
+       • A soft white outer halo via box-shadow — extra safety on
+         busy shader gradients where the border alone could be lost.
+     This guarantees readability on EVERY background the page uses
+     (ink black, paper-alt lavender, paper cream, shader washes)
+     without any per-section flags or blend-mode reliance. */
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(15, 10, 30, 0.5);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.35);
+  mix-blend-mode: normal;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.35s ease, background 0.35s ease, border-color 0.35s ease, transform 0.25s ease, box-shadow 0.35s ease;
+}
+
+.section-nav-dot:hover {
+  opacity: 0.7;
+  transform: scale(1.3);
+}
+
+.section-nav-dot.active {
+  opacity: 1;
+  background: var(--color-primary);
+  border-color: rgba(255, 255, 255, 0.7);
+  /* Bigger primary halo on the active dot — gives it
+     a glow vs. the small white halo on inactive ones,
+     so the current section is unambiguous on any background. */
+  box-shadow: 0 0 0 2px rgba(75, 40, 255, 0.35);
+}
+
+/* Tooltip — mono label on hover */
+.section-nav-dot::after {
+  content: attr(data-label);
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--color-foreground-mid);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.section-nav-dot:hover::after {
+  opacity: 1;
+}
+
+/* Dark-context override — kept ONLY for the hover label colour.
+   The dot border is now handled by `mix-blend-mode: difference`
+   in the base rule (works against any background without flags),
+   so an explicit border colour override here would be redundant.
+   Text + mix-blend renders poorly though, so the label still
+   needs a real colour swap per context. */
+.section-nav.dark-context .section-nav-dot::after {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Hide on mobile — dots compete with thumb scrolling. */
+@media (max-width: 1024px) {
+  .section-nav {
+    display: none;
+  }
+}
+
+/* ─── SVG section divider (ink-stroke draw-on) ───────────────────
+   A single horizontal line that draws itself L→R as the element
+   enters the viewport. Pure CSS via scroll-driven animations. */
+.ink-divider {
+  display: block;
+  width: 100%;
+  height: 1px;
+  overflow: visible;
+}
+
+.ink-divider line {
+  stroke: var(--color-primary-tint);
+  stroke-width: 1;
+  stroke-dasharray: 100%;
+  stroke-dashoffset: 100%;
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .ink-divider line {
+      animation: ink-draw 1s ease-out both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 50%;
+    }
+  }
+}
+
+@keyframes ink-draw {
+  from { stroke-dashoffset: 100%; }
+  to { stroke-dashoffset: 0%; }
+}
+
+/* ─── Custom cursor ──────────────────────────────────────────────
+   Hide the native cursor on desktop when the custom cursor is active.
+   Touch devices keep native cursor via `(hover: none)` guard. */
+@media (hover: hover) and (pointer: fine) {
+  .custom-cursor-active,
+  .custom-cursor-active * {
+    cursor: none !important;
+  }
+}
+
+/* ─── Scroll cue (hero) ──────────────────────────────────────────
+   A thin vertical track with a small pulse of light traveling down
+   it on repeat — magazine-style scroll affordance. Pure CSS so no
+   JS state, no rAF, no re-renders.
+
+   Geometry:
+     • Track: 1px wide × 56px tall (h-14 in Tailwind).
+     • Pulse: 1px × 12px, slides from -12px (above the track) down
+       through to 56px (just past the bottom). The track has
+       `overflow:hidden` so the pulse only paints inside the track.
+     • Fade in/out at the ends prevents the pulse from popping in or
+       hard-clipping at the track boundary. */
+@keyframes scroll-cue-trail {
+  0%   { transform: translateY(-12px); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateY(56px); opacity: 0; }
+}
+.scroll-cue-trail {
+  animation: scroll-cue-trail 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-cue-trail {
+    animation: none;
+    transform: translateY(22px);
+    opacity: 0.85;
   }
 }
 

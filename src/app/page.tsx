@@ -7,6 +7,7 @@ import HowItWorks from "@/components/HowItWorks";
 import Services from "@/components/Services";
 import Clients from "@/components/Clients";
 import Footer from "@/components/Footer";
+import { buildFaqJsonLd } from "@/components/faq-data";
 import IdlePrefetch from "@/components/primitives/IdlePrefetch";
 
 /**
@@ -55,10 +56,22 @@ const Faq = dynamic(() => import("@/components/Faq"));
 const CTA = dynamic(() => import("@/components/CTA"));
 
 export default function Home() {
+  /* FAQPage JSON-LD — emitted only on this page because the homepage is
+     the one route where the FAQ section actually renders. Per Google's
+     structured-data guidelines, FAQPage schema on a page that does not
+     visibly show the Q&As is grounds for a manual action. The schema is
+     built from the same FAQ_ITEMS array Faq.tsx renders, so they stay in
+     sync automatically. */
+  const faqJsonLd = buildFaqJsonLd();
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <Navbar />
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1">
         <Hero />
         <Stats />
         <Problem />

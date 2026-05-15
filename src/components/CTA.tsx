@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CountryPicker from "@/components/primitives/CountryPicker";
+import LogoLoader from "@/components/primitives/LogoLoader";
 import {
   DEFAULT_COUNTRY_ISO2,
   digitsOnly,
@@ -16,8 +17,16 @@ import {
  * `subject` field is prefixed differently so the inbox can filter
  * the two streams (e.g. a Gmail filter on "[Startup]"). Same
  * endpoint as the previous tglobal.in site, so submissions land in
- * the same inbox with no new wiring. */
-const ACCESS_KEY = "8ca5ba96-be53-4698-bbc8-89b92c007835";
+ * the same inbox with no new wiring.
+ *
+ * Key now lives in NEXT_PUBLIC_WEB3FORMS_KEY (.env.local). Web3Forms
+ * keys are public-by-design (anyone with the key can post to it), but
+ * env-driven means rotation is a one-line config change instead of a
+ * source edit + rebuild. The ?? fallback is the original key so the
+ * form keeps working if the env var is missing during a misconfigured
+ * deploy — preferable to a silent submit failure for end users. */
+const ACCESS_KEY =
+  process.env.NEXT_PUBLIC_WEB3FORMS_KEY ?? "8ca5ba96-be53-4698-bbc8-89b92c007835";
 const ENDPOINT = "https://api.web3forms.com/submit";
 
 const NOTES_MAX = 200;
@@ -162,24 +171,6 @@ function ChevronDown({ size = 16 }: { size?: number }) {
       aria-hidden="true"
     >
       <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
-
-function Spinner({ size = 16 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      className="animate-spin"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.4"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M12 3a9 9 0 1 1-9 9" opacity="0.85" />
     </svg>
   );
 }
@@ -632,6 +623,18 @@ export default function CTA() {
                 ) : (
                   <motion.form
                     key={`form-${mode}`}
+                    /* action + method point at the safe POST endpoint so
+                       that IF React fails to hydrate (slow connection,
+                       blocked JS, chunk 404), the browser's native form
+                       submission goes to Web3Forms as a POST with the
+                       hidden access_key — NOT a GET that leaks every
+                       field into the URL/Referer/server logs. encType
+                       multipart/form-data matches Web3Forms' expected
+                       payload shape. handleSubmit still intercepts the
+                       submission via preventDefault on the JS path. */
+                    action="https://api.web3forms.com/submit"
+                    method="POST"
+                    encType="multipart/form-data"
                     onSubmit={handleSubmit}
                     variants={fieldGroup}
                     initial="hidden"
@@ -646,15 +649,27 @@ export default function CTA() {
                      * "submitting → submitted" narration. */
                     aria-busy={status === "submitting"}
                   >
-                    {/* Honeypot — hidden field a real user never fills.
-                        Web3Forms checks `botcheck` and rejects if non-empty. */}
+                    {/* Honeypot — offscreen-positioned (NOT display:none)
+                        because some bots specifically skip display:none
+                        fields by design. Offscreen via absolute + tiny
+                        clipped dimensions keeps the field in the layout
+                        for bots to "see" but invisible + unfocusable
+                        for humans. Web3Forms checks `botcheck` and
+                        rejects if non-empty. */}
                     <input
                       type="text"
                       name="botcheck"
                       tabIndex={-1}
                       autoComplete="off"
-                      className="hidden"
                       aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        left: "-10000px",
+                        width: 1,
+                        height: 1,
+                        opacity: 0,
+                        pointerEvents: "none",
+                      }}
                     />
 
                     {mode === "project" ? (
@@ -700,7 +715,12 @@ export default function CTA() {
                         />
                         {status === "submitting" ? (
                           <>
-                            <Spinner size={16} />
+                            <LogoLoader
+                              size={22}
+                              colorActive="#0e0a1e"
+                              colorRest="#ffffff"
+                              ariaLabel="Sending"
+                            />
                             <span>Sending…</span>
                           </>
                         ) : (

@@ -10,6 +10,12 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
+/* Bundle analysis is via `next experimental-analyze` (Next 16 + Turbopack).
+   The legacy `@next/bundle-analyzer` plugin is webpack-only and a no-op
+   under Turbopack — it printed a warning telling us to use the new flag.
+   Run `npm run analyze` to invoke it; it generates an interactive treemap
+   for the Turbopack build output. */
+
 /**
  * ─────────────────────────────────────────────────────────────────────────────
  * Production-grade security headers.
@@ -50,9 +56,33 @@ const withBundleAnalyzer = bundleAnalyzer({
  */
 const isDev = process.env.NODE_ENV !== "production";
 
+/* react-scan (dev-only diagnostic) does two things our prod CSP refuses:
+   1. Phones a version-check fetch to https://www.react-grab.com/api/version
+      on every page load (no off-switch in the public API as of v0.5.6).
+   2. Spawns a Worker from a blob: URL for its rendering instrumentation.
+
+   We allow both ONLY in dev so the console stays clean during development
+   without weakening production security one bit. In production, react-scan
+   is dynamic-imported only when NODE_ENV === "development" (see
+   src/components/primitives/ReactScan.tsx), so these allowances are
+   irrelevant to shipped headers. */
+const REACT_SCAN_SCRIPT_DEV = isDev ? " blob:" : "";
+const REACT_SCAN_CONNECT_DEV = isDev ? " https://www.react-grab.com" : "";
+const REACT_SCAN_WORKER_DEV = isDev ? "blob:" : "'self'";
+
 const CSP = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  // `https://static.cloudflareinsights.com` hosts the Cloudflare Web
+  // Analytics beacon (loaded by layout.tsx <Script>). Without it on
+  // script-src, CSP blocks the beacon and Cloudflare's measurement
+  // never fires AND a real CSP violation gets logged to the console.
+  // Image/connect not needed — the beacon doesn't fetch additional
+  // resources from that origin.
+  `script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com${isDev ? " 'unsafe-eval'" : ""}${REACT_SCAN_SCRIPT_DEV}`,
+  // worker-src controls Web Worker / SharedWorker / ServiceWorker sources.
+  // Dev: react-scan creates a worker from a blob: URL for its render tracker.
+  // Prod: only same-origin workers allowed.
+  `worker-src ${REACT_SCAN_WORKER_DEV}`,
   "style-src 'self' 'unsafe-inline'",
   // `https://flagcdn.com` is whitelisted ONLY for img-src — it serves
   // the SVG country flags shown in the phone-number picker (see
@@ -63,7 +93,9 @@ const CSP = [
   // Web3Forms is the form-to-email backend used by the #talk-to-us
   // section in CTA.tsx. Whitelist its API endpoint so the fetch call
   // isn't blocked by the connect-src directive.
-  "connect-src 'self' https://api.web3forms.com",
+  // Cloudflareinsights.com receives the beacon's pageview events;
+  // without it, CSP silently drops every measurement fetch.
+  `connect-src 'self' https://api.web3forms.com https://cloudflareinsights.com${REACT_SCAN_CONNECT_DEV}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   // form-action governs where <form> can POST to. The form here uses
