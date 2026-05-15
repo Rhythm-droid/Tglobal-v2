@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
@@ -113,50 +113,16 @@ export default function AboutTriptych() {
 
   const [wordIndex, setWordIndex] = useState(0);
   const lastWordIndexRef = useRef(0);
-  /* `reduceMotion` defaults to false so SSR + first client render
-     both emit the animated tree (hydration-safe). After mount, if
-     the media query matches `reduce`, ScrollTrigger is skipped and
-     the section's height collapses to 1 viewport via the inline
-     style below. The pin element stays in flow inside that single
-     viewport, statically displaying SHIP. The caption refs are
-     simultaneously cross-faded to show the full three captions
-     stacked one above the other so the user reads all three
-     principles statically. */
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    /* Initial sync with the OS media-query value is hydration-safe:
-       state starts at `false` so SSR + first client render agree,
-       then this fires once post-mount to pick up the real OS setting.
-       This IS the correct external-system subscribe pattern. */
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setReduceMotion(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setReduceMotion(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
 
   useGSAP(
     () => {
-      /* Read the media query SYNCHRONOUSLY here instead of relying
-         on the `reduceMotion` state below. Why: this hook runs once
-         on mount BEFORE the useEffect that listens to the media
-         query has fired (state useEffects are deferred). On that
-         first run, `reduceMotion` is still `false` (initial state),
-         so we'd create the ScrollTrigger pin — then the useEffect
-         flips the state, this hook re-runs, the cleanup kills the
-         pin BUT ScrollTrigger's pin-spacer DOM mutations sometimes
-         linger, leaving the pinned canvas frozen `position: fixed`
-         at viewport top across all 3 viewports. Reading the MQ
-         synchronously here means the first run already knows the
-         user's preference and never creates the pin in the first
-         place. */
-      const liveReduce =
-        typeof window !== "undefined" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (reduceMotion || liveReduce) return;
+      /* The Triptych runs the pinned particle path for ALL visitors,
+         including those with `prefers-reduced-motion`. The particle
+         scatter-and-reform between SHIP / TASTE / OWN is the visual
+         identity of this section — same brand decision as the hero
+         shader and MagicCard hover. Motion-off users still see the
+         same canvas with the same morph; we only skip motion candy
+         on text and gradients elsewhere on the page. */
       const pin = pinRef.current;
       const section = sectionRef.current;
       if (!pin || !section) return;
@@ -234,7 +200,7 @@ export default function AboutTriptych() {
 
       return () => trigger.kill();
     },
-    { scope: sectionRef, dependencies: [reduceMotion] },
+    { scope: sectionRef },
   );
 
   const activeFrame = FRAMES[wordIndex];
@@ -297,7 +263,6 @@ export default function AboutTriptych() {
       <div
         ref={pinRef}
         className="absolute left-0 right-0 top-0 h-[100svh] w-full overflow-hidden"
-        style={{ display: reduceMotion ? "none" : undefined }}
       >
         {/* ── Layer 0: Atmospheric shader ───────────────────────
             Low-saturation MeshGradient that breathes behind the
@@ -369,69 +334,6 @@ export default function AboutTriptych() {
         ))}
       </div>
 
-      {/* ─── Reduced-motion path ─────────────────────────────────
-          Three stacked full-viewport particle frames, one per
-          principle. Each one renders its OWN ImageParticleField so
-          the particle-scatter word identity is preserved for
-          motion-reduce users — they get the same visual treatment
-          as motion-on users, just without the cross-frame morph
-          animation (each word renders statically into its frame
-          and stays). The MeshGradient shader from the animated
-          path is intentionally OMITTED here — three simultaneous
-          WebGL shaders on one page would be a heavy cost paid by
-          exactly the audience asking the page to use less motion.
-          The lavender section background shows through and is
-          enough atmosphere.
-          Layout positions match the section's 4.5-viewport height:
-            0.0 – 1.5 viewports: SHIP frame
-            1.5 – 3.0 viewports: TASTE frame
-            3.0 – 4.5 viewports: OWN frame
-          Each frame is 1.5 viewports tall so per-word scroll
-          budget matches the animated path exactly — Team handoff
-          lands at the same document Y on both paths. */}
-      {reduceMotion &&
-        FRAMES.map((frame, idx) => (
-          <div
-            key={frame.word}
-            className="absolute left-0 right-0 z-[2] overflow-hidden"
-            style={{
-              top: `calc(var(--100vh, 100svh) * ${idx * 1.5})`,
-              height: "calc(var(--100vh, 100svh) * 1.5)",
-            }}
-          >
-            {/* Particle word — same component as the animated
-                path uses, just rendered once per frame with a
-                fixed text prop (no morph). */}
-            <ImageParticleField
-              className="absolute inset-0 z-[1]"
-              text={frame.word.toUpperCase()}
-              colors={[...TRIPTYCH_PARTICLE_COLORS]}
-            />
-            {/* Caption — same editorial corner placement as the
-                animated path uses (ALIGN_CLASSES per frame), so the
-                two paths share visual rhythm. */}
-            <div
-              className={`pointer-events-none absolute inset-0 z-[2] flex flex-col gap-3 px-6 py-12 sm:px-10 sm:py-16 lg:px-16 lg:py-24 xl:px-24 ${ALIGN_CLASSES[frame.align]}`}
-            >
-              <p className="editorial-label text-foreground-mid">
-                <span className="tabular-nums">№ 04 · {frame.index}</span>
-                <span aria-hidden className="h-px w-8 bg-foreground-mid/40" />
-                <span>{frame.word}</span>
-              </p>
-              <p
-                className="max-w-[34ch] italic text-foreground/85"
-                style={{
-                  fontFamily: "var(--font-instrument-serif), Georgia, serif",
-                  fontSize: "clamp(20px, 1.7vw, 28px)",
-                  letterSpacing: "-0.01em",
-                  lineHeight: 1.35,
-                }}
-              >
-                &ldquo;{frame.caption}&rdquo;
-              </p>
-            </div>
-          </div>
-        ))}
     </section>
   );
 }

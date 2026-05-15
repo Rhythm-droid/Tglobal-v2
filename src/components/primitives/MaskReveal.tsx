@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, type Variants } from "framer-motion";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { useMemo } from "react";
 
 import { cn } from "@/lib/cn";
@@ -58,22 +58,28 @@ export default function MaskReveal({
   style,
   id,
 }: MaskRevealProps) {
-  /* Animation runs for every visitor regardless of
-     `prefers-reduced-motion` — brand decision. The mounted gate is
-     still required so SSR and the client's first paint emit the
-     same markup (avoids hydration mismatch on framer-motion's
-     variant tree). */
+  /* The mounted gate is required so SSR and the client's first
+     paint emit the same markup (avoids hydration mismatch on
+     framer-motion's variant tree). On top of that we honour
+     `prefers-reduced-motion`: if the user opted out of motion,
+     keep the static path forever. Previously we ran the animation
+     anyway ("brand decision") — that left the text invisible in
+     production on reduce-motion devices when the `whileInView`
+     trigger never fired and the words stayed clipped at y:110%. */
   const mounted = useMounted();
+  const reduceMotion = useReducedMotion();
   const words = useMemo(() => splitWords(text), [text]);
   const Tag = motion[as] as React.ElementType;
+  const StaticTag = as;
 
   /* SSR + first client render — static path.
-     No aria-label: visible text already provides the accessible name. */
-  if (!mounted) {
+     Also taken when the user prefers reduced motion: the visible
+     text is the priority, animations are skipped entirely. */
+  if (!mounted || reduceMotion) {
     return (
-      <Tag id={id} className={cn(className)} style={style}>
+      <StaticTag id={id} className={cn(className)} style={style}>
         {text}
-      </Tag>
+      </StaticTag>
     );
   }
 
