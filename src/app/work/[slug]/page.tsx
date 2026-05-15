@@ -100,6 +100,20 @@ export async function generateMetadata({
       title,
       description,
     },
+    /* Belt-and-braces noindex/nofollow — case study detail pages
+       aren't launch-ready (placeholder copy, no client sign-off).
+       The robots.ts disallow on /work/ already blocks well-behaved
+       crawlers; this is the page-level hard gate for crawlers that
+       ignore robots.txt. REMOVE this `robots` entry, restore
+       /work/[slug] in sitemap.ts, and remove /work/ from the
+       UNFINISHED_ROUTES disallow list in robots.ts when these
+       pages are launch-ready. */
+    robots: {
+      index: false,
+      follow: false,
+      nocache: true,
+      googleBot: { index: false, follow: false },
+    },
   };
 }
 

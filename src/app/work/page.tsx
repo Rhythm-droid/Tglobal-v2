@@ -50,6 +50,19 @@ export const metadata: Metadata = {
       "Case studies from real client engagements. Sprints that shipped.",
     url: "https://tglobal.in/work",
   },
+  /* Belt-and-braces: robots.ts also disallows /work and sitemap.ts
+     omits it, but a page-level `noindex, nofollow` is a hard
+     additional gate that doesn't rely on the crawler reading the
+     robots file. Once /work is launch-ready, REMOVE this `robots`
+     entry, AND restore /work in sitemap.ts, AND remove /work from
+     the UNFINISHED_ROUTES disallow list in robots.ts. All three
+     changes must land together for the page to be indexable. */
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: { index: false, follow: false },
+  },
 };
 
 /* ─── Tile component (used 4× in the bento) ─────────────────────────
