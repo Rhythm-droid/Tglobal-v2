@@ -35,7 +35,11 @@ interface MaskRevealProps {
   stagger?: number;
   /** Per-word reveal duration seconds. */
   duration?: number;
-  /** Trigger amount (0-1) of element visible before reveal fires. */
+  /** Kept for backward compatibility with callers that pass this
+   *  prop — accepted but ignored. Previously controlled the
+   *  IntersectionObserver threshold for whileInView. The component
+   *  now reveals unconditionally on mount (see comment near the
+   *  `animate="visible"` prop below) so there's no IO to gate. */
   amount?: number;
   className?: string;
   /** Optional inline style passed to the wrapper (font-size etc.). */
@@ -53,7 +57,6 @@ export default function MaskReveal({
   as = "h2",
   stagger = 0.06,
   duration = 0.85,
-  amount = 0.25,
   className,
   style,
   id,
@@ -92,13 +95,22 @@ export default function MaskReveal({
     visible: { y: "0%", transition: { duration, ease: EASE } },
   };
 
+  /* `animate="visible"` (not `whileInView`) — the reveal plays
+     unconditionally once the component mounts. Previous version
+     used `whileInView` with a viewport amount threshold; that
+     IntersectionObserver gate broke in production on Cloudflare
+     Workers when the parent section sat behind a GSAP ScrollTrigger
+     pin — the IO never fired and every word stayed clipped at
+     y:110% forever (visible as empty whitespace where the heading
+     should be). Mount-time animate has no IO race and still reads
+     as a one-shot reveal because the static path above handles
+     SSR and the post-hydration animation plays exactly once. */
   return (
     <Tag
       id={id}
       variants={container}
       initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount }}
+      animate="visible"
       className={cn(className)}
       style={style}
     >

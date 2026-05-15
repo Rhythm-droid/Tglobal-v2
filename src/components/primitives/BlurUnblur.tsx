@@ -34,7 +34,6 @@ export default function BlurUnblur({
   as = "p",
   stagger = 0.04,
   duration = 0.9,
-  amount = 0.2,
   className,
   style,
 }: BlurUnblurProps) {
@@ -68,12 +67,16 @@ export default function BlurUnblur({
     },
   };
 
+  /* Reveal on mount, not on viewport intersection. Previous
+     `whileInView` gate broke in production behind GSAP ScrollTrigger
+     pins on Cloudflare Workers — the IntersectionObserver never
+     fired and words stayed blurred/hidden forever. See MaskReveal
+     for the same fix and longer explanation. */
   return (
     <Tag
       variants={container}
       initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount }}
+      animate="visible"
       className={cn(className)}
       style={style}
     >

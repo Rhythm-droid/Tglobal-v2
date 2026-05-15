@@ -113,12 +113,19 @@ export default function WordReveal({
     visible: { opacity: 1, y: 0, transition: { duration, ease: EASE } },
   };
 
+  /* Reveal on mount, not on viewport intersection. The previous
+     `whileInView` gate broke in production on Cloudflare Workers
+     when parent sections sat behind a GSAP ScrollTrigger pin — the
+     IntersectionObserver never fired and words stayed at opacity:0,
+     y:yOffset forever (page rendered with blank patches where the
+     paragraph should be). Mount-time animate has no IO race and
+     still reads as a one-shot reveal because hydration only happens
+     once per page load. */
   return (
     <Tag
       variants={container}
       initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.2 }}
+      animate="visible"
       className={cn(className)}
     >
       {/* sr-only label — per-word spans below are aria-hidden so AT users

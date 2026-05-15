@@ -35,7 +35,6 @@ export default function CharSplit({
   as = "h2",
   stagger = 0.025,
   duration = 0.7,
-  amount = 0.3,
   className,
   style,
 }: CharSplitProps) {
@@ -79,12 +78,16 @@ export default function CharSplit({
     },
   };
 
+  /* Reveal on mount, not on viewport intersection. Previous
+     `whileInView` gate broke in production behind GSAP ScrollTrigger
+     pins on Cloudflare Workers — the IntersectionObserver never
+     fired and characters stayed at hidden state forever. See
+     MaskReveal for the same fix and longer explanation. */
   return (
     <Tag
       variants={container}
       initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount }}
+      animate="visible"
       className={cn(className)}
       style={style}
     >
