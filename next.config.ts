@@ -1,4 +1,14 @@
 import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer";
+
+/**
+ * Bundle analyzer — env-gated so production builds aren't affected.
+ *   Run `ANALYZE=true npm run build` to open the analyzer in a browser.
+ *   When ANALYZE is unset (the normal case), this is a no-op pass-through.
+ */
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 /* Bundle analysis is via `next experimental-analyze` (Next 16 + Turbopack).
    The legacy `@next/bundle-analyzer` plugin is webpack-only and a no-op
@@ -141,4 +151,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

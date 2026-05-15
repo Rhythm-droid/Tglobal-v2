@@ -308,7 +308,21 @@ export function usePinnedHorizontalScroll({
                via callback so this works regardless of GSAP version. */
             onToggle: (self) => {
               const el = self.pin as HTMLElement | null;
-              if (el) el.style.zIndex = self.isActive ? "20" : "";
+              if (!el) return;
+              if (self.isActive) {
+                el.style.zIndex = "20";
+                /* `will-change: opacity` hints the compositor to give
+                   this element its own paint layer, so cross-fade
+                   tweens don't trigger style recalc on every scrub
+                   frame. We apply the hint ONLY while the pin is
+                   active because permanent `will-change` inflates GPU
+                   memory for elements that aren't currently animating.
+                   See: https://developer.mozilla.org/en-US/docs/Web/CSS/will-change#don't_apply_will-change_to_too_many_elements */
+                el.style.willChange = "opacity";
+              } else {
+                el.style.zIndex = "";
+                el.style.willChange = "";
+              }
             },
             /* Why pinSpacing: false (not the default true):
                ─────────────────────────────────────────────
@@ -356,7 +370,22 @@ export function usePinnedHorizontalScroll({
                           and forum threads 37382, 43800 on overlapping
                           pinned sections. */
             pinSpacing: false,
-            scrub: true,
+            /* Numeric scrub (0.5 s catch-up) instead of `scrub: true`
+               (1:1 lock to scroll). GSAP's own docs recommend numeric
+               scrub for "smooth, natural-feeling scroll animations"
+               and warn that `scrub: true` is CPU-intensive on low-end
+               devices. With two pinned timelines on this homepage, the
+               1:1 mode created a per-frame style-recalc burst at the
+               section seam — visible as a stutter or "stuck" feel
+               mid-scroll on slower hardware. The 0.5 s smoothing
+               window gives the main thread room to recover from any
+               momentary jank without the user perceiving lag (faster
+               than the ~500 ms threshold for "feels delayed"). The
+               cards still translate 1:1 with scroll velocity at
+               steady state — only the response to abrupt deltas is
+               smoothed.
+               Reference: https://gsap.com/docs/v3/Plugins/ScrollTrigger/ */
+            scrub: 0.5,
             invalidateOnRefresh: true,
             /* Reduces a perceptible 1-frame delay when the pin engages on
                fast wheel/trackpad flicks — ScrollTrigger watches scroll
@@ -436,20 +465,38 @@ export function usePinnedHorizontalScroll({
              of Lenis-smoothed scroll, the user reads it as continuous
              motion, not as a constant-velocity ramp.
 
-           autoAlpha (opacity + visibility) auto-flips visibility:hidden
-           at opacity 0 so the faded-out viewport stops capturing
-           pointer events. GSAP auto-reverses this on backward scroll. */
+           Why plain `opacity` + manual `pointerEvents` flips instead
+           of `autoAlpha` (was: autoAlpha — opacity + visibility):
+             `autoAlpha` flips `visibility: hidden` whenever opacity
+             reaches 0. With scrub on, that visibility flip can fire
+             on every scrub frame near the fade endpoints — each flip
+             forces a style recalc on the affected subtree, which
+             accumulates into a measurable per-frame cost on the two
+             pinned timelines. Switching to plain `opacity` keeps the
+             tween on the GPU compositor (no main-thread recalc) and
+             we replicate the pointer-events block by toggling
+             `pointer-events` discretely at the fade endpoints via
+             `gsap.set()` keyframes. Same UX, no per-frame recalc. */
         const fadePosition = settleRatio + translateRatio;
+        const fadeEnd = fadePosition + FADE_OUT_RATIO;
 
+        /* Mark current viewport as still interactive at timeline start
+           so settle-in and translate phases keep accepting clicks. */
+        timeline.set(viewport, { pointerEvents: "auto" }, 0);
         timeline.to(
           viewport,
           {
-            autoAlpha: 0,
+            opacity: 0,
             ease: "none",
             duration: FADE_OUT_RATIO,
           },
           fadePosition,
         );
+        /* After fade-out, current viewport stops capturing pointer
+           events — equivalent to the visibility:hidden flip that
+           autoAlpha would have done, but as a discrete keyframe so
+           it doesn't recalculate every scrub frame. */
+        timeline.set(viewport, { pointerEvents: "none" }, fadeEnd);
 
         if (nextHandoverSelector) {
           /* Look up at timeline-build time. matchMedia callback runs
@@ -459,19 +506,26 @@ export function usePinnedHorizontalScroll({
              enhancement, not a correctness requirement. */
           const nextEl = document.querySelector<HTMLElement>(nextHandoverSelector);
           if (nextEl) {
-            /* Hold the next section invisible from timeline start. With
-               scrub, this state is held throughout settle-in + translate
-               and the target only animates during the fade window. */
-            timeline.set(nextEl, { autoAlpha: 0 }, 0);
+            /* Hold next section invisible AND non-interactive from
+               timeline start. With scrub, this state is held through
+               settle-in + translate; it only animates during the fade
+               window. */
+            timeline.set(
+              nextEl,
+              { opacity: 0, pointerEvents: "none" },
+              0,
+            );
             timeline.to(
               nextEl,
               {
-                autoAlpha: 1,
+                opacity: 1,
                 ease: "none",
                 duration: FADE_OUT_RATIO,
               },
               fadePosition,
             );
+            /* After fade-in, next section becomes interactive. */
+            timeline.set(nextEl, { pointerEvents: "auto" }, fadeEnd);
           }
         }
 

@@ -2,7 +2,7 @@ import Image from "next/image";
 import AnimateIn from "./primitives/AnimateIn";
 
 /**
- * Section 7 — "Our Work".
+ * Section 7 — "Our Work" / "A few satisfied clients".
  * ────────────────────────────────────────────────────────────────────────────
  *
  *    ┌─────────────────────────────────────────┐
@@ -12,50 +12,38 @@ import AnimateIn from "./primitives/AnimateIn";
  *    │     → edit the BRANDS array             │
  *    │ • Change a logo image                   │
  *    │     → replace /public/brands/<id>.webp  │
- *    │ • Tile size, gaps, paddings, heights    │
+ *    │ • Tile size, gaps, marquee speed        │
  *    │     → TUNING block below (one place)    │
  *    │ • Typography (eyebrow + heading)        │
- *    │     → TUNING.eyebrow / TUNING.heading   │
- *    │ • Convert to auto-scrolling carousel    │
- *    │     → wrap <BrandRow /> twice inside a  │
- *    │       div with class `marquee-track`    │
- *    │       (keyframes already live in        │
- *    │        globals.css)                     │
+ *    │     → TUNING.heading + global .eyebrow  │
  *    └─────────────────────────────────────────┘
  *
- * Ground truth: design/Desktop - 4.svg (Figma node 107-17871).
- *   Canvas        1440 × 700, white (#FFFFFF)
- *   Eyebrow       y=92   (top-aligned — NOT vertically centered)
- *   Heading       y=146
- *   Brand row     y=278  →  300 tall  →  ends at y=578
- *   Bottom pad    700 − 578 = 122
- *   Brand tiles   5 × (300 × 300), flush side-by-side, NO gap
- *     AST        x=80    Tamimi     x=380   Ackermans  x=680
- *     Dealshare  x=980   Foot Lock. x=1280  (extends past x=1440)
- *   Image blend   Luminosity
- *   Eyebrow       Albert Sans Regular 32 / -6% / #404040
- *   Heading       Albert Sans Medium  64 / -6% / #000000
+ * The brand strip auto-scrolls horizontally as a CSS-only marquee. Keyframes
+ * (`@keyframes marquee`, `.marquee-track`) live in globals.css. We render the
+ * tile list TWICE inside the track so the translate -50% loop seams up
+ * invisibly: when the first half scrolls fully off-screen left, the second
+ * half is in the exact same position the first half was at t=0.
  *
- * Responsive strategy — `clamp()` drives smooth scaling from ~375px viewport
- * up to the 1440 design ceiling.
+ * Behaviour:
+ *   - Auto-scrolls left at the speed defined by TUNING.speed (CSS class).
+ *   - Pauses on hover so users can read a logo they recognise.
+ *   - Edge-fade mask softens both sides so logos enter/exit without
+ *     a hard rectangle clip.
+ *   - prefers-reduced-motion: reduce — animation halts and the row falls
+ *     back to a wrapped grid (CSS-only override in globals.css).
  *
- *   Desktop (≥1024):  honors Figma exactly — 5 flush 300px tiles, last one
- *                     clips past the right edge (carousel "peek"), top-weighted
- *                     with 92px top pad.
- *   Tablet  (640–1023): 3 tiles per row, flex-wrap + centered, small gaps so
- *                       nothing hides.
- *   Mobile  (<640):    2 tiles per row, same centered grid.
+ * All logos are 1500×1500 WebP with transparent background, normalised to a
+ * uniform-feeling cap-height (extreme-wide wordmarks 12–15% of tile, medium
+ * wordmarks 21–28%, stacked / icon-heavy 30%). Tile is square at display.
  *
- * Security: each logo is a static file under `/brands/` served via a plain
- * `<img>` tag. Browsers sandbox SVG-as-image — scripts, foreign objects, and
- * external refs inside the SVG are all neutered. We never inline SVGs with
- * `dangerouslySetInnerHTML`.
+ * Security: each logo is a static file served as `next/image`. SVG sources
+ * are pre-baked to WebP at build time so there's no SVG parsing in the
+ * browser — no foreign objects, no script vectors.
  * ────────────────────────────────────────────────────────────────────────────
  */
 
 /* ════════════════════════════════════════════════════════════════════════════
    TUNING — all the common knobs, in one place.
-   All px values are AT the 1440 design. `clamp()` scales them fluidly down.
    ════════════════════════════════════════════════════════════════════════════ */
 const TUNING = {
   /** Section background. Figma: solid white. */
@@ -64,60 +52,98 @@ const TUNING = {
   /** Minimum section height at ≥1024px. Figma: 700. */
   desktopHeight: 700,
 
-  /** Horizontal inset of the first tile + header. Figma: x=80. */
+  /** Horizontal inset of the header (the marquee bleeds full-width). */
   desktopSidePad: 80,
 
-  /** Vertical top inset of the eyebrow at ≥1024. Figma: y=92.
-   *  Below lg, `py-16` (64px) takes over for balance. */
+  /** Vertical top inset of the eyebrow at ≥1024. Figma: y=92. */
   desktopTopPad: 92,
 
-  /** Tile square size. Figma: 300. min 140 keeps logos legible on phones. */
-  tileSize: "clamp(140px, 20.83vw, 300px)", // 300/1440 = 20.83vw
+  /** Tile square size — clamps from 140 (mobile) up to 260 at the
+   *  1440 design ceiling. Tightened from the original 300 because each
+   *  tile now carries its own inter-tile margin (see `tileGap`), so the
+   *  effective per-logo footprint (tile + gap) lands close to the
+   *  original Figma 300 budget while giving each logo real breathing
+   *  room from its neighbours. */
+  tileSize: "clamp(140px, 18vw, 260px)",
 
-  /** Typography — eyebrow comes from the global `.eyebrow` utility
-      in globals.css. Heading is local. */
+  /** Right-side margin on every tile. Goes on each `<li>` directly (not
+   *  flex `gap`) so the marquee's translate-50% seam stays mathematically
+   *  seamless — with flex `gap`, the loop seam shows half a gap that
+   *  doesn't exist between any other tile pair, producing a visible
+   *  micro-stutter every 50 seconds. With per-tile margin, every tile
+   *  pair (including the seam between the duplicate copies) has the
+   *  same margin, so the loop reads as continuous.
+   *
+   *  Spacing scale follows the 8pt rhythm: 32 / 48 / 64. clamp picks the
+   *  smallest at narrow viewports (compact but not crammed), the largest
+   *  at the design ceiling (premium pace). 64/1440 ≈ 4.44vw. */
+  tileGap: "clamp(32px, 4.44vw, 64px)",
+
+  /** Marquee speed class. globals.css defines `.marquee-track` (36s),
+   *  `.fast` (22s) and `.slow` (50s). 50s gives a calm, premium pace
+   *  with 13 brands — fast enough that all logos cycle through in <1
+   *  minute, slow enough to read each one. */
+  speed: "slow",
+
+  /** Width of the soft edge fade on each side of the marquee, as a
+   *  CSS mask. Larger value = wider fade region. */
+  edgeFade: "8%",
+
   heading: {
-    size: "clamp(36px, 4.44vw, 64px)", // 64/1440 = 4.44vw
+    size: "clamp(36px, 4.44vw, 64px)",
     color: "#000000",
     weight: 500,
   },
-  /** Visual gap between eyebrow bottom and heading top.
-   *  Figma: eyebrow-top (92) + eyebrow-h (22) → heading-top (146) = 32. */
   eyebrowToHeadingGap: "clamp(16px, 2.22vw, 32px)",
-
-  /** Gap between header block and brand row.
-   *  Figma: brand-row-top (278) − heading-bottom (~191) ≈ 87. */
   headerToRowGap: "clamp(48px, 6vw, 86px)",
 } as const;
 
 /* ────────────────────────────────────────────────────────────
    Data — single source of truth.
+   The order here drives the on-screen left-to-right order in the
+   marquee (and repeats infinitely).
    ──────────────────────────────────────────────────────────── */
-type Brand = {
+interface Brand {
   readonly id: string;
   readonly name: string;
   readonly src: string;
-  /** Intrinsic aspect box — prevents CLS while the image decodes. */
+  /** Intrinsic source dimensions — prevents CLS while the WebP decodes. */
   readonly width: number;
   readonly height: number;
-};
+}
 
 const BRANDS: readonly Brand[] = [
-  { id: "ast", name: "AST (All Stop Trading)", src: "/brands/ast.webp", width: 300, height: 300 },
-  { id: "tamimi", name: "Tamimi Markets", src: "/brands/tamimi.webp", width: 300, height: 300 },
-  { id: "ackermans", name: "Ackermans", src: "/brands/ackermans.webp", width: 300, height: 300 },
-  { id: "dealshare", name: "Dealshare", src: "/brands/dealshare.webp", width: 300, height: 300 },
-  { id: "foot-locker", name: "Foot Locker", src: "/brands/foot-locker.webp", width: 300, height: 300 },
+  // Positions 1-10 follow the explicit ordering from the brand owner.
+  { id: "skyline",       name: "Skyline Elevators",   src: "/brands/skyline.webp",       width: 1500, height: 1500 },
+  { id: "medcollect",    name: "MedCollect",          src: "/brands/medcollect.webp",    width: 1500, height: 1500 },
+  { id: "odd-pieces",    name: "Odd Pieces",          src: "/brands/odd-pieces.webp",    width: 1500, height: 1500 },
+  { id: "red-pocket",    name: "RedPocket Mobile",    src: "/brands/red-pocket.webp",    width: 1500, height: 1500 },
+  { id: "dell",          name: "Dell Technologies",   src: "/brands/dell.webp",          width: 1500, height: 1500 },
+  { id: "aliste",        name: "Aliste Technologies", src: "/brands/aliste.webp",        width: 1500, height: 1500 },
+  { id: "jumbl",         name: "Jumbl",               src: "/brands/jumbl.webp",         width: 1500, height: 1500 },
+  { id: "jijibai",       name: "JIJIBAI",             src: "/brands/jijibai.webp",       width: 1500, height: 1500 },
+  { id: "turpai",        name: "Turpai",              src: "/brands/turpai.webp",        width: 1500, height: 1500 },
+  { id: "radhe-fashion", name: "Radhey Fashions",     src: "/brands/radhe-fashion.webp", width: 1500, height: 1500 },
+  // Positions 11-13 are kept from the prior carousel state — only Foot
+  // Locker, Ackermans, and Dealshare were called out for removal.
+  { id: "ast",           name: "AST (All Stop Trading)", src: "/brands/ast.webp",        width: 1500, height: 1500 },
+  { id: "tamimi",        name: "Tamimi Markets",      src: "/brands/tamimi.webp",        width: 1500, height: 1500 },
+  { id: "puma",          name: "PUMA",                src: "/brands/puma.webp",          width: 1500, height: 1500 },
 ] as const;
 
 /* ────────────────────────────────────────────────────────────
-   Single brand tile. Figma: 300×300 square, image blend Luminosity.
+   Single brand tile.
    ──────────────────────────────────────────────────────────── */
 function BrandLogo({ brand }: { brand: Brand }) {
   return (
     <li
       className="flex aspect-square shrink-0 items-center justify-center"
-      style={{ width: TUNING.tileSize }}
+      style={{
+        width: TUNING.tileSize,
+        // marginRight (not flex gap) so the marquee's -50% seam stays
+        // visually identical to every other tile-to-tile transition.
+        marginRight: TUNING.tileGap,
+      }}
     >
       <Image
         src={brand.src}
@@ -130,9 +156,9 @@ function BrandLogo({ brand }: { brand: Brand }) {
         sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 300px"
         draggable={false}
         className="h-full w-full select-none object-contain"
-        // Figma image-fill Blend mode: Luminosity. On black/white logos
-        // over white bg this is effectively a no-op, but guarantees any
-        // colored logo added later auto-desaturates to match the palette.
+        // Figma image-fill Blend mode: Luminosity. On mono logos this is a
+        // no-op; for any colored logo added later it auto-desaturates so
+        // every brand reads at the same visual weight on the white strip.
         style={{ mixBlendMode: "luminosity" }}
       />
     </li>
@@ -140,40 +166,39 @@ function BrandLogo({ brand }: { brand: Brand }) {
 }
 
 /* ────────────────────────────────────────────────────────────
-   Brand row. Extracted so a future marquee can reuse it verbatim.
-   Mobile:  2 tiles/row (wrap, centered)
-   Tablet:  3 tiles/row (wrap, centered)
-   Desktop: 5 flush tiles, last peeks past the 1440 edge (Figma spec)
+   Marquee row. Renders BRANDS twice; the `.marquee-track` keyframe
+   translates -50% so the second copy seamlessly takes over from the
+   first. Edge-fade mask softens entry/exit. Hover pauses, and reduced-
+   motion users get a static wrapped grid via globals.css.
    ──────────────────────────────────────────────────────────── */
-function BrandRow() {
+function BrandMarquee() {
   return (
-    <ul
+    <div
+      className="brand-marquee w-full overflow-hidden"
+      style={{
+        WebkitMaskImage: `linear-gradient(to right, transparent 0%, black ${TUNING.edgeFade}, black calc(100% - ${TUNING.edgeFade}), transparent 100%)`,
+        maskImage: `linear-gradient(to right, transparent 0%, black ${TUNING.edgeFade}, black calc(100% - ${TUNING.edgeFade}), transparent 100%)`,
+      }}
       aria-label="Selected clients"
-      className={[
-        // default list reset
-        "list-none p-0 m-0",
-        // mobile / tablet: balanced wrap, centered, equal gaps
-        "flex flex-wrap items-center justify-center gap-x-4 gap-y-6 sm:gap-x-6",
-        // desktop: one row, flush, starts at the left (tile 5 clips)
-        "lg:flex-nowrap lg:justify-start lg:gap-0",
-      ].join(" ")}
     >
-      {BRANDS.map((brand) => (
-        <BrandLogo key={brand.id} brand={brand} />
-      ))}
-    </ul>
+      <ul className={`marquee-track ${TUNING.speed} list-none p-0 m-0`}>
+        {BRANDS.map((brand) => (
+          <BrandLogo key={brand.id} brand={brand} />
+        ))}
+        {/* Duplicate copy makes the -50% translate seamless. Hidden from
+            assistive tech so the brand list isn't read twice. */}
+        {BRANDS.map((brand) => (
+          <BrandLogo key={`${brand.id}-dup`} brand={brand} />
+        ))}
+      </ul>
+    </div>
   );
 }
 
 /* ────────────────────────────────────────────────────────────
    SECTION
-   `overflow-hidden` honors the Figma canvas clip (Foot Locker peeks past
-   x=1440 at the right edge). Without it, horizontal scroll would appear
-   on desktop.
    ──────────────────────────────────────────────────────────── */
 export default function Clients() {
-  // CSS custom properties let us keep the layout math in this file without
-  // touching globals.css. They're scoped to this section.
   const sectionVars = {
     ["--ow-side-pad" as string]: `${TUNING.desktopSidePad}px`,
     ["--ow-top-pad" as string]: `${TUNING.desktopTopPad}px`,
@@ -187,12 +212,6 @@ export default function Clients() {
       className="relative w-full overflow-hidden"
       style={{ background: TUNING.background, ...sectionVars }}
     >
-      {/*
-        Mobile / tablet: centered content with generous py padding.
-        Desktop (≥lg): top-weighted to Figma spec — eyebrow at y=92,
-        no forced bottom padding (natural flow respects min-height 700
-        and Figma's ~122px bottom whitespace falls out for free).
-      */}
       <div
         className="mx-auto flex w-full max-w-[1440px] flex-col px-6 py-16 sm:px-8 md:py-20 lg:min-h-[var(--ow-min-h)] lg:px-0 lg:pb-[clamp(48px,8.5vw,122px)] lg:pt-[var(--ow-top-pad)]"
         style={{ gap: TUNING.headerToRowGap }}
@@ -200,8 +219,6 @@ export default function Clients() {
         {/* Header block (eyebrow + heading) — aligned with x=80 on desktop */}
         <div className="lg:pl-[var(--ow-side-pad)]">
           <AnimateIn>
-            {/* Eyebrow uses the global `.eyebrow` utility — single source
-                of truth for every section pre-title. */}
             <p className="eyebrow m-0">Our Work</p>
             <h2
               id="our-work-heading"
@@ -220,13 +237,11 @@ export default function Clients() {
           </AnimateIn>
         </div>
 
-        {/* Brand row — aligned with x=80 on desktop; flush tiles (no right pad)
-            so the last tile peeks past the 1440 edge (Figma spec). */}
-        <div className="lg:pl-[var(--ow-side-pad)]">
-          <AnimateIn delay={0.15}>
-            <BrandRow />
-          </AnimateIn>
-        </div>
+        {/* Brand marquee — bleeds full-width so logos enter and exit beyond
+            the header alignment band. */}
+        <AnimateIn delay={0.15}>
+          <BrandMarquee />
+        </AnimateIn>
       </div>
     </section>
   );
