@@ -127,6 +127,15 @@ export default async function CaseStudyDetailPage({ params }: PageProps) {
 
   const next = getNextCaseStudy(study.slug);
   const accent = study.accentColor ?? "#4B28FF";
+  /* Placeholder entries (Turpai, JIJIBAI, Radhey Fashion, RedPocket)
+     omit detail-page fields. Fall back to empty/sane defaults so the
+     template renders without runtime errors — the boss will fill in
+     real copy before each detail page is unblocked from the robots
+     disallow list. */
+  const stack = study.stack ?? [];
+  const approach = study.approach ?? [];
+  const results = study.results ?? [];
+  const challenge = study.challenge ?? "";
 
   /* JSON-LD: BreadcrumbList (Home → Work → [Client]) so Google can
      render a clickable breadcrumb trail in search results instead
@@ -235,7 +244,7 @@ export default async function CaseStudyDetailPage({ params }: PageProps) {
                   Duration
                 </dt>
                 <dd className="mt-2 text-2xl sm:text-3xl font-medium tracking-[-0.03em]">
-                  {study.duration}
+                  {study.duration ?? "—"}
                 </dd>
               </div>
               <div>
@@ -251,7 +260,7 @@ export default async function CaseStudyDetailPage({ params }: PageProps) {
                   Stack
                 </dt>
                 <dd className="mt-2 text-2xl sm:text-3xl font-medium tracking-[-0.03em]">
-                  <NumberTicker value={study.stack.length} suffix="+" />
+                  <NumberTicker value={stack.length} suffix="+" />
                   <span className="ml-2 text-base text-background/60 align-middle">
                     technologies
                   </span>
@@ -262,7 +271,7 @@ export default async function CaseStudyDetailPage({ params }: PageProps) {
                   Outcomes
                 </dt>
                 <dd className="mt-2 text-2xl sm:text-3xl font-medium tracking-[-0.03em]">
-                  <NumberTicker value={study.results.length} />
+                  <NumberTicker value={results.length} />
                   <span className="ml-2 text-base text-background/60 align-middle">
                     measured
                   </span>
@@ -302,7 +311,7 @@ export default async function CaseStudyDetailPage({ params }: PageProps) {
               </div>
               <div className="lg:col-span-8">
                 <WordReveal
-                  text={study.challenge}
+                  text={challenge}
                   as="p"
                   className="text-lg sm:text-xl lg:text-2xl font-normal leading-relaxed text-foreground"
                   stagger={0.02}
@@ -337,7 +346,7 @@ export default async function CaseStudyDetailPage({ params }: PageProps) {
             </p>
 
             <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
-              {study.approach.map((move, idx) => (
+              {approach.map((move, idx) => (
                 <AnimateIn key={idx} y={20} delay={idx * 0.08}>
                   <MagicCard className="h-full p-6 sm:p-8">
                     <span
@@ -385,7 +394,7 @@ export default async function CaseStudyDetailPage({ params }: PageProps) {
                 </p>
               </div>
               <ul className="lg:col-span-8 flex flex-wrap gap-3">
-                {study.stack.map((tool) => (
+                {stack.map((tool) => (
                   <li
                     key={tool}
                     className="rounded-full border border-border bg-surface px-5 py-2.5 text-base text-foreground"
@@ -426,14 +435,14 @@ export default async function CaseStudyDetailPage({ params }: PageProps) {
               className={cn(
                 "mt-14 grid gap-10 sm:gap-12",
                 /* Auto-fit by count: 2 cols if 2 results, 3 if 3, 4 if 4. */
-                study.results.length === 4
+                results.length === 4
                   ? "grid-cols-2 lg:grid-cols-4"
-                  : study.results.length === 3
+                  : results.length === 3
                     ? "grid-cols-1 sm:grid-cols-3"
                     : "grid-cols-1 sm:grid-cols-2",
               )}
             >
-              {study.results.map((metric) => (
+              {results.map((metric) => (
                 <div key={metric.label}>
                   <dt
                     className="font-medium leading-[0.9] text-background"

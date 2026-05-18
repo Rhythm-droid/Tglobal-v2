@@ -1,62 +1,78 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
-import {
-  BentoGrid,
-  BentoTile,
-  BorderBeam,
-  MagicCard,
-  Spotlight,
-  WordReveal,
-} from "@/components/primitives";
-import { cn } from "@/lib/cn";
-import { ALL_CLIENTS, CASE_STUDIES, type CaseStudy } from "./data";
+import { ScrollProgress } from "@/components/primitives";
+import WorkHero from "@/components/work/WorkHero";
+import WorkIndustryStrip from "@/components/work/WorkIndustryStrip";
+import WorkFeatured from "@/components/work/WorkFeatured";
+import WorkGrid from "@/components/work/WorkGrid";
+import WorkMarquee from "@/components/work/WorkMarquee";
+import WorkProcessTeaser from "@/components/work/WorkProcessTeaser";
+import WorkMetrics from "@/components/work/WorkMetrics";
+import WorkTestimonials from "@/components/work/WorkTestimonials";
+import WorkClients from "@/components/work/WorkClients";
+import WorkCTA from "@/components/work/WorkCTA";
+import { CASE_STUDIES } from "./data";
+
+/* Marquee tokens — dot-separated kinetic typography for the divider
+   strip between grid and process teaser. Mix of client + outcome +
+   sector verbs so the strip reads as a poem about what the agency
+   actually does, not a bag of buzzwords. */
+const MARQUEE_TOKENS = [
+  "Healthcare RCM",
+  "Optum-integrated",
+  "Smart sub-metering",
+  "150K+ lives impacted",
+  "AI mock interviews",
+  "Real-time energy",
+  "Magento at scale",
+  "Manufacturing CRM",
+  "Bilingual checkout",
+  "Friday demos",
+  "Shipped",
+] as const;
 
 /**
  * /work — Case studies index.
  *
- * Page architecture (top → bottom):
- *   1. Hero on near-black background with cursor Spotlight.
- *   2. Bento grid of 4 case studies. The `featured: true` entry takes
- *      a 2-column tile with a BorderBeam orbit; the other three sit as
- *      standard MagicCard tiles with cursor-tracking glow.
- *   3. "All clients" strip — every client TGlobal has worked with,
- *      whether or not they have a detail page yet.
- *   4. CTA bar — "Want to be next?" → /contact.
+ * Section flow (top → bottom, magazine rhythm):
+ *   01 — WorkHero            ink black + Spotlight + italic accent
+ *   02 — WorkIndustryStrip   white hairline connector, chip row
+ *   03 — WorkFeatured        white, BorderBeam marquee tile
+ *   04 — WorkGrid            white, asymmetric 9-tile grid
+ *   05 — WorkMetrics         lavender wash, NumberTicker tally
+ *   06 — WorkClients         white, pill grid with scramble swap
+ *   07 — WorkCTA             ink black + lavender blob + magnetic pill
  *
- * Why dark hero, lavender body:
- *   The site's signature is the lavender-wash hero on /. Repeating
- *   that exact treatment on /work would feel like the same page
- *   twice. Inverting to dark gives /work its own visual identity
- *   while keeping the brand-purple Spotlight as the connecting tissue.
+ * Why the rhythm matters: same dark→light→dark beat as /about and
+ * /process, so a user scrolling between pages doesn't feel they've
+ * landed in a different brand. The hero and the CTA bracket the page
+ * in dark; the editorial middle carries the story.
  *
- * This is a server component — Navbar, Footer, BentoGrid are
- * server-renderable. The interactive primitives (Spotlight, MagicCard,
- * BorderBeam, WordReveal) carry their own "use client" so they
- * hydrate selectively.
+ * Each section is its own client component because every section has
+ * at least one cursor-tracking or scroll-driven primitive that needs
+ * the browser to hydrate. The page itself is a server component —
+ * Navbar, Footer, and the JSON-LD schemas render at the edge.
  */
 
 export const metadata: Metadata = {
   title: "Work",
   description:
-    "Case studies from real TGlobal client engagements. Healthcare, fintech, retail, marketplaces — sprints that shipped.",
+    "Selected case studies from real TGlobal client engagements. Ten clients, nine industries, three continents — every one shipped to production.",
   alternates: { canonical: "https://tglobal.in/work" },
   openGraph: {
     title: "Work · TGlobal",
     description:
-      "Case studies from real client engagements. Sprints that shipped.",
+      "Selected case studies from real engagements. Healthcare, manufacturing, PropTech, AI EdTech, e-commerce, retail, textile, cleantech, telecom.",
     url: "https://tglobal.in/work",
   },
-  /* Belt-and-braces: robots.ts also disallows /work and sitemap.ts
-     omits it, but a page-level `noindex, nofollow` is a hard
-     additional gate that doesn't rely on the crawler reading the
-     robots file. Once /work is launch-ready, REMOVE this `robots`
-     entry, AND restore /work in sitemap.ts, AND remove /work from
-     the UNFINISHED_ROUTES disallow list in robots.ts. All three
-     changes must land together for the page to be indexable. */
+  /* Belt-and-braces noindex until boss signs off the case study detail
+     pages. Removing this `robots` block requires THREE coordinated
+     changes (already documented in robots.ts + sitemap.ts):
+       1. Delete this robots entry.
+       2. Restore /work in sitemap.ts.
+       3. Remove /work from UNFINISHED_ROUTES in robots.ts. */
   robots: {
     index: false,
     follow: false,
@@ -65,283 +81,89 @@ export const metadata: Metadata = {
   },
 };
 
-/* ─── Tile component (used 4× in the bento) ─────────────────────────
-   Each case study renders the same way; varying the wrapping cell.
-   Extracted into a named component so the page body reads as
-   composition, not nested-JSX-per-case. */
-function CaseStudyTile({
-  study,
-  className,
-}: {
-  study: CaseStudy;
-  className?: string;
-}) {
-  return (
-    <Link
-      href={`/work/${study.slug}`}
-      aria-label={`Read the ${study.client} case study`}
-      className={cn(
-        /* `block` so the entire card area is the click target — better
-           accessibility than just the headline being a link.
-           `h-full` so the link fills the bento cell (not just its content)
-           — keeps the hover treatment uniform regardless of copy length. */
-        "block h-full focus-visible:outline-none",
-        className,
-      )}
-    >
-      <MagicCard
-        as="article"
-        className={cn(
-          /* `flex-col` so we can push "See case →" to the bottom with
-             `mt-auto`, giving every card a uniform CTA position
-             regardless of how many lines the outcome takes. */
-          "h-full flex flex-col gap-6 p-6 sm:p-8",
-          /* Focus ring — appears on keyboard navigation only. */
-          "transition-all group-focus-visible:ring-2 group-focus-visible:ring-primary",
-        )}
-      >
-        {/* Top row — client name + industry chip */}
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-2xl sm:text-3xl font-semibold tracking-[-0.04em] text-foreground">
-              {study.client}
-            </h3>
-            <p className="mt-1 text-sm font-normal text-muted">
-              {study.industry}
-            </p>
-          </div>
-          {/* Arrow icon — animates on hover via the parent `group`
-              class on MagicCard. lucide-react is tree-shaken so only
-              this single icon ships in the bundle. */}
-          <span
-            aria-hidden
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground transition-all duration-300 group-hover:bg-primary group-hover:text-white group-hover:border-primary"
-          >
-            <ArrowUpRight className="h-5 w-5" />
-          </span>
-        </div>
+/* JSON-LD — collection page + breadcrumbs. ItemList isn't ideal for an
+   index of case studies (which are CreativeWorks) but it's the cleanest
+   way to give Google a structured list of the engagements without
+   inflating the page weight with per-item schema. */
+const WEBPAGE_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  url: "https://tglobal.in/work",
+  name: "Work · TGlobal",
+  description:
+    "Selected case studies from real TGlobal client engagements.",
+  mainEntity: {
+    "@type": "ItemList",
+    itemListOrder: "https://schema.org/ItemListOrderAscending",
+    numberOfItems: CASE_STUDIES.length,
+    itemListElement: CASE_STUDIES.map((cs, idx) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      name: cs.client,
+      url: `https://tglobal.in/work/${cs.slug}`,
+    })),
+  },
+} as const;
 
-        {/* Outcome — the headline of the tile, the actual story. */}
-        <p className="text-lg sm:text-xl font-normal leading-snug text-foreground">
-          {study.outcome}
-        </p>
-
-        {/* Footer row — duration + "See case" affordance */}
-        <div className="mt-auto flex items-center justify-between gap-4 pt-4 border-t border-border/60">
-          <span className="text-sm text-muted">{study.duration}</span>
-          <span className="text-sm font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-            See case
-          </span>
-        </div>
-      </MagicCard>
-    </Link>
-  );
-}
+const BREADCRUMB_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "Home",
+      item: "https://tglobal.in",
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: "Work",
+      item: "https://tglobal.in/work",
+    },
+  ],
+} as const;
 
 export default function WorkIndexPage() {
-  /* Split into featured + remaining so we can wrap the featured tile
-     in a BorderBeam separately. Defensive `?? CASE_STUDIES[0]` so we
-     always render *something* even if no case study is marked featured. */
+  /* Featured tile = the one entry marked `featured: true` in data.ts.
+     Fallback to the first entry so the page always renders something
+     in the marquee slot. The remaining cards (all 9 non-featured) go
+     into the asymmetric grid below. */
   const featured = CASE_STUDIES.find((cs) => cs.featured) ?? CASE_STUDIES[0]!;
   const remaining = CASE_STUDIES.filter((cs) => cs.slug !== featured.slug);
 
   return (
     <>
-      {/* Dark hero on this page → tell Navbar to switch to white text
-          via CSS-variable theme tokens. The same Navbar component
-          renders correctly on light pages by default. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBPAGE_SCHEMA) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_SCHEMA) }}
+      />
+      {/* ScrollProgress sits at the very top of the viewport, fills as
+          the user scrolls — same affordance as /process and the case
+          study detail pages, so the site feels coherent. */}
+      <ScrollProgress />
+      {/* Dark hero → Navbar in dark theme. The Navbar component reads
+          its theme from CSS variables that flip at the section boundary,
+          so subsequent light sections (industry strip onwards) restore
+          the default text colors automatically. */}
       <Navbar theme="dark" />
       <main id="main-content" tabIndex={-1} className="flex-1">
-        {/* ─── Hero ─────────────────────────────────────────────
-            Dark background + Spotlight cursor light. The Spotlight
-            primitive listens to mousemove and pipes coordinates into
-            CSS variables on a radial-gradient overlay. Reduced-motion
-            users see a static spotlight (still on-brand). */}
-        <Spotlight
-          color="rgba(189, 112, 246, 0.22)"
-          radius={620}
-          className="bg-foreground text-background"
-        >
-          <div className="mx-auto w-full max-w-[1440px] px-6 sm:px-8 lg:px-14 xl:px-20 pt-32 pb-20 sm:pt-40 sm:pb-28 lg:pt-48 lg:pb-32">
-            <p className="text-sm font-medium uppercase tracking-[0.18em] text-background/60">
-              Selected work
-            </p>
-            <h1
-              className="mt-4 max-w-4xl font-medium leading-[1.02] text-background"
-              style={{
-                fontSize: "clamp(48px, 7.6vw, 112px)",
-                letterSpacing: "-0.05em",
-              }}
-            >
-              Work that{" "}
-              <span
-                className="italic"
-                style={{
-                  fontFamily: "var(--font-instrument-serif), Georgia, serif",
-                }}
-              >
-                ships.
-              </span>
-            </h1>
-            <div className="mt-8 max-w-2xl">
-              <WordReveal
-                text="Real engagements with real outcomes. Each story below is one client, one sprint cycle, one shipped system."
-                as="p"
-                className="text-lg sm:text-xl font-normal leading-relaxed text-background/75"
-              />
-            </div>
-          </div>
-        </Spotlight>
-
-        {/* ─── Bento grid — 4 case studies ────────────────────── */}
-        <section
-          aria-labelledby="case-studies-heading"
-          className="bg-background py-20 sm:py-28 lg:py-32"
-        >
-          <div className="mx-auto w-full max-w-[1440px] px-6 sm:px-8 lg:px-14 xl:px-20">
-            <h2 id="case-studies-heading" className="sr-only">
-              Case studies
-            </h2>
-
-            <BentoGrid columns={3} className="gap-5 sm:gap-6">
-              {/* Featured tile — spans 2 cols, wrapped in BorderBeam.
-                  The beam orbits the featured tile's perimeter, drawing
-                  the eye to the marquee case. Pair the colSpan with
-                  rowSpan=2 so the bento balances; the right column
-                  stacks the other three tiles. */}
-              <BentoTile colSpan={2} rowSpan={2} className="min-h-[340px]">
-                <BorderBeam
-                  duration={9}
-                  borderRadius={24}
-                  className="h-full"
-                  colorStart="#bd70f6"
-                  colorEnd="#4b28ff"
-                >
-                  <CaseStudyTile study={featured} className="group" />
-                </BorderBeam>
-              </BentoTile>
-
-              {/* Remaining 3 tiles — standard MagicCard treatment */}
-              {remaining.map((study) => (
-                <BentoTile key={study.slug} className="min-h-[280px]">
-                  <CaseStudyTile study={study} className="group" />
-                </BentoTile>
-              ))}
-            </BentoGrid>
-          </div>
-        </section>
-
-        {/* ─── All clients strip ──────────────────────────────── */}
-        <section
-          aria-labelledby="clients-heading"
-          className="border-t border-border bg-surface py-20 sm:py-24"
-        >
-          <div className="mx-auto w-full max-w-[1440px] px-6 sm:px-8 lg:px-14 xl:px-20">
-            <h2
-              id="clients-heading"
-              className="text-sm font-medium uppercase tracking-[0.18em] text-muted"
-            >
-              Clients
-            </h2>
-            <p
-              className="mt-4 max-w-3xl font-medium leading-tight text-foreground"
-              style={{
-                fontSize: "clamp(32px, 4vw, 56px)",
-                letterSpacing: "-0.04em",
-              }}
-            >
-              Teams who trusted us with their roadmap.
-            </p>
-
-            {/* 5-column grid on desktop, 2 on mobile, 3 on tablet.
-                Each cell is a soft pill — the ones with `slug` link
-                to the case study, the others render as plain text
-                so we don't promise a page that doesn't exist. */}
-            <ul className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {ALL_CLIENTS.map((client) => {
-                const isLinked = Boolean(client.slug);
-                const Inner = (
-                  <span
-                    className={cn(
-                      "block rounded-2xl border border-border bg-background px-5 py-6 text-center text-base sm:text-lg font-medium tracking-[-0.02em] text-foreground",
-                      isLinked &&
-                        "transition-all hover:border-primary hover:bg-primary hover:text-white hover:-translate-y-0.5",
-                    )}
-                  >
-                    {client.name}
-                  </span>
-                );
-                return (
-                  <li key={client.name}>
-                    {isLinked ? (
-                      <Link
-                        href={`/work/${client.slug}`}
-                        aria-label={`See the ${client.name} case study`}
-                        className="block focus-ring rounded-2xl"
-                      >
-                        {Inner}
-                      </Link>
-                    ) : (
-                      Inner
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </section>
-
-        {/* ─── Closing CTA ─────────────────────────────────────── */}
-        <section className="bg-background py-20 sm:py-28">
-          <div className="mx-auto w-full max-w-[1440px] px-6 sm:px-8 lg:px-14 xl:px-20">
-            <div className="rounded-[32px] bg-foreground px-8 py-16 sm:px-16 sm:py-24 text-background relative overflow-hidden">
-              {/* Decorative blob — same lavender glow language as the
-                  hero, just tinted for the dark surface. Pure CSS, no
-                  JS, no animation cost on mobile. */}
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -top-32 -right-32 h-96 w-96 rounded-full bg-primary opacity-40"
-                style={{ filter: "blur(140px)" }}
-              />
-              <div className="relative max-w-3xl">
-                <p className="text-sm font-medium uppercase tracking-[0.18em] text-background/60">
-                  What&apos;s next
-                </p>
-                <h2
-                  className="mt-4 font-medium leading-[1.05] text-background"
-                  style={{
-                    fontSize: "clamp(32px, 5vw, 64px)",
-                    letterSpacing: "-0.04em",
-                  }}
-                >
-                  Want to be the{" "}
-                  <span
-                    className="italic"
-                    style={{
-                      fontFamily:
-                        "var(--font-instrument-serif), Georgia, serif",
-                    }}
-                  >
-                    next
-                  </span>{" "}
-                  case study?
-                </h2>
-                <p className="mt-6 text-lg sm:text-xl text-background/80 max-w-2xl leading-relaxed">
-                  We work in fixed-cost sprints. Tell us what you&apos;re trying to
-                  ship and we&apos;ll come back within 48 hours with a plan.
-                </p>
-                <div className="mt-10">
-                  <Link
-                    href="/contact"
-                    className="pill pill-primary focus-ring inline-flex"
-                  >
-                    Start a project
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <WorkHero />
+        <WorkIndustryStrip />
+        <WorkFeatured study={featured} />
+        <WorkGrid studies={remaining} />
+        {/* Kinetic marquee — visual breath between the dense grid and
+            the dark process slab. Velocity-distorted, scroll-responsive. */}
+        <WorkMarquee items={MARQUEE_TOKENS} variant="ink" speed={36} />
+        <WorkProcessTeaser />
+        <WorkMetrics />
+        <WorkTestimonials />
+        <WorkClients />
+        <WorkCTA />
       </main>
       <Footer />
     </>

@@ -46,6 +46,7 @@
  */
 
 import { cn } from "@/lib/cn";
+import { useId } from "react";
 
 interface BorderBeamProps {
   children: React.ReactNode;
@@ -72,6 +73,15 @@ export default function BorderBeam({
   borderRadius = 24,
   className,
 }: BorderBeamProps) {
+  /* Per-instance ID for the @property + keyframes scoping. Multiple
+     BorderBeams on the same page would otherwise share one --angle
+     custom property and animate in lockstep at the same speed —
+     here each instance owns its own angle variable, so durations can
+     differ per beam without cross-talk. */
+  const id = useId().replace(/:/g, "");
+  const angleVar = `--beam-angle-${id}`;
+  const keyframeName = `border-beam-orbit-${id}`;
+
   return (
     <div
       className={cn("relative", className)}
@@ -81,24 +91,31 @@ export default function BorderBeam({
       {children}
 
       {/*
-        Beam ring layer — sits ON TOP of children (DOM-order paint),
-        but the mask strips out everything except the rim, so the card
-        content underneath is fully visible. Only the animated 1.5px
-        ring at the edge ever overlays the card.
+        Beam ring layer — sits ON TOP of children, but the mask strips
+        out everything except the 1.5px rim so the card content stays
+        visible. Only the animated rim ever overlays the card.
         ─────────────────────────────────────────────────────────────
-        How the mask trick works:
-          1. The element is filled with a `conic-gradient` that fades
-             from `colorStart` to transparent. This is the "beam".
-          2. We then mask it so ONLY the border ring is visible:
-               • Two layers — one painted into the content-box, one
-                 covering the full padding-box.
-               • mask-composite: exclude (xor) — keeps only the area
-                 covered by exactly ONE layer = the rim.
-          3. A CSS keyframe rotates the element 360° over `duration`s,
-             so the conic-gradient orbits around the border.
+        How this version works (rewritten 2026-05):
+          1. A CSS `@property` declares `--beam-angle-XXX` as an
+             interpolatable <angle> type. Without @property, custom
+             properties default to <string>, which can't animate
+             between values — the keyframes would snap to "to" state
+             instead of smoothly orbiting.
+          2. The conic gradient reads `from var(--beam-angle-XXX)`,
+             rotating the gradient INSIDE the element. The element
+             itself stays static.
+          3. The mask (two solid-black gradients composited XOR) clips
+             everything except the 1.5px rim. Because the ELEMENT is
+             static, the rim stays on the card border — only the
+             violet→purple gradient orbits within it.
 
-        `pointer-events: none` so the beam doesn't intercept clicks
-        meant for the card content underneath.
+        ⚠️ Why the old "transform: rotate" approach was broken:
+        Rotating the ENTIRE element rotates the mask too, so on a
+        rectangular card the masked silhouette spins — bleeding the
+        rim out diagonally past the card. This was fine on a square
+        card but visibly wrong on the wider WorkFeatured tile.
+        Animating the gradient's `from` angle instead keeps the mask
+        aligned to the card edges at every frame.
       */}
       <div
         aria-hidden
@@ -106,25 +123,37 @@ export default function BorderBeam({
         style={{
           borderRadius: `${borderRadius}px`,
           padding: `${size}px`,
-          background: `conic-gradient(from 0deg, transparent 0%, ${colorStart} 25%, ${colorEnd} 50%, transparent 75%)`,
-          /* The mask trick — `mask-composite: exclude` (or `subtract`)
-             leaves only the area outside the inner rectangle. */
+          background: `conic-gradient(from var(${angleVar}, 0deg), transparent 0%, ${colorStart} 25%, ${colorEnd} 50%, transparent 75%)`,
+          /* Mask trick — two black gradients, one clipped to
+             content-box and one to the default border-box, composited
+             with XOR/exclude so only the rim remains.
+             ⚠️ Gradient syntax matters: `linear-gradient(#000 0 0)`
+             with two whitespace-separated `0` stops parses as broken
+             in Next.js 16 + Chromium 130+. Use two color-stop pairs
+             instead — `linear-gradient(#000, #000)` — which is the
+             canonical "solid black" gradient. */
           WebkitMask:
-            "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+            "linear-gradient(#000, #000) content-box, linear-gradient(#000, #000)",
           WebkitMaskComposite: "xor",
-          mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+          mask: "linear-gradient(#000, #000) content-box, linear-gradient(#000, #000)",
           maskComposite: "exclude",
-          animation: `border-beam-spin ${duration}s linear infinite`,
+          animation: `${keyframeName} ${duration}s linear infinite`,
         }}
       />
 
-      {/* Inline keyframes — kept local so we don't pollute globals.css
-          with a single-use animation. The keyframe name is unique
-          enough to not clash with anything else. */}
+      {/* Inline @property + keyframes. The @property registration is
+          essential — without it, the keyframes treat --beam-angle as
+          a string and skip straight to the final value instead of
+          interpolating, killing the rotation. */}
       <style>{`
-        @keyframes border-beam-spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+        @property ${angleVar} {
+          syntax: "<angle>";
+          inherits: false;
+          initial-value: 0deg;
+        }
+        @keyframes ${keyframeName} {
+          from { ${angleVar}: 0deg; }
+          to { ${angleVar}: 360deg; }
         }
       `}</style>
     </div>

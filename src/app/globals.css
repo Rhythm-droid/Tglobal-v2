@@ -1201,3 +1201,135 @@ body {
   }
 }
 
+/* /process — terminal commit-stream entry.
+   Each new commit line types in with a subtle fade-and-slide so
+   the stream reads as live rather than statically loaded. The
+   stagger comes from the React render order (one new commit per
+   interval tick), not from CSS — so this keyframe only animates
+   the newly-appended line. */
+@keyframes process-commit-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* /process — scrub-rail filling bar for ProcessAnatomy. The rail
+   fills horizontally as the user scrolls the section into view.
+   Width is scroll-driven via animation-timeline: view() on
+   supporting browsers; falls back to a static "filled" state
+   on older browsers (better than a permanently empty rail). */
+@keyframes process-rail-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .process-rail-fill {
+    animation: process-rail-fill linear both;
+    animation-timeline: view();
+    animation-range: entry 10% cover 60%;
+  }
+}
+
+@supports not (animation-timeline: view()) {
+  .process-rail-fill {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .process-rail-fill {
+    animation: none;
+    width: 100%;
+  }
+}
+
+/* /process — Steps connector line draws top→bottom on scroll.
+   Same scroll-timeline approach as the rail fill, but applied to
+   height instead of width. Renders a static full-height line on
+   non-supporting browsers + reduced-motion. */
+@keyframes process-steps-line-draw {
+  from {
+    height: 0%;
+  }
+  to {
+    height: 100%;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .process-steps-line-draw {
+    animation: process-steps-line-draw linear both;
+    animation-timeline: view();
+    animation-range: entry 5% cover 50%;
+  }
+}
+
+@supports not (animation-timeline: view()) {
+  .process-steps-line-draw {
+    height: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .process-steps-line-draw {
+    animation: none;
+    height: 100%;
+  }
+}
+
+/* /process — pulsing halo on milestone dots (Fri W1 halfway, Fri
+   W2 ship). Two intensities so the ship dot reads as the climax
+   and the halfway dot reads as the pivot. Halo expands and fades
+   on a 2.4s cycle — slow enough not to be distracting, fast enough
+   to be felt as a heartbeat. */
+@keyframes process-anatomy-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(189, 112, 246, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(189, 112, 246, 0.0);
+  }
+}
+
+@keyframes process-anatomy-pulse-strong {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(189, 112, 246, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 9px rgba(189, 112, 246, 0.0);
+  }
+}
+
+.process-anatomy-pulse {
+  animation: process-anatomy-pulse 2.4s ease-in-out infinite;
+}
+
+.process-anatomy-pulse-strong {
+  animation: process-anatomy-pulse-strong 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .process-anatomy-pulse,
+  .process-anatomy-pulse-strong {
+    animation: none;
+  }
+  .process-anatomy-pulse {
+    box-shadow: 0 0 0 3px rgba(189, 112, 246, 0.25);
+  }
+  .process-anatomy-pulse-strong {
+    box-shadow: 0 0 0 4px rgba(189, 112, 246, 0.35);
+  }
+}
+
