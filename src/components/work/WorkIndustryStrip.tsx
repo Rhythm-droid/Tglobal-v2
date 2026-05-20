@@ -24,41 +24,15 @@ export default function WorkIndustryStrip() {
       className="bg-background border-y border-border"
     >
       <div className="mx-auto w-full max-w-[1440px] px-6 sm:px-8 lg:px-14 xl:px-20 py-14 sm:py-20 lg:py-24">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-start">
-          <div className="lg:col-span-4">
-            <p
-              id="industry-strip-heading"
-              className="font-mono text-[11px] sm:text-xs uppercase tracking-[0.22em] text-muted"
-              style={{ fontFamily: "var(--font-mono), 'JetBrains Mono', monospace" }}
-            >
-              N° 02 — Sectors
-            </p>
-            <p
-              className="mt-4 font-medium leading-[1.04] text-foreground"
-              style={{
-                fontSize: "clamp(24px, 2.6vw, 40px)",
-                letterSpacing: "-0.04em",
-              }}
-            >
-              Nine industries.{" "}
-              <span
-                className="italic text-primary"
-                style={{
-                  fontFamily: "var(--font-instrument-serif), Georgia, serif",
-                  fontWeight: 400,
-                }}
-              >
-                One playbook.
-              </span>
-            </p>
-            <p className="mt-5 max-w-md text-sm sm:text-base text-foreground/70 leading-relaxed">
-              Regulated healthcare. Hard-real-time IoT. Multi-tenant
-              commerce. Different domain rules — same scope/ship/measure
-              loop, tuned for the constraint that hurts most.
-            </p>
-          </div>
+        {/* The hero phase-2 text ("Nine industries. One Team.") IS this
+            section's heading. We carry only an sr-only label here so
+            assistive tech still announces the section landmark, and
+            jump straight to the chip row + structured client list. */}
+        <h2 id="industry-strip-heading" className="sr-only">
+          Nine industries served by TGlobal.
+        </h2>
 
-          <ul className="lg:col-span-8 flex flex-wrap gap-x-3 gap-y-3 sm:gap-x-4 sm:gap-y-4 items-center">
+        <ul className="flex flex-wrap justify-center gap-x-3 gap-y-3 sm:gap-x-4 sm:gap-y-4 items-center">
             {INDUSTRIES.map((chip, idx) => (
               <AnimateIn
                 key={chip.label}
@@ -93,7 +67,6 @@ export default function WorkIndustryStrip() {
               </AnimateIn>
             ))}
           </ul>
-        </div>
 
         {/* Sub-caption listing the actual project names — sells the
             breadth in plain language, scannable for the boss when he

@@ -326,6 +326,15 @@ body {
   display: none;
 }
 
+/* Hide the scrollbar on the /work hero's industry stack. The stack
+   is height-capped at 70svh so on smaller viewports it scrolls
+   internally — but a visible scrollbar would break the editorial
+   feel. Firefox uses `scrollbar-width: none` via inline style;
+   WebKit needs this pseudo. */
+.industry-stack::-webkit-scrollbar {
+  display: none;
+}
+
 /* ─── Keyframes ─── */
 @keyframes marquee {
   from {

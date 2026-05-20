@@ -4,14 +4,12 @@ import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import { ScrollProgress } from "@/components/primitives";
 import WorkHero from "@/components/work/WorkHero";
-import WorkIndustryStrip from "@/components/work/WorkIndustryStrip";
 import WorkFeatured from "@/components/work/WorkFeatured";
 import WorkGrid from "@/components/work/WorkGrid";
 import WorkMarquee from "@/components/work/WorkMarquee";
 import WorkProcessTeaser from "@/components/work/WorkProcessTeaser";
 import WorkMetrics from "@/components/work/WorkMetrics";
 import WorkTestimonials from "@/components/work/WorkTestimonials";
-import WorkClients from "@/components/work/WorkClients";
 import WorkCTA from "@/components/work/WorkCTA";
 import { CASE_STUDIES } from "./data";
 
@@ -146,14 +144,12 @@ export default function WorkIndexPage() {
           the user scrolls — same affordance as /process and the case
           study detail pages, so the site feels coherent. */}
       <ScrollProgress />
-      {/* Dark hero → Navbar in dark theme. The Navbar component reads
-          its theme from CSS variables that flip at the section boundary,
-          so subsequent light sections (industry strip onwards) restore
-          the default text colors automatically. */}
-      <Navbar theme="dark" />
+      {/* Light lavender hero → Navbar in light theme so the logo + nav
+          links read in dark ink against the paper-white shader. Mirrors
+          /about which uses the same lavender mesh + light navbar. */}
+      <Navbar theme="light" />
       <main id="main-content" tabIndex={-1} className="flex-1">
         <WorkHero />
-        <WorkIndustryStrip />
         <WorkFeatured study={featured} />
         <WorkGrid studies={remaining} />
         {/* Kinetic marquee — visual breath between the dense grid and
@@ -162,7 +158,6 @@ export default function WorkIndexPage() {
         <WorkProcessTeaser />
         <WorkMetrics />
         <WorkTestimonials />
-        <WorkClients />
         <WorkCTA />
       </main>
       <Footer />

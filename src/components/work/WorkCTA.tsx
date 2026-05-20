@@ -54,7 +54,7 @@ export default function WorkCTA() {
                 className="font-mono text-[11px] sm:text-xs uppercase tracking-[0.22em] text-background/55"
                 style={{ fontFamily: "var(--font-mono), 'JetBrains Mono', monospace" }}
               >
-                N° 09 — What&apos;s next
+                N° 08 — What&apos;s next
               </p>
               {/* Scroll-cue line — acknowledges the reader's effort.
                   Editorial signal: the page recognizes that you've been

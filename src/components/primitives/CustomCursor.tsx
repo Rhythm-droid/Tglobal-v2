@@ -65,6 +65,10 @@ import { motion, useMotionValue, useSpring } from "framer-motion";
 const DOT_SIZE = 14;
 const RING_SIZE = 64;
 const PILL_HEIGHT = 44;
+/* Disc — giant filled circle that carries a label centred inside.
+   Used by the /work hero's industry list, where hovering a row
+   morphs the cursor into a brand-coloured client badge. */
+const DISC_SIZE = 168;
 /* Pill width is computed from label length so short labels ("go") and
    longer ones ("let's go") both feel proportionate. The constants
    match a ~13px uppercase tracked label rendered inside the pill. */
@@ -82,12 +86,16 @@ const SPRING_CONFIG = {
   mass: 0.3,
 };
 
-type CursorState = "dot" | "ring" | "pill";
+type CursorState = "dot" | "ring" | "pill" | "disc";
 
 export default function CustomCursor() {
   const cursorRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<CursorState>("dot");
   const [label, setLabel] = useState<string>(DEFAULT_PILL_TEXT);
+  /* Disc state needs its own colour token (background of the disc).
+     Stored as state because each industry row has a different brand
+     colour and we want the disc to fade between them. */
+  const [discColor, setDiscColor] = useState<string>("#03020B");
   const [isVisible, setIsVisible] = useState(false);
   const [isTouch, setIsTouch] = useState(true); // default hidden
 
@@ -99,6 +107,7 @@ export default function CustomCursor() {
   const isVisibleRef = useRef(false);
   const lastStateRef = useRef<CursorState>("dot");
   const lastLabelRef = useRef<string>(DEFAULT_PILL_TEXT);
+  const lastDiscColorRef = useRef<string>("#03020B");
   /* Throttle pointerover to once per animation frame. Without this
      a fast mouse sweep across many child elements fires the
      handler dozens of times per second — even though closest()
@@ -164,6 +173,28 @@ export default function CustomCursor() {
       const t = pendingTargetRef.current;
       if (!t) return;
       pendingTargetRef.current = null;
+
+      /* Disc state — highest priority. Drives the /work industry list:
+         the row carries `data-cursor-disc="<client name>"` and an
+         optional `data-cursor-color="<hex>"` for the disc fill. */
+      const discTarget = t.closest<HTMLElement>("[data-cursor-disc]");
+      if (discTarget) {
+        const nextLabel = discTarget.getAttribute("data-cursor-disc") || "";
+        const nextColor = discTarget.getAttribute("data-cursor-color") || "#03020B";
+        if (lastLabelRef.current !== nextLabel) {
+          lastLabelRef.current = nextLabel;
+          setLabel(nextLabel);
+        }
+        if (lastDiscColorRef.current !== nextColor) {
+          lastDiscColorRef.current = nextColor;
+          setDiscColor(nextColor);
+        }
+        if (lastStateRef.current !== "disc") {
+          lastStateRef.current = "disc";
+          setState("disc");
+        }
+        return;
+      }
 
       const labelled = t.closest<HTMLElement>("[data-cursor-text]");
       if (labelled) {
@@ -235,10 +266,13 @@ export default function CustomCursor() {
       ? { w: pillWidth, h: PILL_HEIGHT }
       : state === "ring"
         ? { w: RING_SIZE, h: RING_SIZE }
-        : { w: DOT_SIZE, h: DOT_SIZE };
+        : state === "disc"
+          ? { w: DISC_SIZE, h: DISC_SIZE }
+          : { w: DOT_SIZE, h: DOT_SIZE };
 
   const isPill = state === "pill";
   const isRing = state === "ring";
+  const isDisc = state === "disc";
 
   return (
     <motion.div
@@ -258,7 +292,7 @@ export default function CustomCursor() {
       style={{
         x: springX,
         y: springY,
-        mixBlendMode: isPill ? "normal" : "difference",
+        mixBlendMode: isPill || isDisc ? "normal" : "difference",
         /* drop-shadow stays — it's the visibility fallback that
            guarantees the cursor renders on EVERY background even
            when mix-blend-difference fails. mix-blend can silently
@@ -271,7 +305,7 @@ export default function CustomCursor() {
            target an empty backdrop instead of the page content,
            rendering the cursor invisible. The transform from
            x/y is already the one compositor trigger we need. */
-        filter: isPill ? "none" : "drop-shadow(0 0 3px rgba(0,0,0,0.22))",
+        filter: isPill || isDisc ? "none" : "drop-shadow(0 0 3px rgba(0,0,0,0.22))",
       }}
     >
       <div
@@ -284,19 +318,21 @@ export default function CustomCursor() {
           /* Solid white fill in dot + pill states; hollow ring in
              ring state. The ring uses a thin border so the underlying
              text isn't obscured by a giant solid disc. */
-          background: isRing ? "transparent" : "#ffffff",
+          background: isRing ? "transparent" : isDisc ? discColor : "#ffffff",
           border: isRing ? "1.5px solid #ffffff" : "none",
           opacity: isVisible ? 1 : 0,
-          /* Layout for the pill label. Hidden in dot/ring states via
-             a child opacity toggle below — the flex centering stays
-             active so width/height transitions read smoothly. */
+          /* Layout for the pill / disc label. Hidden in dot/ring
+             states via a child opacity toggle below — the flex centering
+             stays active so width/height transitions read smoothly. */
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "#0e0a1e", // dark ink, only visible in pill state
+          color: isDisc ? "#ffffff" : "#0e0a1e",
           boxShadow: isPill
             ? "0 6px 22px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255, 255, 255, 0.4) inset"
-            : "none",
+            : isDisc
+              ? "0 12px 40px rgba(0, 0, 0, 0.18)"
+              : "none",
           transition:
             "width 0.28s cubic-bezier(0.23, 1, 0.32, 1), height 0.28s cubic-bezier(0.23, 1, 0.32, 1), margin 0.28s cubic-bezier(0.23, 1, 0.32, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease, opacity 0.3s ease",
         }}
@@ -305,12 +341,12 @@ export default function CustomCursor() {
           style={{
             fontFamily:
               "var(--font-geist-sans), system-ui, -apple-system, sans-serif",
-            fontSize: 12,
-            fontWeight: 600,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
+            fontSize: isDisc ? 17 : 12,
+            fontWeight: isDisc ? 500 : 600,
+            letterSpacing: isDisc ? "-0.01em" : "0.08em",
+            textTransform: isDisc ? "none" : "uppercase",
             whiteSpace: "nowrap",
-            opacity: isPill ? 1 : 0,
+            opacity: isPill || isDisc ? 1 : 0,
             transition: "opacity 0.18s ease",
           }}
         >

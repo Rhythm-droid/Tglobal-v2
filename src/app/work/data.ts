@@ -465,26 +465,6 @@ export const TESTIMONIALS: readonly Testimonial[] = [
   },
 ] as const;
 
-/* ─── All clients pill grid ────────────────────────────────────── */
-export interface ClientPill {
-  readonly name: string;
-  readonly industry: string;
-  readonly slug?: string;
-}
-
-export const ALL_CLIENTS: readonly ClientPill[] = [
-  { name: "MedCollect", industry: "Healthcare IT", slug: "medcollect" },
-  { name: "Skyline", industry: "Manufacturing", slug: "skyline" },
-  { name: "Aliste Tech", industry: "PropTech", slug: "aliste" },
-  { name: "Jumbl", industry: "AI EdTech", slug: "jumbl" },
-  { name: "DellStore", industry: "E-commerce", slug: "dellstore" },
-  { name: "SunZero", industry: "CleanTech", slug: "sunzero" },
-  { name: "Turpai", industry: "E-commerce", slug: "turpai" },
-  { name: "JIJIBAI", industry: "Retail", slug: "jijibai" },
-  { name: "Radhey Fashion", industry: "Textile", slug: "radhey-fashion" },
-  { name: "RedPocket Mobile", industry: "Telecom", slug: "redpocket" },
-] as const;
-
 /** Helper — finds a case study by slug. */
 export function getCaseStudyBySlug(slug: string): CaseStudy | undefined {
   return CASE_STUDIES.find((cs) => cs.slug === slug);
