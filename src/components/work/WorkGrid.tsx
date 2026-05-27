@@ -99,19 +99,24 @@ export default function WorkGrid({ studies }: WorkGridProps) {
   return (
     <section
       aria-labelledby="grid-heading"
-      className="bg-background pb-20 sm:pb-28 lg:pb-32"
+      /* Added top padding (was bare 0) so the section seam between
+         the Featured tile and the Grid reads as a deliberate break,
+         not a continuation. Featured's bottom is `py-16/20/24`;
+         matching `pt-12/16/20` here gives the grid heading room to
+         breathe without doubling the rhythm. */
+      className="bg-background pt-12 sm:pt-16 lg:pt-20 pb-20 sm:pb-28 lg:pb-32"
     >
       <div className="mx-auto w-full max-w-[1440px] px-6 sm:px-8 lg:px-14 xl:px-20">
         <div className="flex items-baseline justify-between gap-6 mb-6 sm:mb-8">
           <p
             id="grid-heading"
-            className="font-mono text-[11px] sm:text-xs uppercase tracking-[0.22em] text-muted"
+            className="font-mono text-xs sm:text-[13px] uppercase tracking-[0.18em] text-muted"
             style={{ fontFamily: "var(--font-mono), 'JetBrains Mono', monospace" }}
           >
             N° 04 — Case studies
           </p>
           <p
-            className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-muted tabular-nums hidden sm:block"
+            className="font-mono text-[11px] sm:text-xs uppercase tracking-[0.18em] text-muted tabular-nums hidden sm:block"
             style={{ fontFamily: "var(--font-mono), 'JetBrains Mono', monospace" }}
           >
             {String(studies.length).padStart(2, "0")} engagements

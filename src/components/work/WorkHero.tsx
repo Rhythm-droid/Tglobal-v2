@@ -8,6 +8,7 @@ import { MeshGradient } from "@paper-design/shaders-react";
 
 import { useMounted } from "@/lib/useMounted";
 import { useLenis } from "@/components/primitives/SmoothScrollProvider";
+import { CURSOR_LENS_RADIUS_PX } from "@/components/primitives/CustomCursor";
 import { INDUSTRIES } from "@/app/work/data";
 
 import { WORK_HERO_COLORS } from "./workPalette";
@@ -493,7 +494,16 @@ export default function WorkHero() {
       else if (carouselT > 1) carouselT = 1;
 
       rail.style.opacity = String(fadeEased);
-      rail.style.pointerEvents = fadeT >= 1 ? "auto" : "none";
+      /* Pointer-events on when the stack is mostly faded in
+         (fadeEased >= 0.9). The previous strict `fadeT >= 1`
+         threshold was a precision trap — if the user stopped
+         scrolling at a progress where fadeT computed to 0.9999...,
+         the strict check failed and hover stayed dead even though
+         the industries looked fully settled. A tiny additional
+         scroll would tip fadeT past 1 and hover suddenly worked,
+         which read as a bug. fadeEased >= 0.9 is well past visual
+         completion and immune to floating-point edge cases. */
+      rail.style.pointerEvents = fadeEased >= 0.9 ? "auto" : "none";
 
       const ul = ulEl;
       if (ul) {
@@ -650,6 +660,144 @@ export default function WorkHero() {
     if (mounted) {
       ScrollTrigger.refresh();
     }
+  }, [mounted]);
+
+  /* Magnifying-lens effect for industry rows.
+     ─────────────────────────────────────────
+     Each industry LI has TWO overlaid texts: the industry name (in
+     the layout) and the project name (absolutely positioned on top
+     of it). The lens swap requires TWO simultaneous geometries:
+
+       • project span — `clip-path: circle(r at x y)` reveals only
+         the part of the project name inside the lens.
+       • industry span — `mask-image: radial-gradient(..., transparent,
+         black)` cuts a matching circular hole so the industry text
+         vanishes wherever the project text appears. Without this
+         second mask the industry name reads THROUGH the project
+         glyphs inside the lens (the "behind 'llec' I still see 'care'"
+         bug the user flagged).
+
+     Hover transitions cross-fade. We track the last hovered LI in a
+     closure. On a hover CHANGE we toggle `opacity` (0/1) on the
+     project spans and clear the previous row's mask — but we DON'T
+     reset the clip-path on the old row. The CSS transition (180ms)
+     then fades the previous lens out where it last sat, instead of
+     snapping it back to origin and producing the visible jump the
+     user reported. On every mousemove on the current row we update
+     clip-path and mask-image without transitions so the lens stays
+     glued to the cursor at 60 fps.
+
+     Hit detection uses `elementFromPoint` (respects z-order and the
+     wrapper's transparent-padding rule) — per-LI bounding-rect tests
+     would all overlap in the scaled carousel state and the lens
+     would leak fragments of adjacent rows.
+
+     Two scale wrinkles handled per span:
+       1. The carousel applies `transform: scale(N)` to each LI.
+          clip-path and mask-image both operate in the element's
+          PRE-transform local coordinate space, so we divide the
+          cursor offset (a post-transform viewport delta) by N.
+       2. The lens radius renders at a fixed *visible* size (matched
+          to the cursor ring), so the local-space radius is also
+          (radius / scale). After CSS scales the element, the
+          on-screen circle ends up the same size on every row.
+
+     Coords are computed PER SPAN — the project span is absolutely
+     positioned (top-0 left-1/2 -translate-x-1/2) so its bounding
+     rect differs from the industry span underneath it. Reusing one
+     rect for both would offset one mask relative to the other and
+     the cursor ring would straddle a visible gap. */
+  useEffect(() => {
+    if (!mounted) return;
+    let lastHoveredLi: HTMLElement | null = null;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const hit = document.elementFromPoint(e.clientX, e.clientY);
+      const hoveredLi = hit?.closest<HTMLElement>("[data-cursor-disc]") ?? null;
+
+      /* Hover transition — only runs on row CHANGE. Fades the
+         outgoing project to opacity 0 (CSS handles the 180ms
+         tween) and clears the outgoing industry mask. Mask is
+         intentionally NOT reset on the outgoing row so the CSS
+         opacity transition fades the lens out where it last sat
+         instead of snapping. */
+      if (hoveredLi !== lastHoveredLi) {
+        if (lastHoveredLi) {
+          const prevProject = lastHoveredLi.querySelector<HTMLElement>("[data-lens-project]");
+          const prevIndustry = lastHoveredLi.querySelector<HTMLElement>("[data-lens-industry]");
+          if (prevProject) prevProject.style.opacity = "0";
+          if (prevIndustry) {
+            prevIndustry.style.maskImage = "";
+            prevIndustry.style.webkitMaskImage = "";
+          }
+        }
+        if (hoveredLi) {
+          const nextProject = hoveredLi.querySelector<HTMLElement>("[data-lens-project]");
+          if (nextProject) nextProject.style.opacity = "1";
+        }
+        lastHoveredLi = hoveredLi;
+      }
+
+      if (!hoveredLi) return;
+
+      /* Read the LI's CSS scale once — all three lens layers
+         inherit it. The mask radius and the local coords both
+         need to be divided by this scale so the on-screen circle
+         renders at the visible CURSOR_LENS_RADIUS_PX regardless of
+         the carousel's per-row scale. */
+      let scale = 1;
+      const m = /matrix\(([^,]+),/.exec(getComputedStyle(hoveredLi).transform);
+      if (m) {
+        const parsed = parseFloat(m[1] ?? "1");
+        if (parsed > 0) scale = parsed;
+      }
+      const radiusLocal = CURSOR_LENS_RADIUS_PX / scale;
+
+      const industrySpan = hoveredLi.querySelector<HTMLElement>("[data-lens-industry]");
+      if (industrySpan) {
+        const r = industrySpan.getBoundingClientRect();
+        const cx = (e.clientX - r.left) / scale;
+        const cy = (e.clientY - r.top) / scale;
+        /* Industry mask — inverse circle with a soft inner edge.
+           transparent 92% → black 100% gives an 8% feather band
+           where the industry text fades back in, matched exactly
+           by the project mask's outer edge for a clean cross-fade
+           ring instead of a hard cookie-cutter line. */
+        const mask = `radial-gradient(circle ${radiusLocal}px at ${cx}px ${cy}px, transparent 92%, black 100%)`;
+        industrySpan.style.maskImage = mask;
+        industrySpan.style.webkitMaskImage = mask;
+      }
+
+      const projectSpan = hoveredLi.querySelector<HTMLElement>("[data-lens-project]");
+      if (projectSpan) {
+        const r = projectSpan.getBoundingClientRect();
+        const cx = (e.clientX - r.left) / scale;
+        const cy = (e.clientY - r.top) / scale;
+        /* Project mask — opposite curve of the industry mask. The
+           feather band (92→100%) mirrors the industry's so the two
+           layers cross-fade through the same 4-pixel ring on the
+           lens edge. */
+        const mask = `radial-gradient(circle ${radiusLocal}px at ${cx}px ${cy}px, black 92%, transparent 100%)`;
+        projectSpan.style.maskImage = mask;
+        projectSpan.style.webkitMaskImage = mask;
+
+        /* Magnification origin tracks the cursor on the INNER span
+           (the outer span carries position only). Combined with
+           `transform: scale(1.06)` already set inline, this anchors
+           the glyph directly under the lens and lets neighbouring
+           glyphs splay outward — the visual cue that sells the
+           "magnifying glass" interpretation over "mask reveal".
+           Coords are in the outer span's pre-transform local space,
+           which equals the inner span's local space since they
+           share a box (inner inline-block at outer's top-left). */
+        const inner = projectSpan.querySelector<HTMLElement>("[data-lens-project-inner]");
+        if (inner) {
+          inner.style.transformOrigin = `${cx}px ${cy}px`;
+        }
+      }
+    };
+    window.addEventListener("mousemove", onMouseMove, { passive: true });
+    return () => window.removeEventListener("mousemove", onMouseMove);
   }, [mounted]);
 
   const phaseText = PHASE_TEXTS[phase]!;
@@ -827,16 +975,98 @@ export default function WorkHero() {
               const primaryClient = chip.clients[0] ?? chip.label;
               const color = CLIENT_COLORS[primaryClient] ?? "#03020B";
               return (
-                <li key={chip.label} className="block w-full text-center" style={{ opacity: 0 }}>
-                  <span
-                    data-cursor-disc={primaryClient}
-                    data-cursor-color={color}
-                    className="inline-block font-semibold leading-[1.0] text-foreground tracking-[-0.04em] cursor-none transition-colors duration-200"
-                    style={{
-                      fontSize: "clamp(26px, 3.8vw, 48px)",
-                    }}
-                  >
-                    {chip.label}
+                <li
+                  key={chip.label}
+                  /* Hover target is the LI (full row width). The disc
+                     cursor fires when the user hovers ANYWHERE in the
+                     row — over the text OR the padding either side —
+                     making the carousel feel forgiving instead of
+                     requiring pixel-perfect hover on the text glyph. */
+                  data-cursor-disc={primaryClient}
+                  data-cursor-color={color}
+                  className="block w-full text-center cursor-none"
+                  style={{ opacity: 0 }}
+                >
+                  {/* Lens overlay — magnifying-glass swap with two
+                      stacked layers:
+
+                        1. industry text (in-flow inside wrapper) —
+                           gets an inverse radial mask on hover so
+                           the area inside the lens fades out.
+                        2. project text (absolute, centered) — masked
+                           to a feathered circle. The inner wrapper
+                           carries `scale(1.06)` with transform-origin
+                           moved to the cursor per frame so the glyph
+                           under the lens stays anchored while
+                           neighbours push outward (real magnifying-
+                           glass distortion, not a centre-scaled
+                           mush).
+
+                      Masks use a 92→100% gradient stop band on both
+                      sides — industry fades out and project fades in
+                      across the same 8% feather, so the boundary
+                      cross-fades cleanly instead of cutting hard.
+                      Opacity transitions (180ms) handle row-to-row
+                      cross-fades; per-frame mask + transform-origin
+                      writes keep the lens glued to the cursor.
+
+                      A brand-tinted glow layer was tried here and
+                      removed — its radial gradient extended into the
+                      empty row padding (the LI is wider than the
+                      industry text), and even with a tight halo the
+                      soft alpha read as a stray blur against the
+                      mesh background. The cursor ring is already
+                      brand-coloured and the project text is brand-
+                      coloured; a third colour layer was redundant. */}
+                  <span className="relative inline-block">
+                    <span
+                      data-lens-industry
+                      className="inline-block font-semibold leading-[1.0] text-foreground tracking-[-0.04em]"
+                      style={{
+                        fontSize: "clamp(34px, 5vw, 64px)",
+                      }}
+                    >
+                      {chip.label}
+                    </span>
+                    <span
+                      data-lens-project
+                      aria-hidden
+                      className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2"
+                      style={{
+                        opacity: 0,
+                        transition: "opacity 0.18s ease",
+                      }}
+                    >
+                      <span
+                        data-lens-project-inner
+                        className="inline-block font-bold leading-[1.0] tracking-[-0.04em] whitespace-nowrap"
+                        style={{
+                          /* Inherits Albert Sans from the body so the
+                             project text shares glyph metrics with
+                             the industry text. The lens is then a
+                             pure magnification + colour swap of the
+                             same word shapes — no x-height or weight
+                             mismatch breaking the illusion. Earlier
+                             pass used Bricolage Grotesque here; its
+                             larger x-height made the lens text read
+                             ~15% bigger than the surrounding industry
+                             label even before the 1.06 scale, which
+                             killed the "this is the same word, just
+                             magnified" read. */
+                          fontSize: "clamp(34px, 5vw, 64px)",
+                          color,
+                          /* Constant 1.06× magnification. Origin is
+                             rewritten per mousemove (see effect) so
+                             the lens behaves like a real glass:
+                             centre-glyph stays put, neighbours
+                             distort outward. */
+                          transform: "scale(1.06)",
+                          transformOrigin: "center center",
+                        }}
+                      >
+                        {primaryClient}
+                      </span>
+                    </span>
                   </span>
                 </li>
               );

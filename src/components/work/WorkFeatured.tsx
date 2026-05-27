@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { Clock } from "lucide-react";
 
-import { BorderBeam, MagicCard, NumberTicker, ScrambleText } from "@/components/primitives";
-import { cn } from "@/lib/cn";
+import { BorderBeam, MagicCard, NumberTicker } from "@/components/primitives";
 import type { CaseStudy } from "@/app/work/data";
 
 /**
@@ -41,24 +39,24 @@ export default function WorkFeatured({ study }: { study: CaseStudy }) {
         <div className="flex items-baseline justify-between gap-6 mb-6 sm:mb-8">
           <p
             id="featured-heading"
-            className="font-mono text-[11px] sm:text-xs uppercase tracking-[0.22em] text-muted"
+            className="font-mono text-xs sm:text-[13px] uppercase tracking-[0.18em] text-muted"
             style={{ fontFamily: "var(--font-mono), 'JetBrains Mono', monospace" }}
           >
             N° 03 — Featured engagement
           </p>
           <p
-            className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-muted tabular-nums hidden sm:block"
+            className="font-mono text-[11px] sm:text-xs uppercase tracking-[0.18em] text-muted tabular-nums hidden sm:block"
             style={{ fontFamily: "var(--font-mono), 'JetBrains Mono', monospace" }}
           >
             01 / {String(10).padStart(2, "0")}
           </p>
         </div>
 
-        <Link
-          href={`/work/${study.slug}`}
-          aria-label={`Read the ${study.client} case study`}
-          className="block focus-visible:outline-none group"
-        >
+        {/* Case study write-ups are not published yet — the wrapping
+            element is a non-interactive `<article>` (was `<Link>` until
+            we blocked nav to /work/[slug]). All visual affordances
+            stay; only the click target is removed. */}
+        <article className="block group" aria-labelledby={`featured-client-${study.slug}`}>
           <BorderBeam
             duration={9}
             borderRadius={28}
@@ -80,12 +78,13 @@ export default function WorkFeatured({ study }: { study: CaseStudy }) {
 
                 {/* ─── RIGHT — copy block ────────────────────────── */}
                 <div className="lg:col-span-5 flex flex-col">
-                  {/* Tag row — industry · region · year — mono so it
-                      reads as metadata, not headline. */}
-                  <div
-                    className="flex items-center gap-3 text-[11px] sm:text-xs uppercase font-mono tracking-[0.22em] text-muted"
-                    style={{ fontFamily: "var(--font-mono), 'JetBrains Mono', monospace" }}
-                  >
+                  {/* Tag row — industry · region · year. Switched
+                      from mono to Albert Sans + tight tracking so
+                      the values read as data, not decoration. Mono
+                      stays on the section header + indices, where
+                      the editorial chrome belongs. Gains ink emphasis
+                      on group-hover, matching the grid card pattern. */}
+                  <div className="flex items-center gap-3 text-xs sm:text-[13px] uppercase font-medium tracking-[0.08em] text-muted transition-colors duration-300 group-hover:text-foreground/80">
                     <span>{study.industry}</span>
                     <span aria-hidden className="text-border-mid">·</span>
                     <span>{study.region}</span>
@@ -96,6 +95,7 @@ export default function WorkFeatured({ study }: { study: CaseStudy }) {
                   {/* Client name + outcome stack */}
                   <div className="mt-5">
                     <h3
+                      id={`featured-client-${study.slug}`}
                       className="font-medium text-foreground leading-[0.98]"
                       style={{
                         fontSize: "clamp(32px, 4vw, 56px)",
@@ -104,44 +104,75 @@ export default function WorkFeatured({ study }: { study: CaseStudy }) {
                     >
                       {study.client}
                     </h3>
-                    <p className="mt-4 text-lg sm:text-xl leading-snug text-foreground/85 max-w-prose">
+                    <p className="mt-4 text-lg sm:text-xl leading-snug text-foreground/85 max-w-prose transition-colors duration-300 group-hover:text-foreground">
                       {study.outcome}
                     </p>
                   </div>
 
-                  {/* Stack row — dot-separated, mono micro-copy */}
-                  <p
-                    className="mt-6 font-mono text-xs sm:text-sm text-muted leading-relaxed"
-                    style={{ fontFamily: "var(--font-mono), 'JetBrains Mono', monospace" }}
-                  >
-                    {study.stackCompact.join("  ·  ")}
-                  </p>
-
-                  {/* Stat row — two NumberTickers when the value is a
-                      pure number; raw string otherwise (handles "<12s",
-                      "837P", "150K+" etc.). Uses plain divs (not <dl>)
-                      because each value+label pair sits inline with
-                      visible caption text — no need for sr-only <dt>s. */}
-                  <div className="mt-8 grid grid-cols-2 gap-6 pt-6 border-t border-border/70">
-                    {study.cardStats.map((stat) => (
-                      <div key={stat.label}>
-                        <p
-                          className="font-medium text-foreground tracking-[-0.04em] leading-none"
-                          style={{
-                            fontSize: "clamp(28px, 3vw, 40px)",
-                            color: accent,
-                          }}
-                        >
-                          <StatValue value={stat.value} />
-                        </p>
-                        <p className="mt-2 text-xs sm:text-sm text-muted leading-tight">
-                          {stat.label}
-                        </p>
-                      </div>
+                  {/* Stack chips — converted from a dot-separated
+                      mono string to individual bordered pills, same
+                      treatment as the grid cards. Each token gets
+                      its own visual boundary so the eye can land on
+                      one without parsing separators. */}
+                  <ul className="mt-6 flex flex-wrap items-center gap-1.5" aria-label="Tech stack">
+                    {study.stackCompact.map((tech) => (
+                      <li
+                        key={tech}
+                        className="inline-flex items-center rounded-md border border-border/70 bg-background/40 px-2.5 py-1 font-mono text-[12px] sm:text-[13px] text-foreground/80 leading-none"
+                        style={{ fontFamily: "var(--font-mono), 'JetBrains Mono', monospace" }}
+                      >
+                        {tech}
+                      </li>
                     ))}
+                  </ul>
+
+                  {/* Stats — Tier 4 typography reform: cardStats[0]
+                      is promoted to a display headline (the metric IS
+                      the story), cardStats[1] demoted to a supporting
+                      caption line. Featured tile scale is bigger than
+                      grid cards (clamp ceiling 80 vs 56) because it
+                      has more room and is the marquee. Numbers stay
+                      in ink (text-foreground); brand cue lives in the
+                      accent bar above to dodge WCAG AA contrast
+                      failures for amber/yellow/orange clients. */}
+                  <div className="mt-8 pt-6 border-t border-border/70">
+                    {/* Hero stat */}
+                    <span
+                      aria-hidden
+                      className="block h-[3px] w-10 rounded-full mb-3"
+                      style={{ background: accent }}
+                    />
+                    <p
+                      className="font-medium text-foreground tracking-[-0.04em] leading-[0.9] origin-left transition-transform duration-300 group-hover:scale-[1.025]"
+                      style={{ fontSize: "clamp(44px, 5vw, 80px)" }}
+                    >
+                      <StatValue value={study.cardStats[0].value} />
+                    </p>
+                    <p className="mt-2 text-sm sm:text-base text-muted leading-tight max-w-[36ch]">
+                      {study.cardStats[0].label}
+                    </p>
+
+                    {/* Secondary stat — quiet metadata line. */}
+                    <div
+                      className="mt-5 pt-4 border-t border-border/50 flex items-baseline gap-2 font-mono text-[12px]"
+                      style={{ fontFamily: "var(--font-mono), 'JetBrains Mono', monospace" }}
+                    >
+                      <span className="font-medium text-foreground/85 tracking-tight transition-colors duration-300 group-hover:text-foreground">
+                        {study.cardStats[1].value}
+                      </span>
+                      <span aria-hidden className="text-border-mid">·</span>
+                      <span className="uppercase tracking-[0.14em] text-muted">
+                        {study.cardStats[1].label}
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Footer affordance — status pill + arrow on hover */}
+                  {/* Footer — project status (left) + case-study
+                      write-up status (right). The right-side
+                      "Coming soon" replaces the original "See the
+                      build" link CTA while case study detail pages
+                      are off-limits. Clock icon + quiet copy reads
+                      as intentional, not as a broken link. */}
                   <div className="mt-auto pt-8 flex items-center justify-between gap-4">
                     <span
                       className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-[0.18em] text-foreground/70"
@@ -155,29 +186,18 @@ export default function WorkFeatured({ study }: { study: CaseStudy }) {
                       {study.status}
                     </span>
                     <span
-                      className={cn(
-                        "inline-flex items-center gap-2 text-sm font-medium text-foreground transition-all",
-                        "translate-x-0 group-hover:translate-x-1",
-                      )}
+                      className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-[0.18em] text-muted"
+                      style={{ fontFamily: "var(--font-mono), 'JetBrains Mono', monospace" }}
                     >
-                      <ScrambleText text="See the build" trigger="hover" />
-                      <span
-                        aria-hidden
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background transition-transform group-hover:scale-110"
-                        style={{
-                          background: accent,
-                          color: "#fff",
-                        }}
-                      >
-                        <ArrowUpRight className="h-4 w-4" />
-                      </span>
+                      <Clock aria-hidden className="h-3.5 w-3.5" />
+                      Case study coming soon
                     </span>
                   </div>
                 </div>
               </div>
             </MagicCard>
           </BorderBeam>
-        </Link>
+        </article>
       </div>
     </section>
   );
@@ -210,6 +230,35 @@ function FeaturedDashboardMock({
       <div
         className="absolute -top-32 -right-32 h-64 w-64 rounded-full pointer-events-none"
         style={{ background: accent, filter: "blur(120px)", opacity: 0.4 }}
+      />
+
+      {/* Cinematic top-light — same raking-light language as the
+          grid covers. Ellipse anchored at the top centre, fading
+          to transparent by 70%. Makes the dark gradient feel lit,
+          not slab-painted. */}
+      <div
+        className="absolute inset-x-0 top-0 h-2/3 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 35%, transparent 70%)",
+        }}
+      />
+
+      {/* Noise grain overlay — inline SVG turbulence at low opacity
+          with `mix-blend-mode: overlay`, so the gradient underneath
+          picks up film-grain texture without losing saturation. Same
+          recipe as the grid covers; here the panel is taller, so we
+          let the 240px tile repeat. Adds the "editorial feel" 2026
+          surface treatment for ~200 bytes inline. */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")",
+          backgroundSize: "240px 240px",
+          opacity: 0.14,
+          mixBlendMode: "overlay",
+        }}
       />
 
       {/* Faux app chrome — top bar */}
@@ -246,12 +295,12 @@ function FeaturedDashboardMock({
               return (
                 <div
                   key={label}
-                  className={cn(
-                    "rounded-md px-2.5 py-1.5 text-[10px] sm:text-[11px] font-medium tracking-tight",
-                    active
+                  className={
+                    "rounded-md px-2.5 py-1.5 text-[10px] sm:text-[11px] font-medium tracking-tight " +
+                    (active
                       ? "text-background"
-                      : "text-background/55 hover:text-background/80",
-                  )}
+                      : "text-background/55 hover:text-background/80")
+                  }
                   style={
                     active
                       ? {

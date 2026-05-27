@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { motion, useMotionValue, useSpring } from "framer-motion";
+import { animate, motion, useMotionValue, useSpring, useTransform, useVelocity } from "framer-motion";
 
 /* CustomCursor — three-state, mix-blend, spring-driven cursor.
    ─────────────────────────────────────────────────────────────
@@ -65,10 +65,22 @@ import { motion, useMotionValue, useSpring } from "framer-motion";
 const DOT_SIZE = 14;
 const RING_SIZE = 64;
 const PILL_HEIGHT = 44;
-/* Disc — giant filled circle that carries a label centred inside.
-   Used by the /work hero's industry list, where hovering a row
-   morphs the cursor into a brand-coloured client badge. */
-const DISC_SIZE = 168;
+/* Disc — thin colored ring outline (no fill, no label). Used by the
+   /work hero's industry list as a MAGNIFYING-LENS frame. The page
+   text underneath always shows the industry name (Healthcare, …);
+   inside this ring, a `clip-path` reveal shows the project name
+   (MedCollect, …) in the client's brand colour. The ring itself is
+   only the frame — the lens content lives on the page. Diameter is
+   sized to roughly match the carousel's focal-row text height so the
+   lens feels in-scale with the words it's revealing. */
+const DISC_SIZE = 180;
+const DISC_BORDER_PX = 2.5;
+/* Lens reveal radius the WorkHero clip-path effect should use. Sits
+   just inside the cursor border so the revealed text never pokes
+   past the ring outline. Exported so the lens effect stays in sync
+   with cursor sizing — change DISC_SIZE here and the page-side lens
+   resizes automatically. */
+export const CURSOR_LENS_RADIUS_PX = DISC_SIZE / 2 - DISC_BORDER_PX - 1;
 /* Pill width is computed from label length so short labels ("go") and
    longer ones ("let's go") both feel proportionate. The constants
    match a ~13px uppercase tracked label rendered inside the pill. */
@@ -124,6 +136,74 @@ export default function CustomCursor() {
 
   const springX = useSpring(mouseX, SPRING_CONFIG);
   const springY = useSpring(mouseY, SPRING_CONFIG);
+
+  /* Direction-aware squash for the disc state.
+     ──────────────────────────────────────────
+     Track the velocity of the spring (px/s on each axis). At rest:
+     identity transform. Above a small threshold: rotate the disc
+     so its X axis aligns with the motion vector, then scale X (out)
+     and Y (in) by a velocity-driven intensity. The on-screen result
+     is a circle that stretches in the direction of travel and
+     squashes perpendicular — the "wet cursor" feel Apple and
+     Active Theory use. Capped at 4% so the ring stays clearly a
+     ring; threshold of 200 px/s suppresses jitter on fine
+     adjustments. */
+  const velocityX = useVelocity(springX);
+  const velocityY = useVelocity(springY);
+  const squashRotateDeg = useTransform(
+    [velocityX, velocityY],
+    ([vx, vy]: number[]) => {
+      const speed = Math.hypot(vx ?? 0, vy ?? 0);
+      if (speed < 50) return 0;
+      return (Math.atan2(vy ?? 0, vx ?? 0) * 180) / Math.PI;
+    },
+  );
+  const squashIntensity = useTransform(
+    [velocityX, velocityY],
+    ([vx, vy]: number[]) => {
+      const speed = Math.hypot(vx ?? 0, vy ?? 0);
+      const THRESHOLD = 200;
+      const RANGE = 6000;
+      const MAX = 0.04;
+      return Math.min(MAX, Math.max(0, (speed - THRESHOLD) / RANGE));
+    },
+  );
+
+  /* Pulse on disc-colour change. When the user moves from one
+     industry row to another, the disc colour state flips to the
+     new client's brand colour. The border-color CSS transition
+     already cross-fades the hue smoothly, but a tiny scale dip
+     (1.0 → 0.94 → 1.0) on the same beat gives the cursor a
+     "tap" — visually acknowledging that the user just picked up
+     a new identity instead of just letting the colour quietly
+     swap. The animation runs imperatively on a MotionValue so
+     it composes with the squash transforms above. */
+  const pulseScale = useMotionValue(1);
+  const squashScaleX = useTransform(
+    [squashIntensity, pulseScale],
+    ([i, p]: number[]) => (1 + (i ?? 0)) * (p ?? 1),
+  );
+  const squashScaleY = useTransform(
+    [squashIntensity, pulseScale],
+    ([i, p]: number[]) => (1 - (i ?? 0)) * (p ?? 1),
+  );
+
+  /* Run the pulse on every actual disc-colour CHANGE — not on the
+     first render (when discColor defaults to ink and the user
+     hasn't hovered anything yet) and not on re-renders where the
+     value is unchanged. The ref-gate filters out the initial mount. */
+  const isFirstColorRef = useRef(true);
+  useEffect(() => {
+    if (isFirstColorRef.current) {
+      isFirstColorRef.current = false;
+      return;
+    }
+    const controls = animate(pulseScale, [1, 0.94, 1], {
+      duration: 0.32,
+      ease: [0.22, 1, 0.36, 1],
+    });
+    return () => controls.stop();
+  }, [discColor, pulseScale]);
 
   useEffect(() => {
     // Only show on non-touch, fine-pointer devices.
@@ -308,31 +388,43 @@ export default function CustomCursor() {
         filter: isPill || isDisc ? "none" : "drop-shadow(0 0 3px rgba(0,0,0,0.22))",
       }}
     >
-      <div
+      <motion.div
         style={{
           width: dims.w,
           height: dims.h,
           marginLeft: -dims.w / 2,
           marginTop: -dims.h / 2,
           borderRadius: 9999,
-          /* Solid white fill in dot + pill states; hollow ring in
-             ring state. The ring uses a thin border so the underlying
-             text isn't obscured by a giant solid disc. */
-          background: isRing ? "transparent" : isDisc ? discColor : "#ffffff",
-          border: isRing ? "1.5px solid #ffffff" : "none",
+          boxSizing: "border-box",
+          /* Solid white fill in dot + pill states; hollow outline ring
+             in ring state (white) and disc state (brand-coloured).
+             Disc is the /work industry hover — minimal pointer
+             indicator, no fill; the project name renders on the page
+             via the industry-text swap, not inside the cursor. */
+          background: isRing || isDisc ? "transparent" : "#ffffff",
+          border: isRing
+            ? "1.5px solid #ffffff"
+            : isDisc
+              ? `${DISC_BORDER_PX}px solid ${discColor}`
+              : "none",
           opacity: isVisible ? 1 : 0,
-          /* Layout for the pill / disc label. Hidden in dot/ring
-             states via a child opacity toggle below — the flex centering
-             stays active so width/height transitions read smoothly. */
+          /* Layout for the pill label. Disc has no label so the flex
+             centering is benign there. */
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: isDisc ? "#ffffff" : "#0e0a1e",
+          color: "#0e0a1e",
           boxShadow: isPill
             ? "0 6px 22px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255, 255, 255, 0.4) inset"
-            : isDisc
-              ? "0 12px 40px rgba(0, 0, 0, 0.18)"
-              : "none",
+            : "none",
+          /* Squash + pulse motion values apply only in disc state.
+             Non-disc states use identity (1) so the cursor's dot/ring/
+             pill modes stay perfectly circular and unaffected by
+             velocity. Framer-motion swaps MotionValue subscriptions
+             when these references change between renders. */
+          rotate: isDisc ? squashRotateDeg : 0,
+          scaleX: isDisc ? squashScaleX : 1,
+          scaleY: isDisc ? squashScaleY : 1,
           transition:
             "width 0.28s cubic-bezier(0.23, 1, 0.32, 1), height 0.28s cubic-bezier(0.23, 1, 0.32, 1), margin 0.28s cubic-bezier(0.23, 1, 0.32, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease, opacity 0.3s ease",
         }}
@@ -341,18 +433,19 @@ export default function CustomCursor() {
           style={{
             fontFamily:
               "var(--font-geist-sans), system-ui, -apple-system, sans-serif",
-            fontSize: isDisc ? 17 : 12,
-            fontWeight: isDisc ? 500 : 600,
-            letterSpacing: isDisc ? "-0.01em" : "0.08em",
-            textTransform: isDisc ? "none" : "uppercase",
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
             whiteSpace: "nowrap",
-            opacity: isPill || isDisc ? 1 : 0,
+            /* Disc has no label — only pill shows text. */
+            opacity: isPill ? 1 : 0,
             transition: "opacity 0.18s ease",
           }}
         >
           {label}
         </span>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }
