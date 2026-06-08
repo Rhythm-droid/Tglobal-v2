@@ -62,7 +62,10 @@ export default function CountryPicker({
   /* Active option = the option focus-ringed inside the listbox while
      the user navigates with arrow keys. Distinct from `value`, we
      don't write to `value` until the user hits Enter. */
-  const [activeIso, setActiveIso] = useState(value);
+  const [activeState, setActiveState] = useState({
+    value,
+    iso: value,
+  });
   /* Type-to-search announcer.
      ──────────────────────────
      The listbox already exposes the active option to assistive tech
@@ -85,13 +88,8 @@ export default function CountryPicker({
   const itemRefs = useRef<Map<string, HTMLLIElement>>(new Map());
 
   const selected = useMemo(() => findCountry(value), [value]);
-
-  /* Keep activeIso in sync with value when the parent changes value
-     externally (e.g. on form reset). Without this the next open
-     would briefly highlight a stale country. */
-  useEffect(() => {
-    setActiveIso(value);
-  }, [value]);
+  const activeIso = activeState.value === value ? activeState.iso : value;
+  const setActiveIso = (iso: string) => setActiveState({ value, iso });
 
   /* Close on outside click. Listener is only attached while open so
      we don't pay for it on every interaction elsewhere. */

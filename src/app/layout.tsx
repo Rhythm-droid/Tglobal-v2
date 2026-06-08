@@ -201,6 +201,9 @@ const isProdRuntime = process.env.NODE_ENV === "production";
 const CF_ANALYTICS_TOKEN = isProdRuntime
   ? process.env.NEXT_PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN
   : undefined;
+const GA_MEASUREMENT_ID = isProdRuntime
+  ? process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
+  : undefined;
 
 export default function RootLayout({
   children,
@@ -309,6 +312,28 @@ export default function RootLayout({
             src="https://static.cloudflareinsights.com/beacon.min.js"
             data-cf-beacon={JSON.stringify({ token: CF_ANALYTICS_TOKEN })}
           />
+        ) : null}
+
+        {/* Google Analytics 4 — env-gated and loaded after hydration so
+            local/staging traffic stays out of production reports and the
+            tag does not block rendering. */}
+        {!isStaging && GA_MEASUREMENT_ID ? (
+          <>
+            <Script
+              id="google-analytics-loader"
+              strategy="afterInteractive"
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+            />
+            <Script id="google-analytics-config" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                window.gtag = gtag;
+                gtag('js', new Date());
+                gtag('config', '${GA_MEASUREMENT_ID}');
+              `}
+            </Script>
+          </>
         ) : null}
       </body>
     </html>

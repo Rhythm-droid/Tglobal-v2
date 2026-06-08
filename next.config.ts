@@ -72,13 +72,9 @@ const REACT_SCAN_WORKER_DEV = isDev ? "blob:" : "'self'";
 
 const CSP = [
   "default-src 'self'",
-  // `https://static.cloudflareinsights.com` hosts the Cloudflare Web
-  // Analytics beacon (loaded by layout.tsx <Script>). Without it on
-  // script-src, CSP blocks the beacon and Cloudflare's measurement
-  // never fires AND a real CSP violation gets logged to the console.
-  // Image/connect not needed — the beacon doesn't fetch additional
-  // resources from that origin.
-  `script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com${isDev ? " 'unsafe-eval'" : ""}${REACT_SCAN_SCRIPT_DEV}`,
+  // Analytics scripts load after hydration from their official origins.
+  // Keeping the allowlist explicit prevents unrelated third-party scripts.
+  `script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://*.googletagmanager.com${isDev ? " 'unsafe-eval'" : ""}${REACT_SCAN_SCRIPT_DEV}`,
   // worker-src controls Web Worker / SharedWorker / ServiceWorker sources.
   // Dev: react-scan creates a worker from a blob: URL for its render tracker.
   // Prod: only same-origin workers allowed.
@@ -88,14 +84,16 @@ const CSP = [
   // the SVG country flags shown in the phone-number picker (see
   // src/components/primitives/CountryPicker.tsx and src/lib/countries.ts).
   // Image-only allowlist; no script, frame, or connect access granted.
-  "img-src 'self' data: blob: https://flagcdn.com",
+  "img-src 'self' data: blob: https://flagcdn.com https://*.google-analytics.com https://*.googletagmanager.com",
   "font-src 'self' data:",
   // Web3Forms is the form-to-email backend used by the #talk-to-us
   // section in CTA.tsx. Whitelist its API endpoint so the fetch call
   // isn't blocked by the connect-src directive.
   // Cloudflareinsights.com receives the beacon's pageview events;
   // without it, CSP silently drops every measurement fetch.
-  `connect-src 'self' https://api.web3forms.com https://cloudflareinsights.com${REACT_SCAN_CONNECT_DEV}`,
+  // GA4 sends measurement requests to google-analytics.com and may use its
+  // regional collection endpoint. No advertising domains are allowed.
+  `connect-src 'self' https://api.web3forms.com https://cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com${REACT_SCAN_CONNECT_DEV}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   // form-action governs where <form> can POST to. The form here uses
@@ -128,6 +126,17 @@ const SECURITY_HEADERS = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.tglobal.in" }],
+        destination: "https://tglobal.in/:path*",
+        permanent: true,
+      },
+    ];
+  },
 
   async headers() {
     return [

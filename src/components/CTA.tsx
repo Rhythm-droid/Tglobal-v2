@@ -464,6 +464,14 @@ export default function CTA() {
       const res = await fetch(ENDPOINT, { method: "POST", body: fd });
       const data = (await res.json()) as { success?: boolean; message?: string };
       if (data.success) {
+        const gtag = Reflect.get(window, "gtag") as
+          | ((
+              command: "event",
+              eventName: "generate_lead",
+              parameters: { form_type: FormMode },
+            ) => void)
+          | undefined;
+        gtag?.("event", "generate_lead", { form_type: mode });
         setStatus("success");
         return;
       }

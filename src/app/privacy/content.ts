@@ -7,7 +7,7 @@
  * sticky TOC also reads it to build navigation.
  *
  * ⚠️  IMPORTANT — this is a starting-point draft authored from the
- * site's actual data flows (contact form → web3forms.com, no
+ * site's actual data flows (contact form → web3forms.com, website
  * analytics, two-office US/IN structure). It is NOT a legal review.
  * Have counsel review before publishing, especially for:
  *   • India DPDP grievance officer naming + 7-day SLA
@@ -53,16 +53,16 @@ export interface PolicySection {
  * user's locale. Keeping it in code (rather than auto-generating
  * from git) means previews and staging always show the same date as
  * production, which matters for legal traceability. */
-export const POLICY_LAST_UPDATED = "2026-05-04";
-export const POLICY_VERSION = "1.0";
+export const POLICY_LAST_UPDATED = "2026-06-08";
+export const POLICY_VERSION = "1.1";
 
 /* TL;DR — 4 plain-English bullets at the top of the page. Lives
  * separately from the numbered sections because it gets a special
  * gradient-bordered card treatment (the only card on the page). */
 export const TLDR: string[] = [
-  "We only collect what you give us through the contact form: your name, email, phone, company, role, LinkedIn, and any notes you write.",
+  "We collect the details you submit through the contact form and limited website analytics used to improve the site.",
   "We use that information to reply to your inquiry. We don't sell it, rent it, or hand it to advertisers.",
-  "Behind the scenes the form goes through Web3Forms (our email-delivery service) and our hosting provider. That's the full third-party list.",
+  "Behind the scenes, Web3Forms delivers form submissions, our hosting provider serves the site, and Google Analytics 4 and Cloudflare Web Analytics help us understand site usage.",
   "You can ask us to access, correct, or delete your data at any time. Email <a href=\"mailto:growth@tglobal.in\">growth@tglobal.in</a> and we'll respond within 30 days.",
 ];
 
@@ -84,7 +84,7 @@ export const SECTIONS: PolicySection[] = [
   {
     id: "what-we-collect",
     title: "Information we collect",
-    lede: "Only what you give us. We don't run analytics scripts, advertising pixels, or third-party trackers on this site.",
+    lede: "We collect the details you submit and limited website analytics. We don't run advertising pixels or sell browsing data.",
     body: [
       {
         kind: "p",
@@ -105,7 +105,7 @@ export const SECTIONS: PolicySection[] = [
       },
       {
         kind: "p",
-        text: "We do not collect IP-address-based geolocation, device fingerprints, or browsing behavior. The site does not set advertising or analytics cookies. The only cookies present are short-lived session cookies that the hosting platform may set for caching and security; those expire when you close the tab.",
+        text: "Separately, Google Analytics 4 collects limited website usage data such as pages viewed, interactions, approximate location derived from IP address, and browser or device information. Cloudflare Web Analytics may also collect aggregated usage and performance data. We do not send contact-form fields or other directly identifying information to either analytics service.",
       },
     ],
   },
@@ -123,6 +123,7 @@ export const SECTIONS: PolicySection[] = [
           "Replying to you over email or scheduling a call.",
           "Internal triage. Which engineer or partner is the right person to take the conversation.",
           "Light record-keeping if our conversation continues into a paid engagement.",
+          "Understanding which pages and interactions are useful so we can improve the website.",
         ],
       },
       {
@@ -138,17 +139,19 @@ export const SECTIONS: PolicySection[] = [
   {
     id: "who-we-share",
     title: "Who we share information with",
-    lede: "Two third parties, both essential infrastructure, neither of them advertisers.",
+    lede: "Essential infrastructure and analytics providers. None receive your information for advertising.",
     body: [
       {
         kind: "p",
-        text: "When you submit the contact form, the data passes through:",
+        text: "The site relies on the following providers. Contact-form data is sent only to Web3Forms and the infrastructure needed to deliver it; analytics providers receive website usage data, not your form fields:",
       },
       {
         kind: "ul",
         items: [
           "<strong>Web3Forms</strong> (web3forms.com), our form-to-email service. They forward your submission to our inbox and don't store it long-term beyond delivery. Their privacy policy: <a href=\"https://web3forms.com/privacy-policy\" target=\"_blank\" rel=\"noopener noreferrer\">web3forms.com/privacy-policy</a>.",
           "<strong>Our hosting provider</strong>: serves the site and routes the form submission. They process the data only as needed to operate the site (load balancing, TLS termination, anti-abuse).",
+          "<strong>Google Analytics 4</strong>: measures website visits and interactions. We do not enable Google signals or advertising personalization without first confirming the required privacy and consent controls.",
+          "<strong>Cloudflare Web Analytics</strong>: provides aggregated website usage and performance measurement when enabled.",
         ],
       },
       {
@@ -233,11 +236,11 @@ export const SECTIONS: PolicySection[] = [
     body: [
       {
         kind: "p",
-        text: "This site does not use advertising or analytics cookies. We don't run Google Analytics, Meta Pixel, LinkedIn Insight, or similar trackers. The only cookies present are short-lived session cookies the hosting platform may set for caching, anti-abuse, and HTTPS. They don't identify you and they expire when you close the tab.",
+        text: "Google Analytics 4 may set first-party analytics cookies, including <strong>_ga</strong>, to distinguish visits and measure site usage. Our hosting provider may also set short-lived cookies for caching, anti-abuse, and HTTPS. We do not use Meta Pixel, LinkedIn Insight, or advertising cookies.",
       },
       {
         kind: "p",
-        text: "If we ever add analytics or marketing tools, we'll update this section before they go live and add a consent banner where the law requires one (EU/UK).",
+        text: "We use analytics to improve the site, not for advertising. Where applicable law requires consent before analytics storage, we will apply the required consent controls before enabling it.",
       },
     ],
   },
