@@ -21,7 +21,7 @@ const PAIRS: readonly Pair[] = [
   {
     question: "Are there hidden fees after Sprint 1?",
     answer:
-      "Contact us for pricing. One fixed number per sprint. Two weeks. That's it. No meetings charge, no revision fees, no admin tax. You own the code and can walk after Sprint 1 with zero penalty.",
+      "One fixed number per sprint, agreed before it starts. Two weeks. That's it. No meetings charge, no revision fees, no admin tax. You own the code and can walk after Sprint 1 with zero penalty.",
   },
   {
     question: "Who owns the code we pay for?",

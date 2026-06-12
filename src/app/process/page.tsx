@@ -39,9 +39,7 @@ export const metadata: Metadata = {
 
      1. WebPage — declares this page with mainEntity = Organization
      2. BreadcrumbList — Home → How we work
-     3. HowTo — the five-step process as structured data, helps
-        Google understand the page as a procedural how-to and
-        sometimes surfaces step previews in SERP. */
+     3. Service — the two-week fixed-cost sprint offering. */
 
 const WEBPAGE_SCHEMA = {
   "@context": "https://schema.org",
@@ -77,44 +75,23 @@ const BREADCRUMB_SCHEMA = {
   ],
 } as const;
 
-const HOWTO_SCHEMA = {
+/* Service schema — the 2026-relevant type for a methodology page
+   (HowTo schema was removed: Google dropped HowTo rich results in
+   2023, so it was dead weight in every crawl). */
+const SERVICE_SCHEMA = {
   "@context": "https://schema.org",
-  "@type": "HowTo",
-  name: "How TGlobal runs a software engagement",
+  "@type": "Service",
+  name: "Two-Week Fixed-Cost Product Development",
+  serviceType: "Software development",
   description:
-    "Five sequential steps from first call to live system — scope, infrastructure, build sprints, ship, hand-off.",
-  step: [
-    {
-      "@type": "HowToStep",
-      position: 1,
-      name: "Scope It",
-      text: "One-page statement of work, fixed cost, and a risk log — produced inside the first week.",
-    },
-    {
-      "@type": "HowToStep",
-      position: 2,
-      name: "Wire It Up",
-      text: "Cloud, CI/CD, and observability dashboards set up in the first three days so feature work never blocks on infrastructure.",
-    },
-    {
-      "@type": "HowToStep",
-      position: 3,
-      name: "Ship in Cycles",
-      text: "Two-week sprints, vertical slices deployed behind feature flags, Friday demos, async standups.",
-    },
-    {
-      "@type": "HowToStep",
-      position: 4,
-      name: "Go Live",
-      text: "Feature flags, zero-downtime migrations, and on-call coverage through every production deploy.",
-    },
-    {
-      "@type": "HowToStep",
-      position: 5,
-      name: "Own It",
-      text: "Runbook handoff, code ownership from day one, and 48 hours to re-scope the next sprint or hand off the system entirely.",
-    },
-  ],
+    "Full-stack product delivery in fixed-cost two-week sprints — one-page SOW, Friday demos, production code by week three, full code ownership transfer from day one.",
+  provider: {
+    "@type": "Organization",
+    name: "TGlobal",
+    url: "https://tglobal.in",
+  },
+  areaServed: "Worldwide",
+  url: "https://tglobal.in/process",
 } as const;
 
 /* /process — eight-beat editorial.
@@ -124,8 +101,11 @@ const HOWTO_SCHEMA = {
    italic-serif accent words, dark CTA block) so the two pages
    read as chapters of one book.
 
-     01 Hero        — pinned manifesto, three principles cycle on
-                      scramble swap.
+     01 Hero        — "The Quarter Collapse": a wall of 91 ghost
+                      day-cells (one agency quarter) is crushed by
+                      scroll into ten commit nodes on a git branch;
+                      the headline builds in behind a cursor and a
+                      LIVE pill stamps on FRI W2.
      02 Contrast    — six-row table contrasting typical agency vs
                       TGlobal across discovery, cadence, artifact,
                       pricing, ownership, on-call.
@@ -169,7 +149,7 @@ export default function ProcessPage() {
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(HOWTO_SCHEMA) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(SERVICE_SCHEMA) }}
       />
 
       <ScrollProgress />
