@@ -52,6 +52,8 @@ next-env.d.ts
 !/.claude/commands/
 !/.claude/README.md
 !/.claude/INSTALL.md
+.agents
+.codex
 /CLAUDE.md
 /AGENTS.md
 
@@ -66,3 +68,4 @@ next-env.d.ts
 /.playwright-mcp/
 *-loader-*.png
 componentry-preview-*.png
+/public/_mockups/
