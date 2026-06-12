@@ -370,6 +370,16 @@ export interface PageMetric {
   readonly label: string;
   readonly source: string;
   readonly delta?: string;
+  /** Where the number STARTS its scroll-scrub (the honest before-state —
+      the section is titled "Numbers that moved", so the numbers move). */
+  readonly from: number;
+  /** Display strings for the before→after morph (the number pixel-morphs
+      from `fromTick` to `toTick` as the row scrolls through). */
+  readonly fromTick: string;
+  readonly toTick: string;
+  /** The source client's brand colour (same tribute idea as the hero's
+      CLIENT_COLORS) — used on the row's source dot. */
+  readonly accent: string;
 }
 
 export const PAGE_METRICS: readonly PageMetric[] = [
@@ -379,6 +389,10 @@ export const PAGE_METRICS: readonly PageMetric[] = [
     label: "Lives impacted",
     source: "Aliste · PropTech sub-metering",
     delta: "from 0 in 16 weeks",
+    from: 0,
+    fromTick: "0",
+    toTick: "150K+",
+    accent: "#007AFF",
   },
   {
     value: 90,
@@ -386,6 +400,10 @@ export const PAGE_METRICS: readonly PageMetric[] = [
     label: "First-pass yield",
     source: "MedCollect · claim submission",
     delta: "up from 70% industry avg",
+    from: 70,
+    fromTick: "70%",
+    toTick: "90%+",
+    accent: "#4FB39D",
   },
   {
     value: 12,
@@ -394,6 +412,10 @@ export const PAGE_METRICS: readonly PageMetric[] = [
     label: "Claim submission",
     source: "MedCollect · Optum REST",
     delta: "vs 14-day legacy cycle",
+    from: 0,
+    fromTick: "14 days",
+    toTick: "<12s",
+    accent: "#4FB39D",
   },
   {
     value: 100,
@@ -401,6 +423,10 @@ export const PAGE_METRICS: readonly PageMetric[] = [
     label: "Telemetry sites",
     source: "SunZero · CleanTech portal",
     delta: "TimescaleDB · ms queries",
+    from: 0,
+    fromTick: "0",
+    toTick: "100+",
+    accent: "#FB923C",
   },
 ] as const;
 
@@ -432,6 +458,10 @@ export const PROCESS_STEPS = [
    No company logos — just initials in a circle, editorial restraint. */
 export interface Testimonial {
   readonly quote: string;
+  /** The load-bearing phrase inside the quote — must be an exact
+      substring of `quote`; rendered in the accent colour with a
+      scroll-driven highlight in the magazine spread. */
+  readonly keyPhrase: string;
   readonly author: string;
   readonly role: string;
   readonly project: string;
@@ -442,6 +472,7 @@ export const TESTIMONIALS: readonly Testimonial[] = [
   {
     quote:
       "They shipped what three other vendors couldn't. Our claim cycle went from days to seconds.",
+    keyPhrase: "from days to seconds",
     author: "Engineering lead",
     role: "Director of Platform",
     project: "MedCollect · Healthcare RCM",
@@ -450,6 +481,7 @@ export const TESTIMONIALS: readonly Testimonial[] = [
   {
     quote:
       "Friday demos meant we caught the wrong assumption in week two, not month six. That alone saved the project.",
+    keyPhrase: "week two, not month six",
     author: "Product owner",
     role: "Head of Digital",
     project: "Skyline Elevators · NYC",
@@ -458,6 +490,7 @@ export const TESTIMONIALS: readonly Testimonial[] = [
   {
     quote:
       "Bill recovery jumped from 73% to nearly 100%. Tenants stopped calling. Managers got their evenings back.",
+    keyPhrase: "73% to nearly 100%",
     author: "Operations lead",
     role: "VP, Property Tech",
     project: "Aliste Technologies · India",

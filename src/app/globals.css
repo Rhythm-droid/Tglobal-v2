@@ -439,6 +439,55 @@ body {
   }
 }
 
+/* /process hero — the sprint's heartbeat. A small packet of light
+   travels the full branch line forever (CSS keyframe → runs in BOTH
+   motion states, parity-safe). The streak's parent opacity is loop-
+   gated so it only appears once the branch has drawn. */
+@keyframes branch-pulse {
+  from {
+    transform: translateX(-140px);
+  }
+  to {
+    transform: translateX(calc(min(88vw, 1300px) + 140px));
+  }
+}
+.branch-pulse {
+  animation: branch-pulse 3.6s linear infinite;
+}
+
+/* /process hero — dust of the crushed quarter. Near-invisible motes
+   drifting a few pixels, forever (CSS → both motion states). */
+@keyframes mote-drift {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(5px, -8px);
+  }
+}
+.mote-drift {
+  animation: mote-drift 7s ease-in-out infinite alternate;
+}
+
+/* /work N° 06 — the living light inside the metric numerals. A long
+   violet→electric→lavender gradient pans continuously through the
+   background-clip:text fill so the lit digits read as liquid light,
+   never a static colour. Runs in BOTH motion states (the reduced-motion
+   override below re-enables animations), so the at-rest read is
+   identical with motion ON and OFF. Per-digit phase variance comes from
+   a negative animation-delay set inline. */
+@keyframes metric-light-flow {
+  from {
+    background-position: 0% 0;
+  }
+  to {
+    background-position: 300% 0;
+  }
+}
+.metric-light {
+  animation: metric-light-flow 7s linear infinite;
+}
+
 /* Caret blink for the hero accent typewriter. `steps(2, jump-none)`
    produces a hard on/off blink with no fade — feels mechanical, like
    a real terminal cursor. The animation is suppressed in JS while the

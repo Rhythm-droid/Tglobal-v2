@@ -14,174 +14,203 @@ interface WorkMarqueeProps {
   items: readonly string[];
   /** Optional className for the wrapping section. */
   className?: string;
-  /** Direction the marquee scrolls (driven by GSAP base loop). */
-  direction?: "left" | "right";
-  /** Base scroll speed in seconds for one full loop. Larger = slower. */
+  /** Base loop duration (seconds) for the front row. Larger = slower.
+      The back row derives a 0.85× duration so the two rows weave at a
+      1 : 0.85 ratio (a deliberate, non-synchronised cadence). */
   speed?: number;
   /** Variant — "ink" sits on dark surfaces, "paper" on light. */
   variant?: "ink" | "paper";
 }
 
+/* Soft edge-fade so tokens flow IN and OUT of view rather than hard-
+   cutting at the viewport edges. CSS mask-image (alpha) — renders
+   identically in Gecko and Blink (no filter:blur, no stop-opacity
+   luminance-mask trap). */
+const EDGE_MASK =
+  "linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%)";
+/* Brand easing, used for the separator hover micro-interaction. */
+const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+
 /**
- * WorkMarquee — kinetic typography divider between major sections.
+ * WorkMarquee — kinetic typography divider between case studies and the
+ * Playbook section. "Dual-strip scissor" redesign:
  *
- * Codrops 2026 pattern adapted: a continuously-scrolling marquee where
- * the BASE speed is constant (GSAP linear tween, looped), but page-
- * scroll velocity DISTORTS the marquee in real time — fast scroll adds
- * skew + boosts the marquee speed in the scroll direction, then eases
- * back. Reads as if the marquee is on a parallax rail responding to
- * the reader's energy.
+ *   • TWO rows. Front row scrolls left (xPercent 0→-50, `speed`s); back
+ *     row scrolls right (xPercent -50→0, 0.85×speed), at 75% opacity +
+ *     0.9 scale so it reads as a layer behind the front row. The two
+ *     rows weave past each other.
+ *   • SCROLL VELOCITY shears the two rows in OPPOSITE directions (a
+ *     scissor), and nudges each row's timeScale in its own travel
+ *     direction, then eases back — the strip reacts to the reader's
+ *     energy without ever becoming unreadable.
+ *   • The Instrument-Serif "·" separators are reading cues: on a
+ *     pointer device, hovering a token scales + brightens its separator.
+ *   • Soft edge-masks fade tokens at both viewport edges.
  *
- * Why this earns a place:
- *   • Existing primitives don't have a marquee; this is the one new
- *     primitive added in v2 (everything else reuses what's there).
- *   • Acts as a visual breath between sections — gives the eye a
- *     resting "non-content" beat after dense grids and metrics.
- *   • Carries brand language: dot-separated SECTION/CLIENT/OUTCOME
- *     tokens (e.g. "MedCollect · 90% FPY · Healthcare · Optum").
- *   • prefers-reduced-motion: the base loop pauses and the velocity
- *     distortion never registers, so reduced-motion users see a
- *     static row of tokens. Same content, no movement.
+ * Correctness / edge cases (all handled below):
+ *   • prefers-reduced-motion → no loops, no velocity skew; both rows
+ *     render as a static, fully-readable frame (identical at rest).
+ *   • Off-screen → base loops pause (IntersectionObserver); tab hidden
+ *     → loops pause (Page Visibility API). Both resume only when in
+ *     view AND visible AND motion allowed — no wasted CPU/battery.
+ *   • SSR-safe: no JSX branches on motion state; GSAP runs client-only
+ *     via useGSAP. aria-hidden (decorative). GSAP context auto-cleans
+ *     on unmount (useGSAP scope) and ScrollTrigger is killed on unmount.
+ *   • Resize-safe: xPercent is dimension-relative, no pixel math.
  */
 export default function WorkMarquee({
   items,
   className = "",
-  direction = "left",
-  speed = 30,
+  speed = 36,
   variant = "ink",
 }: WorkMarqueeProps) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const baseTweenRef = useRef<gsap.core.Tween | null>(null);
+  const wrapperRef = useRef<HTMLElement>(null);
+  const frontRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
+  const frontTween = useRef<gsap.core.Tween | null>(null);
+  const backTween = useRef<gsap.core.Tween | null>(null);
 
-  /* Base loop — continuous horizontal scroll using a duplicated track.
-     We render the items twice in the JSX and animate xPercent from 0
-     to -50 (half the track width) on a linear, infinite loop. When
-     the first copy moves past the left edge, the second copy is
-     already in position to fill the right edge, so the loop is
-     seamless without runtime layout math. */
+  const prefersReduced =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  /* ── Base loops ─────────────────────────────────────────────────
+     Each track is rendered twice end-to-end. Front: 0→-50 (moves
+     left). Back: -50→0 (moves right). Half-width travel = seamless. */
   useGSAP(
     () => {
-      if (typeof window === "undefined") return;
-      if (
-        window.matchMedia &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      ) {
-        return;
-      }
-      const track = trackRef.current;
-      if (!track) return;
+      if (prefersReduced) return;
+      const front = frontRef.current;
+      const back = backRef.current;
+      if (!front || !back) return;
 
-      const from = direction === "left" ? 0 : -50;
-      const to = direction === "left" ? -50 : 0;
-
-      baseTweenRef.current = gsap.fromTo(
-        track,
-        { xPercent: from },
-        {
-          xPercent: to,
-          duration: speed,
-          ease: "none",
-          repeat: -1,
-        },
+      frontTween.current = gsap.fromTo(
+        front,
+        { xPercent: 0 },
+        { xPercent: -50, duration: speed, ease: "none", repeat: -1 },
+      );
+      backTween.current = gsap.fromTo(
+        back,
+        { xPercent: -50 },
+        { xPercent: 0, duration: speed * 0.85, ease: "none", repeat: -1 },
       );
 
       return () => {
-        baseTweenRef.current?.kill();
-        baseTweenRef.current = null;
+        frontTween.current?.kill();
+        backTween.current?.kill();
+        frontTween.current = null;
+        backTween.current = null;
       };
     },
-    { scope: wrapperRef },
+    { scope: wrapperRef, dependencies: [speed] },
   );
 
-  /* Velocity-driven speed boost + skew. Independent of the base loop
-     so each effect can be tuned without affecting the other. ST.create
-     onUpdate reads scroll velocity and:
-       • Boosts the base tween's timeScale up to ~3x in the scroll
-         direction (or reverses it briefly on opposite scroll).
-       • Applies a skewX of ±4° proportional to velocity, eased back.
-     Both effects ease back to 1x / 0deg when scroll settles. */
+  /* ── Velocity scissor (skew opposite per row + gentle timeScale
+        nudge in each row's travel direction) ──────────────────────── */
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (
-      window.matchMedia &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      return;
-    }
-    const track = trackRef.current;
-    if (!track) return;
+    if (prefersReduced) return;
+    const front = frontRef.current;
+    const back = backRef.current;
+    if (!front || !back) return;
 
     const trigger = ScrollTrigger.create({
       trigger: wrapperRef.current,
       start: "top bottom",
       end: "bottom top",
       onUpdate(self) {
-        const v = self.getVelocity() / 1000; // ~-2 .. 2 typical
-        const clamped = gsap.utils.clamp(-2.5, 2.5, v);
-        /* Direction multiplier so a "left" marquee speeds up on
-           downward scroll, and a "right" marquee speeds up on upward
-           scroll. Subtle but intentional. */
-        const dirMult = direction === "left" ? 1 : -1;
-        if (baseTweenRef.current) {
-          gsap.to(baseTweenRef.current, {
-            timeScale: 1 + Math.abs(clamped) * dirMult * 0.6,
-            duration: 0.4,
-            ease: "power2.out",
-            overwrite: "auto",
-          });
+        const v = gsap.utils.clamp(-2.5, 2.5, self.getVelocity() / 1000);
+        // Opposite skew = scissor shear between the two rows.
+        gsap.to(front, { skewX: v * 1.6, duration: 0.5, ease: "power3.out", overwrite: "auto" });
+        gsap.to(back, { skewX: v * -1.6, duration: 0.5, ease: "power3.out", overwrite: "auto" });
+        // Front travels left → speeds up on downward scroll; back travels
+        // right → speeds up on upward scroll. Subtle (≤ +0.5×).
+        if (frontTween.current) {
+          gsap.to(frontTween.current, { timeScale: 1 + gsap.utils.clamp(0, 0.5, v * 0.4), duration: 0.4, ease: "power2.out", overwrite: "auto" });
         }
-        gsap.to(track, {
-          skewX: clamped * 1.6 * dirMult,
-          duration: 0.5,
-          ease: "power3.out",
-          overwrite: "auto",
-        });
+        if (backTween.current) {
+          gsap.to(backTween.current, { timeScale: 1 + gsap.utils.clamp(0, 0.5, -v * 0.4), duration: 0.4, ease: "power2.out", overwrite: "auto" });
+        }
       },
     });
-
     return () => trigger.kill();
-  }, [direction]);
+  }, [prefersReduced]);
 
-  const inkClasses =
-    "bg-foreground text-background border-y border-background/10";
-  const paperClasses =
-    "bg-background text-foreground border-y border-border";
+  /* ── Pause when off-screen OR tab hidden ────────────────────────
+     A continuously-looping marquee burns GPU/battery even when not
+     visible. Pause both base tweens unless the strip is on-screen AND
+     the tab is foregrounded. Reconciled from two signals. */
+  useEffect(() => {
+    if (prefersReduced) return;
+    const el = wrapperRef.current;
+    if (!el) return;
 
-  return (
-    <section
-      aria-hidden
-      ref={wrapperRef}
-      className={`relative overflow-hidden ${variant === "ink" ? inkClasses : paperClasses} ${className}`}
+    let inView = true;
+    let visible = !document.hidden;
+    const reconcile = () => {
+      const play = inView && visible;
+      frontTween.current?.[play ? "play" : "pause"]();
+      backTween.current?.[play ? "play" : "pause"]();
+    };
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        inView = entry.isIntersecting;
+        reconcile();
+      },
+      { rootMargin: "100px 0px" },
+    );
+    io.observe(el);
+
+    const onVisibility = () => {
+      visible = !document.hidden;
+      reconcile();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      io.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [prefersReduced]);
+
+  const surface =
+    variant === "ink"
+      ? "bg-foreground text-background border-y border-background/10"
+      : "bg-background text-foreground border-y border-border";
+
+  /* One row of tokens, rendered twice for a seamless wrap. `scale` and
+     `dimOpacity` differentiate the back row's depth. */
+  const renderRow = (
+    ref: React.RefObject<HTMLDivElement | null>,
+    scaleClass: string,
+    dimOpacity: number,
+  ) => (
+    <div
+      className="overflow-hidden"
+      style={{ WebkitMaskImage: EDGE_MASK, maskImage: EDGE_MASK }}
     >
       <div
-        ref={trackRef}
-        className="flex whitespace-nowrap py-6 sm:py-8 will-change-transform"
-        style={{ transformOrigin: "center" }}
+        ref={ref}
+        className="flex whitespace-nowrap will-change-transform"
+        style={{ transformOrigin: "center", opacity: dimOpacity }}
       >
-        {/* Track is rendered twice end-to-end so the loop seamlessly
-            wraps. Each token is followed by an Instrument Serif accent
-            dot — italic, accent-violet — to break up the mono cadence. */}
         {[0, 1].map((copyIdx) => (
-          <div key={copyIdx} className="flex shrink-0 items-center">
+          <div key={copyIdx} className={`flex shrink-0 items-center ${scaleClass}`}>
             {items.map((token, idx) => (
               <span
                 key={`${copyIdx}-${idx}`}
-                className="inline-flex items-center"
+                className="group/tok inline-flex items-center"
               >
-                <span
-                  className="px-6 sm:px-8 text-2xl sm:text-3xl lg:text-4xl font-medium tracking-[-0.02em]"
-                  style={{ letterSpacing: "-0.025em" }}
-                >
+                <span className="px-6 sm:px-8 text-2xl sm:text-3xl lg:text-4xl font-medium tracking-[-0.025em]">
                   {token}
                 </span>
                 <span
                   aria-hidden
-                  className="text-2xl sm:text-3xl lg:text-4xl italic select-none"
+                  className="select-none text-2xl sm:text-3xl lg:text-4xl italic opacity-85 transition-[transform,opacity] duration-300 group-hover/tok:scale-125 group-hover/tok:opacity-100"
                   style={{
                     fontFamily: "var(--font-instrument-serif), Georgia, serif",
                     color: "var(--color-accent-violet)",
-                    opacity: 0.85,
+                    transitionTimingFunction: EASE,
                     transform: "translateY(-2px)",
                   }}
                 >
@@ -191,6 +220,19 @@ export default function WorkMarquee({
             ))}
           </div>
         ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <section
+      aria-hidden
+      ref={wrapperRef}
+      className={`relative overflow-hidden ${surface} ${className}`}
+    >
+      <div className="space-y-3 py-6 sm:space-y-4 sm:py-8">
+        {renderRow(frontRef, "", 1)}
+        {renderRow(backRef, "scale-90", 0.75)}
       </div>
     </section>
   );
