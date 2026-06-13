@@ -96,29 +96,33 @@ const FOUNDERS: readonly Founder[] = [
     email: "growth@tglobal.in",
     portraitColors: ["#1a1233", "#2d1f5e", "#6b5ce7", "#c5baff", "#fbf8f1"],
   },
-  {
-    slug: "rhythm",
-    initials: "RM",
-    name: "Rhythm Mittal",
-    role: "Full-stack Engineer",
-    /* Anchor mirrors the rhythm of the founder bios above
-       (Chandan + Dhruv) — "X across Y. [Verb action], and [verb
-       action]." — so the three cards read as a coherent set. The
-       claims are defensible from the engineer's actual shipped
-       work (MERN + Next.js portfolio across six live products). */
-    anchor:
-      "Full-stack engineer working across modern web stacks. Builds production systems end-to-end on MERN and Next.js, and ships them with the engineer's name attached.",
-    bio: "Full-stack engineer working across modern web stacks. Builds production systems end-to-end on MERN and Next.js, and ships them with the engineer's name attached.",
-    note: "If I shipped it, I'll debug it at 2am. — RM",
-    email: "rhythmmittal19@gmail.com",
-    /* Cool-tone palette to match the other two founder cards.
-       Warm orange (the previous seed) broke the trio's visual
-       rhythm and read like an error against the lavender section
-       wash. This palette stays in the brand violet/lavender family
-       but uses different stop weighting so each card still looks
-       individually distinct under the Warp shader. */
-    portraitColors: ["#6b5ce7", "#9d8bff", "#c5baff", "#f0eaff", "#fbf8f1"],
-  },
+  // ── Rhythm Mittal — temporarily disabled until a real portrait
+  //    lands in /public/team/rhythm.<ext>. Uncomment this object
+  //    (and add the slug → ext entry to FOUNDERS_PORTRAIT_EXT) to
+  //    restore the third card.
+  // {
+  //   slug: "rhythm",
+  //   initials: "RM",
+  //   name: "Rhythm Mittal",
+  //   role: "Full-stack Engineer",
+  //   /* Anchor mirrors the rhythm of the founder bios above
+  //      (Chandan + Dhruv) — "X across Y. [Verb action], and [verb
+  //      action]." — so the three cards read as a coherent set. The
+  //      claims are defensible from the engineer's actual shipped
+  //      work (MERN + Next.js portfolio across six live products). */
+  //   anchor:
+  //     "Full-stack engineer working across modern web stacks. Builds production systems end-to-end on MERN and Next.js, and ships them with the engineer's name attached.",
+  //   bio: "Full-stack engineer working across modern web stacks. Builds production systems end-to-end on MERN and Next.js, and ships them with the engineer's name attached.",
+  //   note: "If I shipped it, I'll debug it at 2am. — RM",
+  //   email: "rhythmmittal19@gmail.com",
+  //   /* Cool-tone palette to match the other two founder cards.
+  //      Warm orange (the previous seed) broke the trio's visual
+  //      rhythm and read like an error against the lavender section
+  //      wash. This palette stays in the brand violet/lavender family
+  //      but uses different stop weighting so each card still looks
+  //      individually distinct under the Warp shader. */
+  //   portraitColors: ["#6b5ce7", "#9d8bff", "#c5baff", "#f0eaff", "#fbf8f1"],
+  // },
 ];
 
 function useViewportPause<T extends HTMLElement>() {
@@ -489,19 +493,24 @@ export default function AboutTeam() {
           </div>
         </div>
 
-        {/* ── Founder grid: equal-width 3-up row.
-            On lg+, each founder takes 4/12 cols (~33%) — equal
-            weight across the row, no hierarchy fakery. On md they
-            collapse to 2 cards top + 1 card bottom; on mobile
-            they stack full-width. */}
-        <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-10 lg:grid-cols-3 lg:gap-10">
+        {/* ── Founder row: auto-centres to the number of active
+            founders. Each card holds its 3-up width (≈⅓ on lg, ½ on
+            sm, full on mobile) so sizing stays identical whether 1, 2,
+            or 3 cards are shown — and `justify-center` balances any
+            incomplete row instead of leaving a dead grid column. This
+            is why it's flex-wrap, not `grid-cols-3`: a fixed 3-track
+            grid pins two cards to the left with an empty third column;
+            a centred flex row reads as a deliberate pair. Restore the
+            Rhythm card (above) and the row fills to 3-up on its own —
+            no layout edit needed. */}
+        <div className="mt-20 flex flex-wrap justify-center gap-8 sm:gap-10">
           {FOUNDERS.map((founder, i) => (
-            <FounderCard
+            <div
               key={founder.slug}
-              founder={founder}
-              index={i}
-              emphasis="secondary"
-            />
+              className="w-full sm:w-[calc((100%_-_2.5rem)/2)] lg:w-[calc((100%_-_5rem)/3)]"
+            >
+              <FounderCard founder={founder} index={i} emphasis="secondary" />
+            </div>
           ))}
         </div>
       </div>
