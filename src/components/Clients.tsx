@@ -124,10 +124,9 @@ const BRANDS: readonly Brand[] = [
   { id: "jijibai",       name: "JIJIBAI",             src: "/brands/jijibai.webp",       width: 1500, height: 1500 },
   { id: "turpai",        name: "Turpai",              src: "/brands/turpai.webp",        width: 1500, height: 1500 },
   { id: "radhe-fashion", name: "Radhey Fashions",     src: "/brands/radhe-fashion.webp", width: 1500, height: 1500 },
-  // Positions 11-13 are kept from the prior carousel state — only Foot
-  // Locker, Ackermans, and Dealshare were called out for removal.
-  { id: "ast",           name: "AST (All Stop Trading)", src: "/brands/ast.webp",        width: 1500, height: 1500 },
-  { id: "tamimi",        name: "Tamimi Markets",      src: "/brands/tamimi.webp",        width: 1500, height: 1500 },
+  { id: "ast",           name: "AST (All Stop Trading)", src: "/brands/ast.webp",     width: 1500, height: 1500 },
+  { id: "ackermans",     name: "Ackermans",           src: "/brands/ackermans.webp",     width: 1500, height: 1500 },
+  { id: "foot-locker",   name: "Foot Locker",         src: "/brands/foot-locker.webp",   width: 1500, height: 1500 },
   { id: "puma",          name: "PUMA",                src: "/brands/puma.webp",          width: 1500, height: 1500 },
 ] as const;
 
