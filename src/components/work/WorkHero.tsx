@@ -800,11 +800,10 @@ export default function WorkHero() {
     return () => window.removeEventListener("mousemove", onMouseMove);
   }, [mounted]);
 
-  const phaseText = PHASE_TEXTS[phase]!;
-
   return (
     <section
       ref={sectionRef}
+      aria-labelledby="work-hero-heading"
       className="relative bg-background text-foreground"
       style={{
         /* Section runway: 540svh. Morph occupies progress 0→0.50
@@ -1074,15 +1073,17 @@ export default function WorkHero() {
           </ul>
         </div>
 
-        {/* SR-only fallback so screen readers + crawlers receive both
-            phrases. Visible canvas is aria-hidden because canvas text
-            isn't natively accessible. */}
+        {/* SR-only heading + detail. The visible hero is a canvas
+            (aria-hidden — canvas text isn't natively accessible), so
+            this is the page's REAL semantic h1 for screen readers and
+            crawlers. Kept static (not phase-dependent) so the document
+            outline is stable; the industries enumeration follows as
+            supporting text. */}
+        <h1 id="work-hero-heading" className="sr-only">
+          Work that ships. Nine industries. One team.
+        </h1>
         <span className="sr-only">
-          {phaseText.plain}
-          {phaseText.accent}
-        </span>
-        <span className="sr-only">
-          Work that ships. Nine Industries. One Team. {INDUSTRIES.map((c) => `${c.label}: ${c.clients.join(", ")}.`).join(" ")}
+          {INDUSTRIES.map((c) => `${c.label}: ${c.clients.join(", ")}.`).join(" ")}
         </span>
       </div>
     </section>

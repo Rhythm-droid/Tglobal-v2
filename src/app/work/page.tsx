@@ -60,10 +60,18 @@ export const metadata: Metadata = {
     "Selected case studies from real TGlobal client engagements. Ten clients, nine industries, three continents — every one shipped to production.",
   alternates: { canonical: "https://tglobal.in/work" },
   openGraph: {
+    type: "website",
     title: "Work · TGlobal",
     description:
       "Selected case studies from real engagements. Healthcare, manufacturing, PropTech, AI EdTech, e-commerce, retail, textile, cleantech, telecom.",
     url: "https://tglobal.in/work",
+    siteName: "TGlobal",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Work · TGlobal",
+    description:
+      "Selected case studies from real engagements — every one shipped to production.",
   },
   /* Belt-and-braces noindex until boss signs off the case study detail
      pages. Removing this `robots` block requires THREE coordinated
