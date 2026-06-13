@@ -122,10 +122,11 @@ const FOOTER_CONTENT = {
        #talk-to-us   → CTA (Contact Us)
        #faq          → Faq             (now after CTA — see page.tsx)
      If a section is added/removed/renamed in page.tsx, mirror it here. */
-  /* "Projects" / "#our-work" was removed — the /work page hasn't
-     shipped yet, so the chrome shouldn't link to it (per launch
-     scope: only landing, /process, /about are live). "Process"
-     and "About Us" are added since both are now shipping. */
+  /* Mirrors the navbar. Column 1 = homepage sections in scroll order;
+     column 2 = remaining homepage section + the three standalone
+     routes (Work / Process / About Us). "Contact Us" is NOT repeated
+     here — it lives in the Support column below (with FAQ + Privacy)
+     so the same destination isn't listed twice in one footer. */
   quickLinkColumns: [
     [
       { label: "Home", href: "#top" },
@@ -135,9 +136,9 @@ const FOOTER_CONTENT = {
     ],
     [
       { label: "Capabilities", href: "#capabilities" },
+      { label: "Work", href: "/work" },
       { label: "Process", href: "/process" },
       { label: "About Us", href: "/about" },
-      { label: "Contact Us", href: "#talk-to-us" },
     ],
   ],
   supportLinks: [

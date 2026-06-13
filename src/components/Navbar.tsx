@@ -103,16 +103,20 @@ interface NavLink {
    will be added with the Friday commit. */
 /* Cross-page anchors use "/#..." so the link resolves from any
    route (e.g. clicking "Problem" while on /about routes the user
-   to / then scrolls to #problem). The first four items are
-   sections of the landing page; Process and About Us are
-   standalone routes. /work is intentionally absent — the work
-   page hasn't shipped yet, so nothing in the chrome should link
-   to it. Add a route here only after its page.tsx exists. */
+   to / then scrolls to #problem).
+
+   Order = the homepage's own scroll order (Problem → Capabilities)
+   first, so clicking those in sequence walks the landing page top
+   to bottom, then the three standalone routes as a trailing group
+   in buyer-journey order: Work (proof) → Process (method) →
+   About Us (who). /work is now a shipped, polished route, so it
+   belongs in the chrome. */
 const NAV_LINKS: readonly NavLink[] = [
   { label: "Problem", href: "/#problem" },
   { label: "How It Works", href: "/#how-it-works" },
   { label: "Services", href: "/#services" },
   { label: "Capabilities", href: "/#capabilities" },
+  { label: "Work", href: "/work" },
   { label: "Process", href: "/process" },
   { label: "About Us", href: "/about" },
 ] as const;

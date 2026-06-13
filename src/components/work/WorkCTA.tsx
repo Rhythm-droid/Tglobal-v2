@@ -137,11 +137,11 @@ export default function WorkCTA() {
 
         <div className="mt-9 flex flex-col items-center gap-5 sm:mt-12">
           <MagneticPill
-            href="/contact"
+            href="/#talk-to-us"
             variant="primary"
             strength={0.22}
             cursorText="Let's talk"
-            ariaLabel="Start a project — open the contact page"
+            ariaLabel="Start a project — go to the contact form"
           >
             Start a project <ArrowRight aria-hidden size={18} />
           </MagneticPill>
