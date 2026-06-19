@@ -41,23 +41,23 @@ interface RouteEntry {
 
 /* Phase 1 routes — ONLY include routes that actually return 200 in
    production AND are ready to be indexed.
-   /work and /work/[slug] are intentionally EXCLUDED for this launch:
-   the work archive and case-study detail pages exist in the codebase
-   but aren't ready for public consumption (placeholder copy, no real
-   client artwork, no client sign-off). Including them in the sitemap
-   would advertise unfinished work to Google + AI crawlers, and the
-   companion `robots.ts` Disallow rules block them from being crawled
-   directly. Re-add `/work` and the CASE_STUDY_ROUTES block below once
-   the work pages are launch-ready.
+   The /work INDEX is launch-ready and now included. The case-study
+   DETAIL pages (/work/[slug]) remain EXCLUDED: they aren't ready for
+   public consumption (placeholder copy, no real client artwork, no
+   client sign-off). Listing them in the sitemap would advertise
+   unfinished work to Google + AI crawlers, and the companion
+   `robots.ts` `/work/` Disallow + per-page noindex block them from
+   being crawled/indexed. Restore the CASE_STUDY_ROUTES block below
+   once the detail pages are launch-ready.
    /services, /contact, /careers, /terms — uncomment each once the
    matching route exists at src/app/<slug>/page.tsx and returns 200. */
 const ROUTES: readonly RouteEntry[] = [
   { path: "/",        priority: 1.0, changeFrequency: "monthly" },
   { path: "/about",   priority: 0.8, changeFrequency: "monthly" },
+  { path: "/work",    priority: 0.9, changeFrequency: "monthly" },
   { path: "/process", priority: 0.7, changeFrequency: "monthly" },
   { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
   // Pending route build / launch — uncomment as each ships:
-  // { path: "/work",     priority: 0.9, changeFrequency: "monthly" },
   // { path: "/services", priority: 0.8, changeFrequency: "monthly" },
   // { path: "/contact",  priority: 0.8, changeFrequency: "yearly"  },
   // { path: "/careers",  priority: 0.5, changeFrequency: "monthly" },

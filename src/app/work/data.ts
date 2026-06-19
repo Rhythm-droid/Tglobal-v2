@@ -84,7 +84,7 @@ export const CASE_STUDIES: readonly CaseStudy[] = [
     client: "MedCollect",
     industry: "Healthcare",
     region: "USA",
-    year: 2025,
+    year: 2026,
     outcome:
       "Optum-integrated medical billing that closes claims in under 12 seconds.",
     duration: "14 weeks",
@@ -123,7 +123,7 @@ export const CASE_STUDIES: readonly CaseStudy[] = [
     client: "Skyline Elevators",
     industry: "Manufacturing",
     region: "USA",
-    year: 2025,
+    year: 2026,
     outcome:
       "Proposal-to-contract platform for an NYC elevator firm. 12 modules, 4 elevator types, one source of truth.",
     duration: "12 weeks",
@@ -183,7 +183,7 @@ export const CASE_STUDIES: readonly CaseStudy[] = [
     client: "Jumbl",
     industry: "AI EdTech",
     region: "INDIA",
-    year: 2025,
+    year: 2026,
     outcome:
       "AI mock-interview platform pairing students with paid internships at 100+ startups.",
     duration: "10 weeks",
@@ -243,7 +243,7 @@ export const CASE_STUDIES: readonly CaseStudy[] = [
     client: "SunZero",
     industry: "CleanTech",
     region: "INDIA",
-    year: 2025,
+    year: 2026,
     outcome:
       "Real-time energy intelligence portal for India's first integrated clean-infrastructure platform.",
     duration: "18 weeks",
@@ -274,7 +274,7 @@ export const CASE_STUDIES: readonly CaseStudy[] = [
     client: "Turpai",
     industry: "E-commerce",
     region: "INDIA",
-    year: 2025,
+    year: 2026,
     outcome: "Storefront and ops stack for a fast-growing Indian apparel brand.",
     stackCompact: ["Shopify", "React", "Node.js"],
     cardStats: [
@@ -289,7 +289,7 @@ export const CASE_STUDIES: readonly CaseStudy[] = [
     client: "JIJIBAI",
     industry: "Retail",
     region: "INDIA",
-    year: 2025,
+    year: 2026,
     outcome: "Retail commerce and inventory stack for a heritage Indian brand.",
     stackCompact: ["React", "Node.js", "Postgres"],
     cardStats: [
@@ -304,7 +304,7 @@ export const CASE_STUDIES: readonly CaseStudy[] = [
     client: "Radhey Fashion",
     industry: "Textile",
     region: "INDIA",
-    year: 2025,
+    year: 2026,
     outcome: "Catalog and order pipeline for a textile manufacturer shipping globally.",
     stackCompact: ["Next.js", "Node.js", "Postgres"],
     cardStats: [

@@ -73,18 +73,11 @@ export const metadata: Metadata = {
     description:
       "Selected case studies from real engagements — every one shipped to production.",
   },
-  /* Belt-and-braces noindex until boss signs off the case study detail
-     pages. Removing this `robots` block requires THREE coordinated
-     changes (already documented in robots.ts + sitemap.ts):
-       1. Delete this robots entry.
-       2. Restore /work in sitemap.ts.
-       3. Remove /work from UNFINISHED_ROUTES in robots.ts. */
-  robots: {
-    index: false,
-    follow: false,
-    nocache: true,
-    googleBot: { index: false, follow: false },
-  },
+  /* The /work index is launch-ready, so it inherits index/follow from the
+     root layout (no robots override here). Only the case-study DETAIL
+     pages (/work/[slug]) stay gated until client sign-off — that gate
+     lives in work/[slug]/page.tsx (robots noindex) and the `/work/`
+     Disallow in robots.ts. */
 };
 
 /* JSON-LD — collection page + breadcrumbs. ItemList isn't ideal for an

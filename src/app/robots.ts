@@ -8,10 +8,11 @@ import type { MetadataRoute } from "next";
  *
  * Production (NEXT_PUBLIC_ENV unset or anything else):
  *   • Search engines (Googlebot, Bingbot, etc.) and the default
- *     `*` user-agent are allowed on the launched pages but
- *     explicitly disallowed from /work and /work/* — those pages
- *     exist in the codebase for development but aren't launch-ready,
- *     so we don't want them indexed or surfaced in AI search.
+ *     `*` user-agent are allowed on the launched pages (incl. the
+ *     /work index) but explicitly disallowed from the case-study
+ *     detail pages under /work/ — those aren't launch-ready (no
+ *     client sign-off), so we don't want them indexed or surfaced
+ *     in AI search.
  *   • AI training / answer-engine crawlers (GPTBot, ChatGPT-User,
  *     ClaudeBot, anthropic-ai, PerplexityBot, Google-Extended,
  *     CCBot) are blocked from the unfinished paths the same way.
@@ -23,10 +24,12 @@ import type { MetadataRoute } from "next";
  * to sitemap.ts. The two files are the launch gate.
  */
 
-/* Routes that exist in the codebase but should NOT be indexed for
-   this launch. Mirror this list in any new section we add to the
-   site that isn't launch-ready. */
-const UNFINISHED_ROUTES = ["/work", "/work/"] as const;
+/* Paths that should NOT be crawled/indexed yet. The /work INDEX is now
+   live, so only the case-study DETAIL pages under /work/ stay gated
+   (placeholder copy, no client sign-off). The trailing slash is load-
+   bearing: "/work/" blocks /work/<slug> but leaves the /work index
+   crawlable. Mirror this pattern for any new section that isn't ready. */
+const UNFINISHED_ROUTES = ["/work/"] as const;
 
 export default function robots(): MetadataRoute.Robots {
   const isStaging = process.env.NEXT_PUBLIC_ENV === "staging";
